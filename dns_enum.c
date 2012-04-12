@@ -177,15 +177,17 @@ int bruteforce_names_for_domain(char *target_domain, host_master *c_host_master)
 
 int dns_enumerate_domain(char *target_domain, host_master *c_host_master) {
 	domain_ns_list nameservers;
+	char ip[INET_ADDRSTRLEN];
 	int i;
 	memset(&nameservers, '\0', sizeof(nameservers));
 	printf("INFO: enumerating domain: %s\n", target_domain);
 	
 	get_nameservers_for_domain(target_domain, &nameservers);
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
-		printf("INFO: found name server %s\n", nameservers.servers[i]);
+		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ip, sizeof(ip));
+		printf("INFO: found name server %s %s\n", nameservers.servers[i], ip);
 	}
 	
-	printf("INFO: enumerate finished %s\n", nameservers.servers[0]);
+	printf("INFO: dns enumeration finished\n");
 	return 0;
 }

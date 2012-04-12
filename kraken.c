@@ -32,19 +32,54 @@
 const char *argp_program_version = "kraken 0.1";
 const char *argp_program_bug_address = "<smcintyre@securestate.net>";
 static char doc[] = "Enumerate targets.";
-static char args_doc[] = "[options] {domain}";
+static char args_doc[] = "TARGET_DOMAIN";
+
+static struct argp_option options[] = {
+	{ 0 }
+};
+
+struct arguments {
+	char *target_domains[1];
+};
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+	struct arguments *arguments = state->input;
+	
+	switch (key) {
+		case ARGP_KEY_ARG:
+			if (state->arg_num >= 1)
+			/* Too many arguments. */
+			argp_usage (state);
+			arguments->target_domains[state->arg_num] = arg;
+			break;
+		case ARGP_KEY_END:
+			if (state->arg_num < 1) {
+				/* Not enough arguments. */
+				argp_usage (state);
+			}
+			break;
+		default:
+			return ARGP_ERR_UNKNOWN;
+	}
+	return 0;
+}
+
+static struct argp argp = { options, parse_opt, args_doc, doc };
 
 int main(int argc, char **argv) {
+	struct arguments arguments;
 	host_master c_host_master;
 	unsigned int current_host_i;
 	single_host_info current_host;
-	char ip[INET6_ADDRSTRLEN];
-	init_host_master(&c_host_master);
+	char ip[INET_ADDRSTRLEN];
 	
-	dns_enumerate_domain(argv[1], &c_host_master);
+	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+	
+	init_host_master(&c_host_master);
+	dns_enumerate_domain(arguments.target_domains[0], &c_host_master);
 	return 0;
 	
-	bruteforce_names_for_domain(argv[1], &c_host_master);
+	bruteforce_names_for_domain(arguments.target_domains[0], &c_host_master);
 	
 	for (current_host_i = 0; current_host_i < c_host_master.known_hosts; current_host_i++) {
 		current_host = c_host_master.hosts[current_host_i];
