@@ -28,6 +28,8 @@ static void callback_nameserver_servers(void *args, int status, int timeouts, un
     for (i = 0; (host->h_aliases[i] && (i < DNS_MAX_NS_HOSTS)); ++i) {
 		strncpy((char *)&nameservers->servers[i], host->h_aliases[i], DNS_MAX_FQDN_LENGTH);
     }
+    
+    ares_free_hostent(host);
 	return;
 }
 
@@ -61,7 +63,7 @@ static void callback_host(void *c_host_master, int status, int timeouts, struct 
 	for (i = 0; host->h_addr_list[i]; ++i) {
 		memcpy(&new_host.ipv4_addr, host->h_addr_list[i], sizeof(struct in_addr));
 		strncpy(new_host.hostname, host->h_name, DNS_MAX_FQDN_LENGTH);
-		add_host(c_host_master, &new_host);
+		host_master_add_host(c_host_master, &new_host);
 	}
 	destroy_single_host(&new_host);
 	return;
@@ -91,8 +93,6 @@ static void wait_ares(ares_channel channel, int max_allowed) {
 int get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers) {
 	ares_channel channel;
 	int status;
-	struct ares_options options;
-	int optmask = 0;
 	int i;
 
 	printf("INFO: querying nameservers for domain: %s\n", target_domain);
@@ -102,9 +102,8 @@ int get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers)
 		printf("ERROR: ares_library_init: %s\n", ares_strerror(status));
 		return 1;
 	}
-	optmask |= ARES_OPT_SOCK_STATE_CB;
 
-	status = ares_init_options(&channel, &options, optmask);
+	status = ares_init(&channel);
 	if(status != ARES_SUCCESS) {
 		printf("ERROR: ares_init_options: %s\n", ares_strerror(status));
 		return 1;
@@ -125,34 +124,52 @@ int get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers)
 	return 0;
 }
 
-int bruteforce_names_for_domain(char *target_domain, host_master *c_host_master) {
+int bruteforce_names_for_domain(char *target_domain, host_master *c_host_master, domain_ns_list *nameservers) {
 	ares_channel channel;
 	int status;
-	struct ares_options options;
-	int optmask = 0;
 	unsigned int query_counter = 0;
-	
 	FILE *fierceprefixes;
 	char line[MAX_LINE];
 	char hostname[MAX_LINE];
+	int i;
 	
-	printf("INFO: bruteforcing names for domain: %s\n", target_domain);
-
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS){
 		printf("ERROR: ares_library_init: %s\n", ares_strerror(status));
 		return 1;
 	}
-	optmask |= ARES_OPT_SOCK_STATE_CB;
 
-	status = ares_init_options(&channel, &options, optmask);
+	status = ares_init(&channel);
 	if(status != ARES_SUCCESS) {
 		printf("ERROR: ares_init_options: %s\n", ares_strerror(status));
 		return 1;
 	}
+	
+	if (nameservers != NULL) {
+		// set the name servers //
+		printf("INFO: swithcing to use supplied name servers\n");
+		struct ares_addr_node servers_addr_node[DNS_MAX_NS_HOSTS];
+		//struct ares_addr_node *current_server_node;
+		struct in_addr blank_address;
+		memset(&servers_addr_node, '\0', sizeof(servers_addr_node));
+		//current_server_node = &servers_addr_node;
+		memset(&blank_address, '\0', sizeof(blank_address));
+		
+		for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
+			if (memcmp(&nameservers->ipv4_addrs[i], &blank_address, sizeof(blank_address))) {
+				servers_addr_node[i].family = AF_INET;
+				servers_addr_node[i].addr.addr4 = nameservers->ipv4_addrs[i];
+				servers_addr_node[i].next = &servers_addr_node[i+1];
+			}
+		}
+		servers_addr_node[i].next = NULL;
+		ares_set_servers(channel, &servers_addr_node[0]);
+	}
+	
+	printf("INFO: bruteforcing names for domain: %s\n", target_domain);
 
 	if ((fierceprefixes = fopen(FIERCE_PREFIXES_PATH, "r")) == NULL) {
-		printf("ERROR: Cannot open file from fierce containing prefixes.\n");
+		printf("ERROR: cannot open file from fierce containing prefixes\n");
 		ares_destroy(channel);
 		ares_library_cleanup();
 		return 1;
@@ -187,6 +204,9 @@ int dns_enumerate_domain(char *target_domain, host_master *c_host_master) {
 		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ip, sizeof(ip));
 		printf("INFO: found name server %s %s\n", nameservers.servers[i], ip);
 	}
+	
+	/* the function fails here though */
+	bruteforce_names_for_domain(target_domain, c_host_master, &nameservers);
 	
 	printf("INFO: dns enumeration finished\n");
 	return 0;

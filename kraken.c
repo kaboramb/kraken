@@ -74,13 +74,10 @@ int main(int argc, char **argv) {
 	char ip[INET_ADDRSTRLEN];
 	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
-	
 	init_host_master(&c_host_master);
 	dns_enumerate_domain(arguments.target_domains[0], &c_host_master);
-	return 0;
 	
-	bruteforce_names_for_domain(arguments.target_domains[0], &c_host_master);
-	
+	printf("\n");
 	for (current_host_i = 0; current_host_i < c_host_master.known_hosts; current_host_i++) {
 		current_host = c_host_master.hosts[current_host_i];
 		inet_ntop(AF_INET, &current_host.ipv4_addr, ip, sizeof(ip));
