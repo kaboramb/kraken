@@ -68,22 +68,22 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 
 int main(int argc, char **argv) {
 	struct arguments arguments;
-	host_master c_host_master;
+	host_manager c_host_manager;
 	unsigned int current_host_i;
 	single_host_info current_host;
 	char ip[INET_ADDRSTRLEN];
 	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
-	init_host_master(&c_host_master);
-	dns_enumerate_domain(arguments.target_domains[0], &c_host_master);
+	init_host_manager(&c_host_manager);
+	dns_enumerate_domain(arguments.target_domains[0], &c_host_manager);
 	
 	printf("\n");
-	for (current_host_i = 0; current_host_i < c_host_master.known_hosts; current_host_i++) {
-		current_host = c_host_master.hosts[current_host_i];
+	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
+		current_host = c_host_manager.hosts[current_host_i];
 		inet_ntop(AF_INET, &current_host.ipv4_addr, ip, sizeof(ip));
 		printf("%s %s\n", current_host.hostname, ip);
 	}
 	
-	destroy_host_master(&c_host_master);
+	destroy_host_manager(&c_host_manager);
 	return 0;
 }

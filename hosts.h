@@ -12,10 +12,10 @@ typedef struct single_host_info {
 	char os[16];
 } single_host_info;
 
-typedef struct host_master {
+typedef struct host_manager {
 	unsigned int known_hosts;
 	unsigned int current_capacity;
 	single_host_info *hosts;
-} host_master;
+} host_manager;
 
 #endif

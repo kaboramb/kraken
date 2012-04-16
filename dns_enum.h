@@ -26,7 +26,8 @@ typedef struct domain_ns_list { /* hold information for up to DNS_MAX_NS_HOSTS n
 	struct in_addr ipv4_addrs[DNS_MAX_NS_HOSTS];
 } domain_ns_list;
 
-int bruteforce_names_for_domain(char *target_domain, host_master *c_host_master, domain_ns_list *nameservers);
-int dns_enumerate_domain(char *target_domain, host_master *c_host_master);
+int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers);
+int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_manager, domain_ns_list *nameservers);
+int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager);
 
 #endif

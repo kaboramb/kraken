@@ -52,7 +52,7 @@ static void callback_nameserver_hosts(void *args, int status, int timeouts, stru
 	return;
 }
 
-static void callback_host(void *c_host_master, int status, int timeouts, struct hostent *host) {
+static void callback_host(void *c_host_manager, int status, int timeouts, struct hostent *host) {
 	if(!host || status != ARES_SUCCESS){
 		// printf("Failed to lookup %s\n", ares_strerror(status));
 		return;
@@ -63,7 +63,7 @@ static void callback_host(void *c_host_master, int status, int timeouts, struct 
 	for (i = 0; host->h_addr_list[i]; ++i) {
 		memcpy(&new_host.ipv4_addr, host->h_addr_list[i], sizeof(struct in_addr));
 		strncpy(new_host.hostname, host->h_name, DNS_MAX_FQDN_LENGTH);
-		host_master_add_host(c_host_master, &new_host);
+		host_manager_add_host(c_host_manager, &new_host);
 	}
 	destroy_single_host(&new_host);
 	return;
@@ -90,7 +90,7 @@ static void wait_ares(ares_channel channel, int max_allowed) {
 	}
 }
 
-int get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers) {
+int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers) {
 	ares_channel channel;
 	int status;
 	int i;
@@ -124,7 +124,7 @@ int get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers)
 	return 0;
 }
 
-int bruteforce_names_for_domain(char *target_domain, host_master *c_host_master, domain_ns_list *nameservers) {
+int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_manager, domain_ns_list *nameservers) {
 	ares_channel channel;
 	int status;
 	unsigned int query_counter = 0;
@@ -172,14 +172,14 @@ int bruteforce_names_for_domain(char *target_domain, host_master *c_host_master,
 		printf("ERROR: cannot open file from fierce containing prefixes\n");
 		ares_destroy(channel);
 		ares_library_cleanup();
-		return 1;
+		return 2;
 	}
 
 	while (fgets(line, MAX_LINE, fierceprefixes)) {
 		line[strlen(line) - 1] = '\0'; /* kill the newline byte */
 		snprintf(hostname, MAX_LINE, "%s.%s", line, target_domain);
 		//printf("Searching for %s\n", hostname);
-		ares_gethostbyname(channel, hostname, AF_INET, callback_host, (host_master *)c_host_master);
+		ares_gethostbyname(channel, hostname, AF_INET, callback_host, (host_manager *)c_host_manager);
 		query_counter += 1;
 		wait_ares(channel, DNS_MAX_SIM_QUERIES);
 	}
@@ -192,21 +192,21 @@ int bruteforce_names_for_domain(char *target_domain, host_master *c_host_master,
 	return 0;
 }
 
-int dns_enumerate_domain(char *target_domain, host_master *c_host_master) {
+int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 	domain_ns_list nameservers;
 	char ip[INET_ADDRSTRLEN];
 	int i;
 	memset(&nameservers, '\0', sizeof(nameservers));
 	printf("INFO: enumerating domain: %s\n", target_domain);
 	
-	get_nameservers_for_domain(target_domain, &nameservers);
+	dns_get_nameservers_for_domain(target_domain, &nameservers);
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
 		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ip, sizeof(ip));
 		printf("INFO: found name server %s %s\n", nameservers.servers[i], ip);
 	}
 	
 	/* the function fails here though */
-	bruteforce_names_for_domain(target_domain, c_host_master, &nameservers);
+	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers);
 	
 	printf("INFO: dns enumeration finished\n");
 	return 0;
