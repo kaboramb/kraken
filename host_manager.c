@@ -7,6 +7,7 @@
 
 int init_single_host(single_host_info *c_host) {
 	memset(c_host, 0, sizeof(struct single_host_info));
+	c_host->whois_data = NULL;
 	return 0;
 }
 

@@ -205,7 +205,6 @@ int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 		printf("INFO: found name server %s %s\n", nameservers.servers[i], ip);
 	}
 	
-	/* the function fails here though */
 	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers);
 	
 	printf("INFO: dns enumeration finished\n");

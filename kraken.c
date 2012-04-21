@@ -1,4 +1,4 @@
-// kraken.c.c
+// kraken.c
 // 
 // Copyright 2012 Spencer McIntyre <smcintyre@securestate.net>
 // 
