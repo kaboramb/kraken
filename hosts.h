@@ -6,11 +6,6 @@
 
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in dns_enum.h */
 
-typedef struct network_info {
-	struct in_addr network;
-	struct in_addr subnetmask;
-} network_info;
-
 typedef struct single_host_info {
 	unsigned char is_up;
 	char hostname[DNS_MAX_FQDN_LENGTH + 1];
