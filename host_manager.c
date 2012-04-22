@@ -4,6 +4,7 @@
 
 #include "hosts.h"
 #include "host_manager.h"
+#include "whois_lookup.h"
 
 int init_single_host(single_host_info *c_host) {
 	memset(c_host, 0, sizeof(struct single_host_info));
@@ -23,6 +24,15 @@ int init_host_manager(host_manager *c_host_manager) {
 	c_host_manager->known_hosts = 0;
 	c_host_manager->current_capacity = HOST_CAPACITY_INCREMENT_SIZE;
 	memset(c_host_manager->hosts, 0, (sizeof(struct single_host_info) * HOST_CAPACITY_INCREMENT_SIZE));
+	
+	c_host_manager->whois_records = malloc(sizeof(struct whois_record) * WHOIS_CAPACITY_INCREMENT_SIZE);
+	if (c_host_manager->whois_records == NULL) {
+		free(c_host_manager->hosts);
+		return 1;
+	}
+	c_host_manager->known_whois_records = 0;
+	c_host_manager->current_whois_record_capacity = WHOIS_CAPACITY_INCREMENT_SIZE;
+	memset(c_host_manager->whois_records, 0, (sizeof(struct whois_record) * WHOIS_CAPACITY_INCREMENT_SIZE));
 	return 0;
 }
 
@@ -30,6 +40,11 @@ int destroy_host_manager(host_manager *c_host_manager) {
 	memset(c_host_manager->hosts, 0, (sizeof(struct single_host_info) * c_host_manager->current_capacity));
 	free(c_host_manager->hosts);
 	c_host_manager->known_hosts = 0;
+	c_host_manager->current_capacity = 0;
+	
+	memset(c_host_manager->whois_records, 0, (sizeof(struct whois_record) * c_host_manager->current_whois_record_capacity));
+	free(c_host_manager->whois_records);
+	c_host_manager->known_whois_records = 0;
 	c_host_manager->current_capacity = 0;
 	return 0;
 }
@@ -49,6 +64,25 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 	
 	memcpy(&c_host_manager->hosts[c_host_manager->known_hosts], new_host, sizeof(single_host_info));
 	c_host_manager->known_hosts++;
+	
+	return 0;
+}
+
+int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record) {
+	if (c_host_manager->known_whois_records >= c_host_manager->current_whois_record_capacity) {
+		void *tmpbuffer = malloc(sizeof(struct whois_record) * (c_host_manager->current_whois_record_capacity + WHOIS_CAPACITY_INCREMENT_SIZE));
+		if (tmpbuffer == NULL) {
+			return 1;
+		}
+		c_host_manager->current_whois_record_capacity += WHOIS_CAPACITY_INCREMENT_SIZE;
+		memset(tmpbuffer, 0, (sizeof(whois_record) * c_host_manager->current_whois_record_capacity));
+		memcpy(tmpbuffer, c_host_manager->whois_records, (sizeof(struct whois_record) * c_host_manager->known_whois_records));
+		free(c_host_manager->whois_records);
+		c_host_manager->whois_records = tmpbuffer;
+	}
+	
+	memcpy(&c_host_manager->whois_records[c_host_manager->known_whois_records], new_record, sizeof(whois_record));
+	c_host_manager->known_whois_records++;
 	
 	return 0;
 }

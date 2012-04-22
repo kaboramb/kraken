@@ -74,7 +74,10 @@ int main(int argc, char **argv) {
 	char ip[INET_ADDRSTRLEN];
 	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
-	init_host_manager(&c_host_manager);
+	if (init_host_manager(&c_host_manager) != 0) {
+		printf("ERROR: could not initialize the host manager, it is likely that there is not enough memory\n");
+		return 0;
+	}
 	dns_enumerate_domain(arguments.target_domains[0], &c_host_manager);
 	
 	printf("\n");

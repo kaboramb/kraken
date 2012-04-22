@@ -5,9 +5,10 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
+#include "hosts.h"
 #include "whois_lookup.h"
 
-int whois_lookup_ip(struct in_addr *ip, struct whois_response *who_resp) {
+int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 	char raw_resp[WHOIS_SZ_RESP];
 	int szResp = 0;
 	char ipstr[INET6_ADDRSTRLEN];
@@ -108,7 +109,6 @@ int whois_raw_lookup(int req_type, char *request, char *response) {
 	int szReq = 0;
 	int szResp = 0;
 	int tmpSzResp = 0;
-	int tmpSelRes = 0;
 	char reqBuffer[WHOIS_SZ_REQ];
 	struct sockaddr_in dest_addr;
 	fd_set fdRead;
@@ -156,7 +156,7 @@ int whois_raw_lookup(int req_type, char *request, char *response) {
 	timeout.tv_usec = WHOIS_TIMEOUT_USEC;
 	
 	while (szResp < WHOIS_SZ_RESP) {
-		tmpSelRes = select(sock + 1, &fdRead, NULL, NULL, &timeout);
+		select(sock + 1, &fdRead, NULL, NULL, &timeout);
 		if (FD_ISSET(sock, &fdRead) == 0) {
 			if (szResp > 0) {
 				return 0;
@@ -172,5 +172,10 @@ int whois_raw_lookup(int req_type, char *request, char *response) {
 			return 5;
 		}
 	}
+	return 0;
+}
+
+int whois_fill_host_manager(host_manager *c_host_manager) {
+	/* TODO: this function needs to be written and used */
 	return 0;
 }

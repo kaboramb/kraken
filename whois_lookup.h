@@ -18,7 +18,9 @@
 /* this is a duplicate */
 #define DNS_MAX_FQDN_LENGTH 255
 
-typedef struct whois_response {
+#ifndef _KRAKEN_WHOIS_LOOKUP_H_SKIP_TYPEDEFS
+#define _KRAKEN_WHOIS_LOOKUP_H_SKIP_TYPEDEFS
+typedef struct whois_record {
 	char cidr_s[WHOIS_SZ_DATA_S + 1];
 	char netname[WHOIS_SZ_DATA + 1];
 	char comment[WHOIS_SZ_DATA + 1];
@@ -26,9 +28,15 @@ typedef struct whois_response {
 	char orgname[WHOIS_SZ_DATA + 1];
 	char regdate_s[WHOIS_SZ_DATA_S + 1];
 	char updated_s[WHOIS_SZ_DATA_S + 1];
-} whois_response;
+} whois_record;
+typedef struct whois_record whois_response;
+#endif
 
-int whois_lookup_ip(struct in_addr *ip, struct whois_response *who_resp);
+#ifndef _KRAKEN_WHOIS_LOOKUP_H_SKIP_FUNCDEFS
+#define _KRAKEN_WHOIS_LOOKUP_H_SKIP_FUNCDEFS
+int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp);
 int whois_raw_lookup(int req_type, char *request, char *response);
+int whois_fill_host_manager(host_manager *c_host_manager);
+#endif
 
 #endif

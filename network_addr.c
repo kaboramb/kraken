@@ -1,11 +1,14 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "network_addr.h"
 
-int netaddr_ip_in_nwk(struct *in_addr, struct network_info* network) {
+int netaddr_ip_in_nwk(struct in_addr *ip, struct network_info* network) {
 	/*
 	 * Returns 0 on "No the network described by in_addr is not in network"
 	 * Returns 1 on "Yes the network described by in_addr is in network"
 	 */
-	if ((in_addr->s_addr & network->subnetmask.s_addr) == (network->network.s_addr)) {
+	if ((ip->s_addr & network->subnetmask.s_addr) == (network->network.s_addr)) {
 		 return 1;
 	}
 	return 0;
@@ -22,7 +25,6 @@ int netaddr_cidr_str_to_nwk(char *netstr, struct network_info* network) {
 	 */
 	char *pCur = NULL;
 	int bits = 0;
-	unsigned short *dbls;
 	
 	memset(network, '\0', sizeof(struct network_info));
 	pCur = strchr(netstr, '/');
