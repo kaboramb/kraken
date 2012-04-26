@@ -1,8 +1,28 @@
 CC = gcc
 CFLAGS = -Wall -O0 -ggdb -D DEBUG
 
-kraken: kraken.c dns_enum.c host_manager.c
-	$(CC) $(CFLAGS) -lcares -o kraken kraken.c host_manager.c dns_enum.c whois_lookup.c network_addr.c
+all: kraken remove_intermediates
 
-clean:
-	rm kraken
+kraken: dns_enum.o  host_manager.o  kraken.o  network_addr.o  whois_lookup.o
+	$(CC) $(CFLAGS) -lcares -o kraken dns_enum.o  host_manager.o  kraken.o  network_addr.o  whois_lookup.o
+
+dns_enum.o:
+	$(CC) $(CFLAGS) -c dns_enum.c
+	
+host_manager.o:
+	$(CC) $(CFLAGS) -c host_manager.c
+	
+kraken.o:
+	$(CC) $(CFLAGS) -c kraken.c
+	
+network_addr.o:
+	$(CC) $(CFLAGS) -c network_addr.c
+	
+whois_lookup.o:
+	$(CC) $(CFLAGS) -c whois_lookup.c
+
+clean: remove_intermediates
+	rm -rf kraken
+
+remove_intermediates:
+	rm -rf *.o
