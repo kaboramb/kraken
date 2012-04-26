@@ -11,4 +11,6 @@ int init_host_manager(host_manager *c_host_manager);
 int destroy_host_manager(host_manager *c_host_manager);
 int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_host);
 int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record);
+int host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_ip, whois_record **desired_record);
+
 #endif

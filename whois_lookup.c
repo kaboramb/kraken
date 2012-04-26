@@ -39,14 +39,14 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			while ((*pCur == ' ') && (pCur < (raw_resp + szResp))) {
 				pCur += 1;
 			}
-			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
+			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA_S)) {
 				szData += 1;
 			}
 			strncpy(who_resp->cidr_s, pCur, szData);
 			pCur += szData;
 		} else if (strncasecmp(pCur, "netname: ", 9) == 0) {
 			pCur += 9;
-			while ((*pCur == ' ') && (pCur < (raw_resp + szResp))) {
+			while ((*pCur == ' ') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA)) {
 				pCur += 1;
 			}
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
@@ -56,7 +56,7 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			pCur += szData;
 		} else if (strncasecmp(pCur, "comment: ", 9) == 0) {
 			pCur += 9;
-			while ((*pCur == ' ') && (pCur < (raw_resp + szResp))) {
+			while ((*pCur == ' ') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA)) {
 				pCur += 1;
 			}
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
@@ -66,7 +66,7 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			pCur += szData;
 		} else if (strncasecmp(pCur, "orgname: ", 9) == 0) {
 			pCur += 9;
-			while ((*pCur == ' ') && (pCur < (raw_resp + szResp))) {
+			while ((*pCur == ' ') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA)) {
 				pCur += 1;
 			}
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
@@ -76,7 +76,7 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			pCur += szData;
 		} else if (strncasecmp(pCur, "regdate: ", 9) == 0) {
 			pCur += 9;
-			while ((*pCur == ' ') && (pCur < (raw_resp + szResp))) {
+			while ((*pCur == ' ') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA_S)) {
 				pCur += 1;
 			}
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
@@ -86,7 +86,7 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			pCur += szData;
 		} else if (strncasecmp(pCur, "updated: ", 9) == 0) {
 			pCur += 9;
-			while ((*pCur == ' ') && (pCur < (raw_resp + szResp))) {
+			while ((*pCur == ' ') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA_S)) {
 				pCur += 1;
 			}
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
@@ -180,43 +180,23 @@ int whois_raw_lookup(int req_type, char *request, char *response) {
 }
 
 int whois_fill_host_manager(host_manager *c_host_manager) {
-	/* TODO: this function needs to be written and used */
 	unsigned int current_host_i;
-	unsigned int current_who_i;
-	int host_has_whois;
 	single_host_info *current_host;
 	whois_record tmp_who_resp;
-	whois_record *cur_who_resp;
-	network_info network;
+	whois_record *cur_who_resp = NULL;
 	int ret_val = 0;
 	char ipstr[INET6_ADDRSTRLEN];
 	
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		current_host = &c_host_manager->hosts[current_host_i];
 		inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
-		host_has_whois = 0;
-		for (current_who_i = 0; current_who_i < c_host_manager->known_whois_records; current_who_i ++) {
-			cur_who_resp = &c_host_manager->whois_records[current_who_i];
-			ret_val = netaddr_cidr_str_to_nwk(cur_who_resp->cidr_s, &network);
-			if (ret_val == 0) {
-				if (netaddr_ip_in_nwk(&current_host->ipv4_addr, &network) == 1) {
-					host_has_whois = 1;
-					break;
-				}
-			} else {
-				printf("ERROR: could not parse cidr address: %s\n", (char *)&cur_who_resp->cidr_s);
-			}
-			
-		}
-		if (host_has_whois == 1) {
-#ifdef DEBUG
-			printf("DEBUG: skipping host %s because whois record is already present\n", ipstr);
-#endif
+		host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
+		if (cur_who_resp != NULL) {
 			continue;
 		}
 		ret_val = whois_lookup_ip(&current_host->ipv4_addr, &tmp_who_resp);
 		if (ret_val == 0) {
-			printf("INFO: got whois record for %s\n", ipstr);
+			printf("INFO: got whois record for %s, %s\n", ipstr, tmp_who_resp.cidr_s);
 			host_manager_add_whois(c_host_manager, &tmp_who_resp);
 		}
 	}

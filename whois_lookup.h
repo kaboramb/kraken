@@ -37,6 +37,7 @@ typedef struct whois_record whois_response;
 int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp);
 int whois_raw_lookup(int req_type, char *request, char *response);
 int whois_fill_host_manager(host_manager *c_host_manager);
+
 #endif
 
 #endif

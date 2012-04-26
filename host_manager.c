@@ -5,6 +5,7 @@
 #include "hosts.h"
 #include "host_manager.h"
 #include "whois_lookup.h"
+#include "network_addr.h"
 
 int init_single_host(single_host_info *c_host) {
 	memset(c_host, 0, sizeof(struct single_host_info));
@@ -84,5 +85,32 @@ int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_recor
 	memcpy(&c_host_manager->whois_records[c_host_manager->known_whois_records], new_record, sizeof(whois_record));
 	c_host_manager->known_whois_records++;
 	
+	return 0;
+}
+
+int host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_ip, whois_record **desired_record) {
+	/* 
+	 * If there is a whois record that corresponds to the target ip then desired_record will be set to point to it
+	 * otherwise, desired_record is NULL
+	 */
+	unsigned int current_who_i;
+	whois_record *cur_who_resp;
+	network_info network;
+	int ret_val = 0;
+	
+	*desired_record = NULL;
+	for (current_who_i = 0; current_who_i < c_host_manager->known_whois_records; current_who_i ++) {
+		cur_who_resp = &c_host_manager->whois_records[current_who_i];
+		ret_val = netaddr_cidr_str_to_nwk(cur_who_resp->cidr_s, &network);
+		if (ret_val == 0) {
+			if (netaddr_ip_in_nwk(target_ip, &network) == 1) {
+				*desired_record = cur_who_resp;
+				break;
+			}
+		} else {
+			printf("ERROR: could not parse cidr address: %s\n", (char *)&cur_who_resp->cidr_s);
+		}
+		
+	}
 	return 0;
 }

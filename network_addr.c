@@ -3,7 +3,7 @@
 #include <string.h>
 #include "network_addr.h"
 
-int netaddr_ip_in_nwk(struct in_addr *ip, struct network_info* network) {
+int netaddr_ip_in_nwk(struct in_addr *ip, struct network_info *network) {
 	/*
 	 * Returns 0 on "No the network described by in_addr is not in network"
 	 * Returns 1 on "Yes the network described by in_addr is in network"
@@ -14,7 +14,7 @@ int netaddr_ip_in_nwk(struct in_addr *ip, struct network_info* network) {
 	return 0;
 }
 
-int netaddr_cidr_str_to_nwk(char *o_netstr, struct network_info* network) {
+int netaddr_cidr_str_to_nwk(char *o_netstr, struct network_info *network) {
 	/*
 	 * Returns 0 on success
 	 * Returns 1 on failure (due to unparseable address)
