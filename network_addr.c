@@ -14,7 +14,7 @@ int netaddr_ip_in_nwk(struct in_addr *ip, struct network_info* network) {
 	return 0;
 }
 
-int netaddr_cidr_str_to_nwk(char *netstr, struct network_info* network) {
+int netaddr_cidr_str_to_nwk(char *o_netstr, struct network_info* network) {
 	/*
 	 * Returns 0 on success
 	 * Returns 1 on failure (due to unparseable address)
@@ -25,8 +25,15 @@ int netaddr_cidr_str_to_nwk(char *netstr, struct network_info* network) {
 	 */
 	char *pCur = NULL;
 	int bits = 0;
+	char netstr[NETADDR_CIDR_ADDRSTRLEN]; /* nice round number, leaves extra space */
 	
+	memset(netstr, '\0', NETADDR_CIDR_ADDRSTRLEN);
+	if (strlen(o_netstr) >= NETADDR_CIDR_ADDRSTRLEN) {
+		return 1;
+	}
+	strncpy(netstr, o_netstr, (NETADDR_CIDR_ADDRSTRLEN - 1));
 	memset(network, '\0', sizeof(struct network_info));
+	
 	pCur = strchr(netstr, '/');
 	if (pCur == NULL) {
 		return 1;

@@ -3,6 +3,8 @@
 
 #include <arpa/inet.h>
 
+#define NETADDR_CIDR_ADDRSTRLEN 24
+
 typedef struct network_info {
 	struct in_addr network;
 	struct in_addr subnetmask;

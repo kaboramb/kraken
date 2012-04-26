@@ -35,7 +35,7 @@ static void callback_nameserver_servers(void *args, int status, int timeouts, un
 
 static void callback_nameserver_hosts(void *args, int status, int timeouts, struct hostent *host) {
 	if(!host || status != ARES_SUCCESS){
-		printf("failed to lookup %s\n", ares_strerror(status));
+		printf("ERROR: lookup of IP address failed with error: %s\n", ares_strerror(status));
 		return;
 	}
 	struct domain_ns_list *nameservers;
@@ -48,13 +48,12 @@ static void callback_nameserver_hosts(void *args, int status, int timeouts, stru
 			break;
 		}
 	}
-
 	return;
 }
 
 static void callback_host(void *c_host_manager, int status, int timeouts, struct hostent *host) {
 	if(!host || status != ARES_SUCCESS){
-		// printf("Failed to lookup %s\n", ares_strerror(status));
+		/* printf("INFO: lookup of IP address failed with error: %s\n", ares_strerror(status)); */
 		return;
 	}
 	int i = 0;

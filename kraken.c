@@ -28,6 +28,7 @@
 #include "hosts.h"
 #include "host_manager.h"
 #include "dns_enum.h"
+#include "whois_lookup.h"
 
 const char *argp_program_version = "kraken 0.1";
 const char *argp_program_bug_address = "<smcintyre@securestate.net>";
@@ -70,8 +71,10 @@ int main(int argc, char **argv) {
 	struct arguments arguments;
 	host_manager c_host_manager;
 	unsigned int current_host_i;
+	unsigned int current_who_i;
 	single_host_info current_host;
-	char ip[INET_ADDRSTRLEN];
+	whois_record current_who_rec;
+	char ipstr[INET_ADDRSTRLEN];
 	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 	if (init_host_manager(&c_host_manager) != 0) {
@@ -83,8 +86,18 @@ int main(int argc, char **argv) {
 	printf("\n");
 	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
 		current_host = c_host_manager.hosts[current_host_i];
-		inet_ntop(AF_INET, &current_host.ipv4_addr, ip, sizeof(ip));
-		printf("%s %s\n", current_host.hostname, ip);
+		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
+		printf("%s %s\n", current_host.hostname, ipstr);
+	}
+	printf("\n");
+	whois_fill_host_manager(&c_host_manager);
+	
+	printf("\n");
+	printf("Summary: %u hosts found on %u networks\n", c_host_manager.known_hosts, c_host_manager.known_whois_records);
+	printf("Networks found:\n");
+	for (current_who_i = 0; current_who_i < c_host_manager.known_whois_records; current_who_i++) {
+		current_who_rec = c_host_manager.whois_records[current_who_i];
+		printf("\t%s\n", current_who_rec.cidr_s);
 	}
 	
 	destroy_host_manager(&c_host_manager);
