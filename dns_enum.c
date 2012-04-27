@@ -93,9 +93,9 @@ int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameserv
 	ares_channel channel;
 	int status;
 	int i;
-
+#ifdef DEBUG
 	printf("INFO: querying nameservers for domain: %s\n", target_domain);
-
+#endif
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS){
 		printf("ERROR: ares_library_init: %s\n", ares_strerror(status));
@@ -112,7 +112,9 @@ int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameserv
 	wait_ares(channel, 0);
 	
 	for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); ++i) {
+#ifdef DEBUG
 		printf("INFO: looking up IP for name server %s\n", nameservers->servers[i]);
+#endif
 		ares_gethostbyname(channel, nameservers->servers[i], AF_INET, callback_nameserver_hosts, (domain_ns_list *)nameservers);
 	}
 	wait_ares(channel, 0);
