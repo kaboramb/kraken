@@ -1,14 +1,18 @@
 CC = gcc
 PY = python
 CFLAGS = -Wall -O0 -ggdb -D DEBUG
+GTKFLAGS = $(shell pkg-config --cflags --libs gtk+-2.0)
 
 all: kraken remove_intermediates pykraken
 
-kraken: dns_enum.o  host_manager.o  kraken.o  network_addr.o  whois_lookup.o
-	$(CC) $(CFLAGS) -lcares -o kraken dns_enum.o  host_manager.o  kraken.o  network_addr.o  whois_lookup.o
+kraken: dns_enum.o  gui_main.o host_manager.o kraken.o network_addr.o whois_lookup.o
+	$(CC) $(CFLAGS) $(GTKFLAGS) -lcares -o kraken dns_enum.o gui_main.o host_manager.o kraken.o network_addr.o whois_lookup.o
 
 dns_enum.o:
 	$(CC) $(CFLAGS) -c dns_enum.c
+
+gui_main.o:
+	$(CC) $(CFLAGS) $(GTKFLAGS) -c gui_main.c
 
 host_manager.o:
 	$(CC) $(CFLAGS) -c host_manager.c

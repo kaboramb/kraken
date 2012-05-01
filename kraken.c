@@ -28,6 +28,7 @@
 #include "hosts.h"
 #include "host_manager.h"
 #include "dns_enum.h"
+#include "gui_main.h"
 #include "whois_lookup.h"
 
 const char *argp_program_version = "kraken 0.1";
@@ -99,7 +100,7 @@ int main(int argc, char **argv) {
 		current_who_rec = c_host_manager.whois_records[current_who_i];
 		printf("\t%s\n", current_who_rec.cidr_s);
 	}
-	
+	gui_show_host_manager(&c_host_manager);
 	destroy_host_manager(&c_host_manager);
 	return 0;
 }

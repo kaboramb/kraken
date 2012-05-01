@@ -192,12 +192,15 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 		inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
 		host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
 		if (cur_who_resp != NULL) {
+			current_host->whois_data = cur_who_resp;
 			continue;
 		}
 		ret_val = whois_lookup_ip(&current_host->ipv4_addr, &tmp_who_resp);
 		if (ret_val == 0) {
 			printf("INFO: got whois record for %s, %s\n", ipstr, tmp_who_resp.cidr_s);
 			host_manager_add_whois(c_host_manager, &tmp_who_resp);
+			host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
+			current_host->whois_data = cur_who_resp;
 		}
 	}
 	return 0;
