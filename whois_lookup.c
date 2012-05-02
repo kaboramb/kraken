@@ -39,7 +39,7 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			while ((*pCur == ' ') && (pCur < (raw_resp + szResp))) {
 				pCur += 1;
 			}
-			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA_S)) {
+			while ((((*(pCur + szData) > 47) && (*(pCur + szData) < 58)) || (*(pCur + szData) == '.') || (*(pCur + szData) == '/')) && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA_S)) {
 				szData += 1;
 			}
 			strncpy(who_resp->cidr_s, pCur, szData);
