@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 #include "hosts.h"
 #include "host_manager.h"
@@ -51,6 +52,16 @@ int destroy_host_manager(host_manager *c_host_manager) {
 }
 
 int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_host) {
+	unsigned int current_host_i;
+	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		if ((strncmp(new_host->hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) && (memcmp(&new_host->ipv4_addr, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0)) {
+#ifdef DEBUG
+			printf("DEBUG: skipping dupplicate host: %s\n", new_host->hostname);
+#endif
+			return 0;
+		}
+	}
+	
 	if (c_host_manager->known_hosts >= c_host_manager->current_capacity) {
 		void *tmpbuffer = malloc(sizeof(struct single_host_info) * (c_host_manager->current_capacity + HOST_CAPACITY_INCREMENT_SIZE));
 		if (tmpbuffer == NULL) {

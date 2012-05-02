@@ -100,7 +100,10 @@ int main(int argc, char **argv) {
 		current_who_rec = c_host_manager.whois_records[current_who_i];
 		printf("\t%s\n", current_who_rec.cidr_s);
 	}
+	
 	gui_show_host_manager(&c_host_manager);
+	
+	printf("\nNow Exiting...\n");
 	destroy_host_manager(&c_host_manager);
 	return 0;
 }

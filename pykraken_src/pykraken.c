@@ -129,4 +129,5 @@ int main(int argc, char *argv[]) {
 	Py_SetProgramName(argv[0]);
 	Py_Initialize();
 	initpykraken();
+	return 0;
 }
