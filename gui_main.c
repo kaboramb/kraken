@@ -9,6 +9,11 @@ enum {
 	NUM_COLS
 };
 
+enum {
+	SORTID_HOSTNAME = 0,
+	SORTID_IPADDR,
+};
+
 static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/_File",			NULL,		NULL,			0, 	"<Branch>" },
 	{ "/File/_Quit",	"<CTRL>Q",	gtk_main_quit,	0, 	"<StockItem>",	GTK_STOCK_QUIT }
@@ -95,6 +100,7 @@ static GtkTreeModel *create_and_fill_model(host_manager *c_host_manager) {
 
 static GtkWidget *create_view_and_model(host_manager *c_host_manager) {
 	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *col;
 	GtkTreeModel *model;
 	GtkWidget *view;
 	
@@ -103,9 +109,20 @@ static GtkWidget *create_view_and_model(host_manager *c_host_manager) {
 	g_signal_connect(view, "popup-menu", (GCallback)view_onPopupMenu, NULL);
 	
 	renderer = gtk_cell_renderer_text_new();
-	gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view), -1, "Hostname", renderer, "text", COL_HOSTNAME, NULL);
+	col = gtk_tree_view_column_new();
+	gtk_tree_view_column_pack_start (col, renderer, TRUE);
+	gtk_tree_view_column_add_attribute (col, renderer, "text", COL_HOSTNAME);
+	gtk_tree_view_column_set_title (col, "Hostname");
+	gtk_tree_view_column_set_sort_column_id(col, SORTID_HOSTNAME);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);
+	
 	renderer = gtk_cell_renderer_text_new();
-	gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view), -1, "IP Address", renderer, "text", COL_IPADDR, NULL);
+	col = gtk_tree_view_column_new();
+	gtk_tree_view_column_pack_start (col, renderer, TRUE);
+	gtk_tree_view_column_add_attribute (col, renderer, "text", COL_IPADDR);
+	gtk_tree_view_column_set_title (col, "IP Address");
+	gtk_tree_view_column_set_sort_column_id(col, SORTID_IPADDR);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);
 	
 	model = create_and_fill_model(c_host_manager);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(view), model);
