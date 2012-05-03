@@ -82,6 +82,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 
 int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record) {
 	if (c_host_manager->known_whois_records >= c_host_manager->current_whois_record_capacity) {
+		/* FIXME: if the buffersize is increased and the new whois_records are moved over then all the pointers in the hosts section will be invalid */
 		void *tmpbuffer = malloc(sizeof(struct whois_record) * (c_host_manager->current_whois_record_capacity + WHOIS_CAPACITY_INCREMENT_SIZE));
 		if (tmpbuffer == NULL) {
 			return 1;

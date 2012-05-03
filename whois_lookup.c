@@ -215,8 +215,6 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 	
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		current_host = &c_host_manager->hosts[current_host_i];
-		printf("DEBUG: whois processing: %s\n", current_host->hostname);
-		
 		inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
 		host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
 		if (cur_who_resp != NULL) {
