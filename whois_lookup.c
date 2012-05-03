@@ -42,7 +42,13 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			while ((((*(pCur + szData) > 47) && (*(pCur + szData) < 58)) || (*(pCur + szData) == '.') || (*(pCur + szData) == '/')) && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA_S)) {
 				szData += 1;
 			}
-			strncpy(who_resp->cidr_s, pCur, szData);
+			if (strlen(who_resp->cidr_s) == 0) {
+				if (szData < WHOIS_SZ_DATA_S) {
+					strncpy(who_resp->cidr_s, pCur, szData);
+				} else {
+					strncpy(who_resp->cidr_s, pCur, WHOIS_SZ_DATA_S);
+				}
+			}
 			pCur += szData;
 		} else if (strncasecmp(pCur, "netname: ", 9) == 0) {
 			pCur += 9;
@@ -52,7 +58,11 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			strncpy(who_resp->netname, pCur, szData);
+			if (szData < WHOIS_SZ_DATA) {
+				strncpy(who_resp->netname, pCur, szData);
+			} else {
+				strncpy(who_resp->netname, pCur, WHOIS_SZ_DATA);
+			}
 			pCur += szData;
 		} else if (strncasecmp(pCur, "comment: ", 9) == 0) {
 			pCur += 9;
@@ -62,7 +72,11 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			strncpy(who_resp->comment, pCur, szData);
+			if (szData < WHOIS_SZ_DATA) {
+				strncpy(who_resp->comment, pCur, szData);
+			} else {
+				strncpy(who_resp->comment, pCur, WHOIS_SZ_DATA);
+			}
 			pCur += szData;
 		} else if (strncasecmp(pCur, "orgname: ", 9) == 0) {
 			pCur += 9;
@@ -72,7 +86,11 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			strncpy(who_resp->orgname, pCur, szData);
+			if (szData < WHOIS_SZ_DATA) {
+				strncpy(who_resp->orgname, pCur, szData);
+			} else {
+				strncpy(who_resp->orgname, pCur, WHOIS_SZ_DATA);
+			}
 			pCur += szData;
 		} else if (strncasecmp(pCur, "regdate: ", 9) == 0) {
 			pCur += 9;
@@ -82,7 +100,11 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			strncpy(who_resp->regdate_s, pCur, szData);
+			if (szData < WHOIS_SZ_DATA_S) {
+				strncpy(who_resp->regdate_s, pCur, szData);
+			} else {
+				strncpy(who_resp->regdate_s, pCur, WHOIS_SZ_DATA_S);
+			}
 			pCur += szData;
 		} else if (strncasecmp(pCur, "updated: ", 9) == 0) {
 			pCur += 9;
@@ -92,7 +114,11 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			strncpy(who_resp->updated_s, pCur, szData);
+			if (szData < WHOIS_SZ_DATA_S) {
+				strncpy(who_resp->updated_s, pCur, szData);
+			} else {
+				strncpy(who_resp->updated_s, pCur, WHOIS_SZ_DATA_S);
+			}
 			pCur += szData;
 		} else {
 			pCur = strchr(pCur, '\n');
@@ -189,6 +215,8 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 	
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		current_host = &c_host_manager->hosts[current_host_i];
+		printf("DEBUG: whois processing: %s\n", current_host->hostname);
+		
 		inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
 		host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
 		if (cur_who_resp != NULL) {
