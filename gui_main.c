@@ -2,16 +2,19 @@
 #include <arpa/inet.h>
 #include "hosts.h"
 #include "host_manager.h"
+#include "whois_lookup.h"
 
 enum {
 	COL_HOSTNAME = 0,
 	COL_IPADDR,
+	COL_WHO_ORGNAME,
 	NUM_COLS
 };
 
 enum {
 	SORTID_HOSTNAME = 0,
 	SORTID_IPADDR,
+	SORTID_WHO_ORGNAME,
 };
 
 static GtkItemFactoryEntry main_menu_entries[] = {
@@ -79,9 +82,10 @@ static GtkTreeModel *create_and_fill_model(host_manager *c_host_manager) {
 	GtkTreeIter iter;
 	unsigned int current_host_i;
 	single_host_info *current_host;
+	whois_record *who_data;
 	char ipstr[INET_ADDRSTRLEN];
 	
-	store = gtk_list_store_new(NUM_COLS, G_TYPE_STRING, G_TYPE_STRING);
+	store = gtk_list_store_new(NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
 	
 	/* append a row and fill data */
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
@@ -89,9 +93,10 @@ static GtkTreeModel *create_and_fill_model(host_manager *c_host_manager) {
 		inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
 		gtk_list_store_append(store, &iter);
 		if (current_host->whois_data != NULL) {
-			gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, -1);
+			who_data = current_host->whois_data;
+			gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, who_data->orgname, -1);
 		} else {
-			gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, -1);
+			gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, "", -1);
 		}
 	}
 	
@@ -122,6 +127,14 @@ static GtkWidget *create_view_and_model(host_manager *c_host_manager) {
 	gtk_tree_view_column_add_attribute (col, renderer, "text", COL_IPADDR);
 	gtk_tree_view_column_set_title (col, "IP Address");
 	gtk_tree_view_column_set_sort_column_id(col, SORTID_IPADDR);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);
+	
+	renderer = gtk_cell_renderer_text_new();
+	col = gtk_tree_view_column_new();
+	gtk_tree_view_column_pack_start (col, renderer, TRUE);
+	gtk_tree_view_column_add_attribute (col, renderer, "text", COL_WHO_ORGNAME);
+	gtk_tree_view_column_set_title (col, "WHOIS Organization");
+	gtk_tree_view_column_set_sort_column_id(col, SORTID_WHO_ORGNAME);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);
 	
 	model = create_and_fill_model(c_host_manager);
@@ -158,14 +171,14 @@ int gui_show_host_manager(host_manager *c_host_manager) {
 	g_signal_connect(window, "delete_event", gtk_main_quit, NULL); /* dirty */
 	gtk_window_set_title(GTK_WINDOW(window), "Kraken");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 0);
-	gtk_widget_set_size_request(window, 350, 500);
+	gtk_widget_set_size_request(window, 500, 600);
 	
 	main_vbox = gtk_vbox_new(FALSE, 1);
 	gtk_container_set_border_width(GTK_CONTAINER(main_vbox), 1);
 	gtk_container_add(GTK_CONTAINER(window), main_vbox);
 	
 	scroll_window = gtk_scrolled_window_new(NULL, NULL);
-	gtk_container_set_border_width(GTK_CONTAINER(scroll_window), 10);
+	gtk_container_set_border_width(GTK_CONTAINER(scroll_window), 5);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
 	
 	main_menu_bar = get_main_menubar(window);
