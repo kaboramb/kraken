@@ -64,6 +64,9 @@ static void callback_host(void *c_host_manager, int status, int timeouts, struct
 		strncpy(new_host.hostname, host->h_name, DNS_MAX_FQDN_LENGTH);
 		host_manager_add_host(c_host_manager, &new_host);
 	}
+	if (*host->h_aliases) {
+		host_manager_add_alias_to_host(c_host_manager, host->h_name, *host->h_aliases);
+	}
 	destroy_single_host(&new_host);
 	return;
 }

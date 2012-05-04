@@ -10,11 +10,17 @@
 
 int init_single_host(single_host_info *c_host) {
 	memset(c_host, 0, sizeof(struct single_host_info));
+	c_host->aliases = NULL;
 	c_host->whois_data = NULL;
 	return 0;
 }
 
 int destroy_single_host(single_host_info *c_host) {
+	if (c_host->aliases) {
+		free(c_host->aliases);
+	}
+	c_host->aliases = NULL;
+	c_host->n_aliases = 0;
 	return 0;
 }
 
@@ -77,6 +83,49 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 	memcpy(&c_host_manager->hosts[c_host_manager->known_hosts], new_host, sizeof(single_host_info));
 	c_host_manager->known_hosts++;
 	
+	return 0;
+}
+
+int host_manager_add_alias_to_host(host_manager *c_host_manager, char *hostname, char* alias) {
+	single_host_info *current_host;
+	char (*block)[DNS_MAX_FQDN_LENGTH + 1];
+	unsigned int current_host_i;
+	unsigned int current_name_i;
+	int duplicate = 0;
+	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		if (strncmp(hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) {
+			current_host = &c_host_manager->hosts[current_host_i];
+			if (current_host->aliases == NULL) {
+				/* adding the first alias */
+				current_host->aliases = malloc(DNS_MAX_FQDN_LENGTH + 1);
+				memset(current_host->aliases, '\0', DNS_MAX_FQDN_LENGTH + 1);
+				strncpy(current_host->aliases[0], alias, DNS_MAX_FQDN_LENGTH);
+				current_host->n_aliases = 1;
+			} else {
+				/* adding an additional alias */
+				duplicate = 0;
+				for (current_name_i = 0; current_name_i < current_host->n_aliases; current_name_i++) {
+					if (strncasecmp(current_host->aliases[current_name_i], alias, DNS_MAX_FQDN_LENGTH) == 0) {
+						duplicate = 1;
+						break;
+					}
+				}
+				if (duplicate) {
+					continue;
+				}
+				block = malloc((DNS_MAX_FQDN_LENGTH + 1) * (current_host->n_aliases + 1));
+				if (block == NULL) {
+					return 1;
+				}
+				memset(block, '\0', (DNS_MAX_FQDN_LENGTH + 1) * (current_host->n_aliases + 1));
+				memcpy(block, current_host->aliases, (DNS_MAX_FQDN_LENGTH + 1) * current_host->n_aliases);
+				strncpy(block[current_host->n_aliases], alias, DNS_MAX_FQDN_LENGTH);
+				free(current_host->aliases);
+				current_host->aliases = block;
+				current_host->n_aliases += 1;
+			}
+		}
+	}
 	return 0;
 }
 

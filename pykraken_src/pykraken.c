@@ -155,7 +155,6 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 	destroy_host_manager(&c_host_manager);
 	return pyHostList;
 }
-	
 
 static PyMethodDef PyKrakenMethods[] = {
 	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "Retrieve the whois record pretaining to an IP address"},

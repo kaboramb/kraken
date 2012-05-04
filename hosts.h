@@ -12,9 +12,11 @@
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in dns_enum.h */
 
 typedef struct single_host_info {
-	unsigned char is_up;
-	char hostname[DNS_MAX_FQDN_LENGTH + 1];
 	struct in_addr ipv4_addr;
+	char hostname[DNS_MAX_FQDN_LENGTH + 1];
+	char (*aliases)[DNS_MAX_FQDN_LENGTH + 1];
+	unsigned char n_aliases;
+	char is_up;
 	struct whois_record *whois_data;
 	char os[16];
 } single_host_info;
