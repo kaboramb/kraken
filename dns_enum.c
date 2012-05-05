@@ -202,6 +202,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 	unsigned int query_counter = 0;
 	int i;
 	struct in_addr c_ip;
+	char ipstr[INET6_ADDRSTRLEN];
 	
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS) {
@@ -234,7 +235,10 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
 	
-	printf("INFO: bruteforcing names in range\n");	/* TODO make network_info to string function */
+	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
+	printf("INFO: bruteforcing names in network: %s ", ipstr);	/* TODO make network_info to string function */
+	inet_ntop(AF_INET, &target_net->subnetmask, ipstr, sizeof(ipstr));
+	printf("%s\n", ipstr);
 	
 	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
 	
@@ -278,14 +282,19 @@ int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 
 int dns_enumerate_network(char *target_domain, network_info *target_net, host_manager *c_host_manager) {
 	domain_ns_list nameservers;
-	char ip[INET_ADDRSTRLEN];
+	char ipstr[INET6_ADDRSTRLEN];
 	int i;
 	memset(&nameservers, '\0', sizeof(nameservers));
 	
+	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
+	printf("INFO: enumerating network: %s ", ipstr);	/* TODO make network_info to string function */
+	inet_ntop(AF_INET, &target_net->subnetmask, ipstr, sizeof(ipstr));
+	printf("%s for domain: %s\n", ipstr, target_domain);
+	
 	dns_get_nameservers_for_domain(target_domain, &nameservers);
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
-		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ip, sizeof(ip));
-		printf("INFO: found name server %s %s\n", nameservers.servers[i], ip);
+		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
+		printf("INFO: found name server %s %s\n", nameservers.servers[i], ipstr);
 	}
 	
 	dns_bruteforce_names_in_range(target_net, c_host_manager, &nameservers);

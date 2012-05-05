@@ -34,7 +34,7 @@ void view_popup_menu_onDoSomething(GtkWidget *menuitem, gpointer userdata) {
 	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
 		gchar *name;
 		gtk_tree_model_get(model, &iter, COL_IPADDR, &name, -1);
-		g_print("selected row is: %s\n", name);
+		g_print("DEBUG: selected row is: %s\n", name);
 		g_free(name);
 	}
 	/* else no row selected */
