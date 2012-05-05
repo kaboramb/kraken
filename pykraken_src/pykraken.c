@@ -157,6 +157,58 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 	return pyHostList;
 }
 
+static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
+	host_manager c_host_manager;
+	single_host_info current_host;
+	unsigned int current_host_i = 0;
+	network_info network;
+	char *pTargetDomain;
+	char *pTargetNetwork;
+	char ipstr[INET_ADDRSTRLEN];
+	PyObject *pyTmpStr = NULL;
+	PyObject *pyHostList = PyDict_New();
+	
+	if (pyHostList == NULL) {
+		PyErr_SetString(PyExc_Exception, "could not create a dictionary to store the results");
+		return NULL;
+	}
+	
+	if (!PyArg_ParseTuple(args, "ss", &pTargetDomain, &pTargetNetwork)) {
+		Py_DECREF(pyHostList);
+		return NULL;
+	}
+	
+	if (netaddr_cidr_str_to_nwk(pTargetNetwork, &network) != 0) {
+		PyErr_SetString(PyExc_Exception, "invalid CIDR network");
+		Py_DECREF(pyHostList);
+		return NULL;
+	}
+	
+	if (init_host_manager(&c_host_manager) != 0) {
+		PyErr_SetString(PyExc_Exception, "could not initialize the host manager, it is likely that there is not enough memory");
+		return NULL;
+	}
+	
+	dns_enumerate_network(pTargetDomain, &network, &c_host_manager);
+	
+	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
+		current_host = c_host_manager.hosts[current_host_i];
+		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
+		pyTmpStr = PyString_FromString(ipstr);
+		if (pyTmpStr) {
+			PyDict_SetItemString(pyHostList, current_host.hostname, pyTmpStr);
+			Py_DECREF(pyTmpStr);
+		} else {
+			destroy_host_manager(&c_host_manager);
+			PyErr_SetString(PyExc_Exception, "could not convert a C string to a Python string");
+			Py_DECREF(pyHostList);
+			return NULL;
+		}
+	}
+	destroy_host_manager(&c_host_manager);
+	return pyHostList;
+}
+
 static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
 	char *pIpAddr;
 	char *pCidrNetwork;
@@ -187,6 +239,7 @@ static PyMethodDef PyKrakenMethods[] = {
 	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "Retrieve the whois record pretaining to an IP address"},
 	{"get_nameservers", pykraken_get_nameservers, METH_VARARGS, "Enumerate nameservers for a domain"},
 	{"enumerate_domain", pykraken_enumerate_domain, METH_VARARGS, "Enumerate hostnames for a domain"},
+	{"enumerate_network", pykraken_enumerate_network, METH_VARARGS, "Enumerate hostnames for a network"},
 	{"ip_in_cidr", pykraken_ip_in_cidr, METH_VARARGS, "Check if an IP address is in a CIDR network"},
 	{NULL, NULL, 0, NULL}
 };

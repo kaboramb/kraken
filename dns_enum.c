@@ -13,6 +13,7 @@
 #include "hosts.h"
 #include "host_manager.h"
 #include "dns_enum.h"
+#include "network_addr.h"
 
 static void callback_nameserver_servers(void *args, int status, int timeouts, unsigned char *abuf, int alen) {
 	if(status != ARES_SUCCESS){
@@ -144,8 +145,8 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	}
 
 	status = ares_init(&channel);
-	if(status != ARES_SUCCESS) {
-		printf("ERROR: ares_init_options: %s\n", ares_strerror(status));
+	if (status != ARES_SUCCESS) {
+		printf("ERROR: ares_init: %s\n", ares_strerror(status));
 		return 1;
 	}
 	
@@ -153,10 +154,8 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		// set the name servers //
 		printf("INFO: swithcing to use supplied name servers\n");
 		struct ares_addr_node servers_addr_node[DNS_MAX_NS_HOSTS];
-		//struct ares_addr_node *current_server_node;
 		struct in_addr blank_address;
 		memset(&servers_addr_node, '\0', sizeof(servers_addr_node));
-		//current_server_node = &servers_addr_node;
 		memset(&blank_address, '\0', sizeof(blank_address));
 		
 		for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
@@ -196,6 +195,68 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	return 0;
 }
 
+int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host_manager, domain_ns_list *nameservers) {
+	ares_channel channel;
+	single_host_info *h_info_chk = NULL;
+	int status;
+	unsigned int query_counter = 0;
+	int i;
+	struct in_addr c_ip;
+	
+	status = ares_library_init(ARES_LIB_INIT_ALL);
+	if (status != ARES_SUCCESS) {
+		printf("ERROR: ares_library_init: %s\n", ares_strerror(status));
+		return 1;
+	}
+	
+	status = ares_init(&channel);
+	if (status != ARES_SUCCESS) {
+		printf("ERROR: ares_init: %s\n", ares_strerror(status));
+		return 1;
+	}
+	
+	if (nameservers != NULL) {
+		// set the name servers //
+		printf("INFO: swithcing to use supplied name servers\n");
+		struct ares_addr_node servers_addr_node[DNS_MAX_NS_HOSTS];
+		struct in_addr blank_address;
+		memset(&servers_addr_node, '\0', sizeof(servers_addr_node));
+		memset(&blank_address, '\0', sizeof(blank_address));
+		
+		for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
+			if (memcmp(&nameservers->ipv4_addrs[i], &blank_address, sizeof(blank_address))) {
+				servers_addr_node[i].family = AF_INET;
+				servers_addr_node[i].addr.addr4 = nameservers->ipv4_addrs[i];
+				servers_addr_node[i].next = &servers_addr_node[i+1];
+			}
+		}
+		servers_addr_node[i].next = NULL;
+		ares_set_servers(channel, &servers_addr_node[0]);
+	}
+	
+	printf("INFO: bruteforcing names in range\n");	/* TODO make network_info to string function */
+	
+	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
+	
+	while (netaddr_ip_in_nwk(&c_ip, target_net) == 1) {
+		host_manager_get_host_by_addr(c_host_manager, &c_ip, &h_info_chk);
+		if (h_info_chk != NULL) {
+			c_ip.s_addr = htonl(ntohl(c_ip.s_addr) + 1);
+			continue;
+		}
+		ares_gethostbyaddr(channel, &c_ip, sizeof(c_ip), AF_INET, callback_host, (host_manager *)c_host_manager);
+		query_counter += 1;
+		c_ip.s_addr = htonl(ntohl(c_ip.s_addr) + 1);
+		wait_ares(channel, DNS_MAX_SIM_QUERIES);
+	}
+	
+	wait_ares(channel, 0);
+	
+	ares_destroy(channel);
+	ares_library_cleanup();
+	return 0;
+}
+
 int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 	domain_ns_list nameservers;
 	char ip[INET_ADDRSTRLEN];
@@ -211,6 +272,24 @@ int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 	
 	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers);
 	
-	printf("INFO: dns enumeration finished\n");
+	printf("INFO: dns enumerate domain finished\n");
+	return 0;
+}
+
+int dns_enumerate_network(char *target_domain, network_info *target_net, host_manager *c_host_manager) {
+	domain_ns_list nameservers;
+	char ip[INET_ADDRSTRLEN];
+	int i;
+	memset(&nameservers, '\0', sizeof(nameservers));
+	
+	dns_get_nameservers_for_domain(target_domain, &nameservers);
+	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
+		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ip, sizeof(ip));
+		printf("INFO: found name server %s %s\n", nameservers.servers[i], ip);
+	}
+	
+	dns_bruteforce_names_in_range(target_net, c_host_manager, &nameservers);
+	
+	printf("INFO: dns enumerate network finished\n");
 	return 0;
 }

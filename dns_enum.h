@@ -1,6 +1,8 @@
 #ifndef _KRAKEN_DNS_ENUM_H
 #define _KRAKEN_DNS_ENUM_H
 
+#include "network_addr.h"
+
 #define DNS_MAX_SIM_QUERIES 16
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in hosts.h */
 #define DNS_MAX_NS_HOSTS 4
@@ -28,6 +30,8 @@ typedef struct domain_ns_list { /* hold information for up to DNS_MAX_NS_HOSTS n
 
 int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers);
 int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_manager, domain_ns_list *nameservers);
+int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host_manager, domain_ns_list *nameservers);
 int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager);
+int dns_enumerate_network(char *target_domain, network_info *target_net, host_manager *c_host_manager);
 
 #endif

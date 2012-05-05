@@ -129,6 +129,18 @@ int host_manager_add_alias_to_host(host_manager *c_host_manager, char *hostname,
 	return 0;
 }
 
+int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *target_ip, single_host_info **desired_host) {
+	unsigned int current_host_i;
+	*desired_host = NULL;
+	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		if (memcmp(target_ip, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0) {
+			*desired_host = &c_host_manager->hosts[current_host_i];
+			break;
+		}
+	}
+	return 0;
+}
+
 int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record) {
 	if (c_host_manager->known_whois_records >= c_host_manager->current_whois_record_capacity) {
 		/* FIXME: if the buffersize is increased and the new whois_records are moved over then all the pointers in the hosts section will be invalid */
