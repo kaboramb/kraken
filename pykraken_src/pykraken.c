@@ -236,11 +236,11 @@ static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
 }
 
 static PyMethodDef PyKrakenMethods[] = {
-	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "Retrieve the whois record pretaining to an IP address"},
-	{"get_nameservers", pykraken_get_nameservers, METH_VARARGS, "Enumerate nameservers for a domain"},
-	{"enumerate_domain", pykraken_enumerate_domain, METH_VARARGS, "Enumerate hostnames for a domain"},
-	{"enumerate_network", pykraken_enumerate_network, METH_VARARGS, "Enumerate hostnames for a network"},
-	{"ip_in_cidr", pykraken_ip_in_cidr, METH_VARARGS, "Check if an IP address is in a CIDR network"},
+	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "whois_lookup_ip(target_ip)\nRetrieve the whois record pretaining to an IP address\n\n@type target_ip: String\n@param target_ip: ip address to retreive whois information for"},
+	{"get_nameservers", pykraken_get_nameservers, METH_VARARGS, "get_nameservers(target_domain)\nEnumerate nameservers for a domain\n\n@type target_domain: String\n@param target_domain: the domain to retreive the list of name servers for"},
+	{"enumerate_domain", pykraken_enumerate_domain, METH_VARARGS, "enumerate_domain(target_domain)\nEnumerate hostnames for a domain\n\n@type target_domain: String\n@param target_domain: the domain to enumerate hostnames for"},
+	{"enumerate_network", pykraken_enumerate_network, METH_VARARGS, "enumerate_network(target_domain, target_network)\nEnumerate hostnames for a network\n\n@type target_domain: String\n@param target_domain: the domain who's name servers to use\n@type target_network: String\n@param target_network: the network in CIDR notation to bruteforce records for"},
+	{"ip_in_cidr", pykraken_ip_in_cidr, METH_VARARGS, "ip_in_cidr(target_ip, target_network)\nCheck if an IP address is in a CIDR network\n\n@type target_ip: String\n@param target_ip: the ip to check\n@type target_network: String\n@param target_network: the network to check"},
 	{NULL, NULL, 0, NULL}
 };
 
