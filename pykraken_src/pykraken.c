@@ -5,6 +5,7 @@
 #include "hosts.h"
 #include "host_manager.h"
 #include "dns_enum.h"
+#include "network_addr.h"
 #include "whois_lookup.h"
 
 #define MODULE_DOC ""
@@ -156,10 +157,37 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 	return pyHostList;
 }
 
+static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
+	char *pIpAddr;
+	char *pCidrNetwork;
+	network_info network;
+	struct in_addr packedIp;
+	
+	if (!PyArg_ParseTuple(args, "ss", &pIpAddr, &pCidrNetwork)) {
+		return NULL;
+	}
+	
+	if (netaddr_cidr_str_to_nwk(pCidrNetwork, &network) != 0) {
+		PyErr_SetString(PyExc_Exception, "invalid CIDR network");
+		return NULL;
+	}
+	
+	if (inet_pton(AF_INET, pIpAddr, &packedIp) == 0) {
+		PyErr_SetString(PyExc_Exception, "invalid IP address");
+		return NULL;
+	}
+	
+	if (netaddr_ip_in_nwk(&packedIp, &network) == 1) {
+		Py_RETURN_TRUE;
+	}
+	Py_RETURN_FALSE;
+}
+
 static PyMethodDef PyKrakenMethods[] = {
 	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "Retrieve the whois record pretaining to an IP address"},
 	{"get_nameservers", pykraken_get_nameservers, METH_VARARGS, "Enumerate nameservers for a domain"},
 	{"enumerate_domain", pykraken_enumerate_domain, METH_VARARGS, "Enumerate hostnames for a domain"},
+	{"ip_in_cidr", pykraken_ip_in_cidr, METH_VARARGS, "Check if an IP address is in a CIDR network"},
 	{NULL, NULL, 0, NULL}
 };
 

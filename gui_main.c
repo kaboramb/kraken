@@ -171,7 +171,7 @@ int gui_show_host_manager(host_manager *c_host_manager) {
 	g_signal_connect(window, "delete_event", gtk_main_quit, NULL); /* dirty */
 	gtk_window_set_title(GTK_WINDOW(window), "Kraken");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 0);
-	gtk_widget_set_size_request(window, 500, 600);
+	gtk_widget_set_size_request(window, 600, 850);
 	
 	main_vbox = gtk_vbox_new(FALSE, 1);
 	gtk_container_set_border_width(GTK_CONTAINER(main_vbox), 1);
