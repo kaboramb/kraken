@@ -5,8 +5,8 @@ GTKFLAGS = $(shell pkg-config --cflags --libs gtk+-2.0)
 
 all: kraken remove_intermediates pykraken
 
-kraken: dns_enum.o gui_main.o gui_menu_functions.o gui_model.o host_manager.o kraken.o network_addr.o whois_lookup.o
-	$(CC) $(CFLAGS) $(GTKFLAGS) -lcares -o kraken dns_enum.o gui_main.o gui_menu_functions.o gui_model.o host_manager.o kraken.o network_addr.o whois_lookup.o
+kraken: dns_enum.o gui_main.o gui_menu_functions.o gui_model.o gui_popups.o host_manager.o kraken.o network_addr.o whois_lookup.o
+	$(CC) $(CFLAGS) $(GTKFLAGS) -lcares -o kraken dns_enum.o gui_main.o gui_menu_functions.o gui_model.o gui_popups.o host_manager.o kraken.o network_addr.o whois_lookup.o
 
 dns_enum.o:
 	$(CC) $(CFLAGS) -c dns_enum.c
@@ -16,9 +16,12 @@ gui_main.o:
 
 gui_menu_functions.o:
 	$(CC) $(CFLAGS) $(GTKFLAGS) -c gui_menu_functions.c
-	
+
 gui_model.o:
 	$(CC) $(CFLAGS) $(GTKFLAGS) -c gui_model.c
+
+gui_popups.o:
+	$(CC) $(CFLAGS) $(GTKFLAGS) -c gui_popups.c
 
 host_manager.o:
 	$(CC) $(CFLAGS) -c host_manager.c

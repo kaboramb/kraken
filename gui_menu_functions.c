@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 #include "gui_menu_functions.h"
 #include "gui_model.h"
+#include "gui_popups.h"
 #include "hosts.h"
 #include "host_manager.h"
 #include "whois_lookup.h"
@@ -13,6 +14,7 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/_Edit",								NULL,		NULL,							0,	"<Branch>" },
 	{ "/Edit/Add",							NULL,		NULL,							0,	"<Branch>" },
 	{ "/Edit/Add/DNS Forward Bruteforce",	NULL,		gui_menu_edit_dns_forward_bf, 	0,	NULL	},
+	{ "/Edit/Add/DNS Reverse Bruteforce",	NULL,		gui_menu_edit_dns_reverse_bf, 	0,	NULL	},
 };
 
 static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);
@@ -32,13 +34,11 @@ GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata) {
 }
 
 void gui_menu_edit_dns_forward_bf(menu_data *userdata, guint action, GtkWidget *widget) {
-	GtkTreeModel *model;
-	host_manager *c_host_manager = userdata->c_host_manager;
-	
-	dns_enumerate_domain("", c_host_manager);
-	whois_fill_host_manager(c_host_manager);
-	
-	model = gui_refresh_tree_model(NULL, c_host_manager);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(userdata->tree_view), model);
+	gui_popup_bf_domain(userdata->tree_view, userdata->c_host_manager);
+	return;
+}
+
+void gui_menu_edit_dns_reverse_bf(menu_data *userdata, guint action, GtkWidget *widget) {
+	gui_popup_bf_network(userdata->tree_view, userdata->c_host_manager);
 	return;
 }
