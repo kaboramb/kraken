@@ -9,12 +9,12 @@
 #include "dns_enum.h"
 
 static GtkItemFactoryEntry main_menu_entries[] = {
-	{ "/_File",								NULL,		NULL,							0, 	"<Branch>" },
-	{ "/File/_Quit",						"<CTRL>Q",	gtk_main_quit,					0, 	"<StockItem>",	GTK_STOCK_QUIT },
-	{ "/_Edit",								NULL,		NULL,							0,	"<Branch>" },
-	{ "/Edit/Add",							NULL,		NULL,							0,	"<Branch>" },
-	{ "/Edit/Add/DNS Forward Bruteforce",	NULL,		gui_menu_edit_dns_forward_bf, 	0,	NULL	},
-	{ "/Edit/Add/DNS Reverse Bruteforce",	NULL,		gui_menu_edit_dns_reverse_bf, 	0,	NULL	},
+	{ "/File",									NULL,		NULL,							0, 	"<Branch>" },
+	{ "/File/Quit",								"<CTRL>Q",	gtk_main_quit,					0, 	"<StockItem>",	GTK_STOCK_QUIT },
+	{ "/Edit",									NULL,		NULL,							0,	"<Branch>" },
+	{ "/Edit/Add Hosts",						NULL,		NULL,							0,	"<Branch>" },
+	{ "/Edit/Add Hosts/DNS Forward Bruteforce",	NULL,		gui_menu_edit_dns_forward_bf, 	0,	NULL	},
+	{ "/Edit/Add Hosts/DNS Reverse Bruteforce",	NULL,		gui_menu_edit_dns_reverse_bf, 	0,	NULL	},
 };
 
 static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);
