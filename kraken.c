@@ -55,10 +55,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 			arguments->target_domains[state->arg_num] = arg;
 			break;
 		case ARGP_KEY_END:
-			if (state->arg_num < 1) {
-				/* Not enough arguments. */
-				argp_usage (state);
-			}
 			break;
 		default:
 			return ARGP_ERR_UNKNOWN;
@@ -82,26 +78,26 @@ int main(int argc, char **argv) {
 		printf("ERROR: could not initialize the host manager, it is likely that there is not enough memory\n");
 		return 0;
 	}
-	dns_enumerate_domain(arguments.target_domains[0], &c_host_manager);
 	
-	printf("\n");
-	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
-		current_host = c_host_manager.hosts[current_host_i];
-		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
-		printf("%s %s\n", current_host.hostname, ipstr);
-	}
-	printf("\n");
-	whois_fill_host_manager(&c_host_manager);
+	/* dns_enumerate_domain(arguments.target_domains[0], &c_host_manager); */
+	/* whois_fill_host_manager(&c_host_manager); */
+	
+	gui_show_main_window(&c_host_manager);
 	
 	printf("\n");
 	printf("Summary: %u hosts found on %u networks\n", c_host_manager.known_hosts, c_host_manager.known_whois_records);
+	printf("Hosts found:\n");
+	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
+		current_host = c_host_manager.hosts[current_host_i];
+		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
+		printf("\t%s %s\n", current_host.hostname, ipstr);
+	}
+	printf("\n");
 	printf("Networks found:\n");
 	for (current_who_i = 0; current_who_i < c_host_manager.known_whois_records; current_who_i++) {
 		current_who_rec = c_host_manager.whois_records[current_who_i];
 		printf("\t%s\n", current_who_rec.cidr_s);
 	}
-	
-	gui_show_host_manager(&c_host_manager);
 	
 	printf("\nNow Exiting...\n");
 	destroy_host_manager(&c_host_manager);
