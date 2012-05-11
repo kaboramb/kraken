@@ -22,6 +22,7 @@ typedef struct single_host_info {
 } single_host_info;
 
 typedef struct host_manager {
+	char lw_domain[DNS_MAX_FQDN_LENGTH + 1];	/* last working domain, so we can keep track in the GUI if we want */
 	unsigned int known_hosts;
 	unsigned int current_capacity;
 	unsigned int known_whois_records;

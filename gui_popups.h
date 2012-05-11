@@ -12,6 +12,6 @@ typedef struct popup_data {
 } popup_data;
 
 gboolean gui_popup_bf_domain(GtkWidget *tree_view, host_manager *c_host_manager);
-gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager);
+gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager, char *cidr_str);
 
 #endif

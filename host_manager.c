@@ -29,6 +29,7 @@ int init_host_manager(host_manager *c_host_manager) {
 	if (c_host_manager->hosts == NULL) {
 		return 1;
 	}
+	memset(c_host_manager->lw_domain, '\0', DNS_MAX_FQDN_LENGTH + 1);
 	c_host_manager->known_hosts = 0;
 	c_host_manager->current_capacity = HOST_CAPACITY_INCREMENT_SIZE;
 	memset(c_host_manager->hosts, 0, (sizeof(struct single_host_info) * HOST_CAPACITY_INCREMENT_SIZE));

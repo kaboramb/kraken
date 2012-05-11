@@ -21,7 +21,7 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 	inet_ntop(AF_INET, ip, ipstr, sizeof(ipstr));
 	
 	memset(who_resp, '\0', sizeof(whois_response));
-	retVal = whois_raw_lookup(WHOIS_REQ_TYPE_IP, ipstr, raw_resp);
+	retVal = whois_raw_lookup(WHOIS_REQ_TYPE_IP, WHOIS_SRV_ARIN, ipstr, raw_resp);
 	if (retVal != 0) {
 		return retVal;
 	}
@@ -130,7 +130,7 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 	return 0;
 }
 
-int whois_raw_lookup(int req_type, char *request, char *response) {
+int whois_raw_lookup(int req_type, int target_server, char *request, char *response) {
 	/*
 	 * Returns 0 on Success
 	 * Returns 1 on Error
@@ -158,15 +158,28 @@ int whois_raw_lookup(int req_type, char *request, char *response) {
 	dest_addr.sin_family = AF_INET;
 	dest_addr.sin_port = htons(WHOIS_PORT);
 
-	if (req_type == WHOIS_REQ_TYPE_IP) {
-		inet_pton(AF_INET, WHOIS_SRV_IP, &(dest_addr.sin_addr));
-		snprintf(reqBuffer, sizeof(reqBuffer), "n + %s\r\n", request);
-	} else if (req_type == WHOIS_REQ_TYPE_HOST) {
-		inet_pton(AF_INET, WHOIS_SRV_HOST, &(dest_addr.sin_addr));
-		snprintf(reqBuffer, sizeof(reqBuffer), "%s\r\n", request);
-	} else {
-		printf("ERROR: could not determine WHOIS request type\n");
-		return 2;
+	if (target_server == WHOIS_SRV_ARIN) {
+		if (req_type == WHOIS_REQ_TYPE_IP) {
+			inet_pton(AF_INET, WHOIS_SRV_IP_ARIN, &(dest_addr.sin_addr));
+			snprintf(reqBuffer, sizeof(reqBuffer), "n + %s\r\n", request);
+		} else if (req_type == WHOIS_REQ_TYPE_HOST) {
+			inet_pton(AF_INET, WHOIS_SRV_HOST_ARIN, &(dest_addr.sin_addr));
+			snprintf(reqBuffer, sizeof(reqBuffer), "%s\r\n", request);
+		} else {
+			printf("ERROR: could not determine WHOIS request type\n");
+			return 2;
+		}
+	} else if (target_server == WHOIS_SRV_RIPE) {
+		if (req_type == WHOIS_REQ_TYPE_IP) {
+			inet_pton(AF_INET, WHOIS_SRV_IP_RIPE, &(dest_addr.sin_addr));
+			snprintf(reqBuffer, sizeof(reqBuffer), "%s\r\n", request);
+		} else if (req_type == WHOIS_REQ_TYPE_HOST) {
+			inet_pton(AF_INET, WHOIS_SRV_HOST_RIPE, &(dest_addr.sin_addr));
+			snprintf(reqBuffer, sizeof(reqBuffer), "%s\r\n", request);
+		} else {
+			printf("ERROR: could not determine WHOIS request type\n");
+			return 2;
+		}
 	}
 	szReq = strlen(reqBuffer);
 	
@@ -215,7 +228,6 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 	
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		current_host = &c_host_manager->hosts[current_host_i];
-		inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
 		host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
 		if (cur_who_resp != NULL) {
 			current_host->whois_data = cur_who_resp;
@@ -223,6 +235,7 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 		}
 		ret_val = whois_lookup_ip(&current_host->ipv4_addr, &tmp_who_resp);
 		if (ret_val == 0) {
+			inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
 			printf("INFO: got whois record for %s, %s\n", ipstr, tmp_who_resp.cidr_s);
 			host_manager_add_whois(c_host_manager, &tmp_who_resp);
 			host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);

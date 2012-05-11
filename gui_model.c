@@ -1,6 +1,9 @@
+#include <stdlib.h>
 #include <gtk/gtk.h>
 #include <arpa/inet.h>
 #include "gui_model.h"
+#include "gui_menu_functions.h"
+#include "gui_popups.h"
 #include "hosts.h"
 #include "host_manager.h"
 #include "whois_lookup.h"
@@ -18,8 +21,8 @@ enum {
 	SORTID_WHO_ORGNAME,
 };
 
-void view_popup_menu_onDoSomething(GtkWidget *menuitem, gpointer userdata) {
-	GtkTreeView *treeview = GTK_TREE_VIEW(userdata);
+void view_popup_menu_onDoSomething(GtkWidget *menuitem, menu_data *m_data) {
+	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
@@ -32,15 +35,57 @@ void view_popup_menu_onDoSomething(GtkWidget *menuitem, gpointer userdata) {
 		g_free(name);
 	}
 	/* else no row selected */
+	free(m_data);
+	return;
+}
+
+void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, menu_data *m_data) {
+	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
+	GtkTreeSelection *selection;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	struct in_addr target_ip;
+	whois_record *who_r = NULL;
+
+	selection = gtk_tree_view_get_selection(treeview);
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gchar *name;
+		gtk_tree_model_get(model, &iter, COL_IPADDR, &name, -1);
+		inet_pton(AF_INET, (char *)name, &target_ip);
+		g_free(name);
+		host_manager_get_whois(m_data->c_host_manager, &target_ip, &who_r);
+	} else {
+		free(m_data);
+		return;
+	}
+	if (who_r == NULL) {
+		g_print("ERROR: could not retrieve the desired whois record\n");
+		free(m_data);
+		return;
+	}
+	
+	gui_popup_bf_network(m_data->tree_view, m_data->c_host_manager, who_r->cidr_s);
+	free(m_data);
 	return;
 }
 
 void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer userdata) {
 	GtkWidget *menu, *menuitem;
+	menu_data *m_data;
 	menu = gtk_menu_new();
+	
+	m_data = malloc(sizeof(menu_data));
+	m_data->tree_view = treeview;
+	m_data->c_host_manager = userdata;
+	
 	menuitem = gtk_menu_item_new_with_label("Show WHOIS Data");
-	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoSomething, treeview);
+	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoSomething, m_data);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	
+	menuitem = gtk_menu_item_new_with_label("DNS Bruteforce Network");
+	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoDNSBruteforceNetwork, m_data);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	
 	gtk_widget_show_all(menu);
 	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, (event != NULL) ? event->button : 0, gdk_event_get_time((GdkEvent*)event));
 	return;
@@ -91,7 +136,13 @@ GtkTreeModel *gui_refresh_tree_model(GtkListStore *store, host_manager *c_host_m
 			who_data = current_host->whois_data;
 			gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, who_data->orgname, -1);
 		} else {
-			gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, "", -1);
+			host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &who_data); /* double check */
+			if (who_data == NULL) {
+				gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, "", -1);
+			} else {
+				current_host->whois_data = who_data;
+				gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, who_data->orgname, -1);
+			}
 		}
 	}
 	

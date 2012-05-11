@@ -39,6 +39,6 @@ void gui_menu_edit_dns_forward_bf(menu_data *userdata, guint action, GtkWidget *
 }
 
 void gui_menu_edit_dns_reverse_bf(menu_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_bf_network(userdata->tree_view, userdata->c_host_manager);
+	gui_popup_bf_network(userdata->tree_view, userdata->c_host_manager, NULL);
 	return;
 }

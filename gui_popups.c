@@ -89,15 +89,18 @@ gboolean gui_popup_bf_domain(GtkWidget *tree_view, host_manager *c_host_manager)
 	gtk_widget_show(label);
 	
 	entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(entry), DNS_MAX_FQDN_LENGTH);
+	if (strlen(c_host_manager->lw_domain) > 0) {
+		gtk_entry_set_text(GTK_ENTRY(entry), c_host_manager->lw_domain);
+	}
 	
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
 	p_data->tree_view = tree_view;
 	p_data->c_host_manager = c_host_manager;
 	
-	gtk_entry_set_max_length(GTK_ENTRY(entry), DNS_MAX_FQDN_LENGTH);
+	
 	g_signal_connect(entry, "activate", G_CALLBACK(callback_bf_domain), p_data);
-	gtk_entry_set_text(GTK_ENTRY(entry), "");
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
 	
@@ -167,7 +170,7 @@ void callback_bf_network(GtkWidget *widget, popup_data *userdata) {
 	return;
 }
 
-gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager) {
+gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager, char *cidr_str) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry0;
@@ -205,8 +208,10 @@ gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager
 	
 	entry0 = gtk_entry_new();
 	gtk_entry_set_max_length(GTK_ENTRY(entry0), DNS_MAX_FQDN_LENGTH);
+	if (strlen(c_host_manager->lw_domain) > 0) {
+		gtk_entry_set_text(GTK_ENTRY(entry0), c_host_manager->lw_domain);
+	}
 	g_signal_connect(entry0, "activate", G_CALLBACK(callback_bf_domain), p_data);
-	gtk_entry_set_text(GTK_ENTRY(entry0), "");
 	gtk_box_pack_start(GTK_BOX(hbox), entry0, TRUE, TRUE, 0);
 	gtk_widget_show(entry0);
 	
@@ -222,8 +227,10 @@ gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager
 	
 	entry1 = gtk_entry_new();
 	gtk_entry_set_max_length(GTK_ENTRY(entry1), 18);
+	if (cidr_str != NULL) {
+		gtk_entry_set_text(GTK_ENTRY(entry1), cidr_str);
+	}
 	g_signal_connect(entry1, "activate", G_CALLBACK(callback_bf_domain), p_data);
-	gtk_entry_set_text(GTK_ENTRY(entry1), "");
 	gtk_box_pack_start(GTK_BOX(hbox), entry1, TRUE, TRUE, 0);
 	gtk_widget_show(entry1);
 	

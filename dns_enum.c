@@ -265,6 +265,7 @@ int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 	domain_ns_list nameservers;
 	char ip[INET_ADDRSTRLEN];
 	int i;
+	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	memset(&nameservers, '\0', sizeof(nameservers));
 	printf("INFO: enumerating domain: %s\n", target_domain);
 	
@@ -284,6 +285,7 @@ int dns_enumerate_network(char *target_domain, network_info *target_net, host_ma
 	domain_ns_list nameservers;
 	char ipstr[INET6_ADDRSTRLEN];
 	int i;
+	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	memset(&nameservers, '\0', sizeof(nameservers));
 	
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));

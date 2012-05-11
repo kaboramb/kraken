@@ -12,8 +12,14 @@
 #define WHOIS_REQ_TYPE_IP 1
 #define WHOIS_REQ_TYPE_HOST 2
 
-#define WHOIS_SRV_IP "199.212.0.48" /* TODO: make this the name whois.arin.net not the IP */
-#define WHOIS_SRV_HOST "199.212.0.48" /*TODO: fix this to a working server */
+#define WHOIS_SRV_ARIN 1
+#define WHOIS_SRV_RIPE 2
+
+#define WHOIS_SRV_IP_ARIN "199.212.0.48" /* TODO: make this the name whois.arin.net not the IP */
+#define WHOIS_SRV_HOST_ARIN "199.212.0.48" /*TODO: fix this to a working server */
+
+#define WHOIS_SRV_IP_RIPE "193.0.6.135" /* TODO: make this the name whois.ripe.net not the IP */
+#define WHOIS_SRV_HOST_RIPE "193.0.6.135" /*TODO: fix this to a working server */
 
 /* this is a duplicate */
 #define DNS_MAX_FQDN_LENGTH 255
@@ -35,7 +41,7 @@ typedef struct whois_record whois_response;
 #ifndef _KRAKEN_WHOIS_LOOKUP_H_SKIP_FUNCDEFS
 #define _KRAKEN_WHOIS_LOOKUP_H_SKIP_FUNCDEFS
 int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp);
-int whois_raw_lookup(int req_type, char *request, char *response);
+int whois_raw_lookup(int req_type, int target_server, char *request, char *response);
 int whois_fill_host_manager(host_manager *c_host_manager);
 
 #endif
