@@ -65,7 +65,7 @@ gboolean gui_popup_bf_domain(GtkWidget *tree_view, host_manager *c_host_manager)
 	/* get the main popup window */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 110);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 115);
 	gtk_window_set_title(GTK_WINDOW(window), "DNS Forward Bruteforce");
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
 	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);
@@ -119,12 +119,12 @@ gboolean gui_popup_bf_domain(GtkWidget *tree_view, host_manager *c_host_manager)
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
 	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_SMALL_TOOLBAR);
+	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
 	label = gtk_label_new("Start");
 	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 3);
+	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 2);
 	gtk_widget_show(image);
-	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 3);
+	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 2);
 	gtk_widget_show(label);
 	gtk_widget_show(hbox);
 	gtk_container_add(GTK_CONTAINER(button), hbox);
@@ -183,7 +183,7 @@ gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager
 	/* get the main popup window */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 150);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 165);
 	gtk_window_set_title(GTK_WINDOW(window), "DNS Reverse Bruteforce");
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
 	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);
@@ -256,12 +256,12 @@ gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
 	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_SMALL_TOOLBAR);
+	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
 	label = gtk_label_new("Start");
 	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 3);
+	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 2);
 	gtk_widget_show(image);
-	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 3);
+	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 2);
 	gtk_widget_show(label);
 	gtk_widget_show(hbox);
 	gtk_container_add(GTK_CONTAINER(button), hbox);

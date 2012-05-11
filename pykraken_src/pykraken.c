@@ -51,10 +51,10 @@ static PyObject *pykraken_whois_lookup_ip(PyObject *self, PyObject *args) {
 			Py_DECREF(pyTmpStr);
 		}
 	}
-	if (who_resp.comment[0] != '\0') {
-		pyTmpStr = PyString_FromString(who_resp.comment);
+	if (who_resp.description[0] != '\0') {
+		pyTmpStr = PyString_FromString(who_resp.description);
 		if (pyTmpStr) {
-			PyDict_SetItemString(pyWhoResp, "comment", pyTmpStr);
+			PyDict_SetItemString(pyWhoResp, "description", pyTmpStr);
 			Py_DECREF(pyTmpStr);
 		}
 	}

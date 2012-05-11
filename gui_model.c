@@ -11,7 +11,7 @@
 enum {
 	COL_HOSTNAME = 0,
 	COL_IPADDR,
-	COL_WHO_ORGNAME,
+	COL_WHO_BESTNAME,
 	NUM_COLS
 };
 
@@ -134,14 +134,14 @@ GtkTreeModel *gui_refresh_tree_model(GtkListStore *store, host_manager *c_host_m
 		gtk_list_store_append(store, &iter);
 		if (current_host->whois_data != NULL) {
 			who_data = current_host->whois_data;
-			gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, who_data->orgname, -1);
+			gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_BESTNAME, whois_get_best_name(who_data), -1);
 		} else {
 			host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &who_data); /* double check */
 			if (who_data == NULL) {
-				gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, "", -1);
+				gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_BESTNAME, "", -1);
 			} else {
 				current_host->whois_data = who_data;
-				gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_ORGNAME, who_data->orgname, -1);
+				gtk_list_store_set(store, &iter, COL_HOSTNAME, current_host->hostname, COL_IPADDR, ipstr, COL_WHO_BESTNAME, whois_get_best_name(who_data), -1);
 			}
 		}
 	}
@@ -178,8 +178,8 @@ GtkWidget *create_view_and_model(host_manager *c_host_manager) {
 	renderer = gtk_cell_renderer_text_new();
 	col = gtk_tree_view_column_new();
 	gtk_tree_view_column_pack_start (col, renderer, TRUE);
-	gtk_tree_view_column_add_attribute (col, renderer, "text", COL_WHO_ORGNAME);
-	gtk_tree_view_column_set_title (col, "WHOIS Organization");
+	gtk_tree_view_column_add_attribute (col, renderer, "text", COL_WHO_BESTNAME);
+	gtk_tree_view_column_set_title (col, "WHOIS");
 	gtk_tree_view_column_set_sort_column_id(col, SORTID_WHO_ORGNAME);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);
 	

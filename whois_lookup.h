@@ -16,10 +16,10 @@
 #define WHOIS_SRV_RIPE 2
 
 #define WHOIS_SRV_IP_ARIN "199.212.0.48" /* TODO: make this the name whois.arin.net not the IP */
-#define WHOIS_SRV_HOST_ARIN "199.212.0.48" /*TODO: fix this to a working server */
+#define WHOIS_SRV_HOST_ARIN "whois.arin.net" /*TODO: fix this to a working server */
 
 #define WHOIS_SRV_IP_RIPE "193.0.6.135" /* TODO: make this the name whois.ripe.net not the IP */
-#define WHOIS_SRV_HOST_RIPE "193.0.6.135" /*TODO: fix this to a working server */
+#define WHOIS_SRV_HOST_RIPE "whois.ripe.net" /*TODO: fix this to a working server */
 
 /* this is a duplicate */
 #define DNS_MAX_FQDN_LENGTH 255
@@ -29,7 +29,7 @@
 typedef struct whois_record {
 	char cidr_s[WHOIS_SZ_DATA_S + 1];
 	char netname[WHOIS_SZ_DATA + 1];
-	char comment[WHOIS_SZ_DATA + 1];
+	char description[WHOIS_SZ_DATA + 1];
 	
 	char orgname[WHOIS_SZ_DATA + 1];
 	char regdate_s[WHOIS_SZ_DATA_S + 1];
@@ -43,6 +43,7 @@ typedef struct whois_record whois_response;
 int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp);
 int whois_raw_lookup(int req_type, int target_server, char *request, char *response);
 int whois_fill_host_manager(host_manager *c_host_manager);
+char *whois_get_best_name(whois_record *who_data);
 
 #endif
 
