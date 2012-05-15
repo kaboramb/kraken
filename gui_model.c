@@ -6,6 +6,7 @@
 #include "gui_popups.h"
 #include "hosts.h"
 #include "host_manager.h"
+#include "logging.h"
 #include "whois_lookup.h"
 
 enum {
@@ -22,6 +23,7 @@ enum {
 };
 
 void view_popup_menu_onDoSomething(GtkWidget *menuitem, menu_data *m_data) {
+	char logStr[LOGGING_STR_LEN + 1];
 	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
@@ -31,7 +33,8 @@ void view_popup_menu_onDoSomething(GtkWidget *menuitem, menu_data *m_data) {
 	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
 		gchar *name;
 		gtk_tree_model_get(model, &iter, COL_IPADDR, &name, -1);
-		g_print("DEBUG: selected row is: %s\n", name);
+		snprintf(logStr, sizeof(logStr), "selected row is: %s", name);
+		LOGGING_QUICK_DEBUG("kraken.gui.model", logStr)
 		g_free(name);
 	}
 	/* else no row selected */
@@ -59,7 +62,7 @@ void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, menu_data *m_
 		return;
 	}
 	if (who_r == NULL) {
-		g_print("ERROR: could not retrieve the desired whois record\n");
+		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retrieve the desired whois record")
 		free(m_data);
 		return;
 	}

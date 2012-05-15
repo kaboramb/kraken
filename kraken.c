@@ -94,12 +94,16 @@ int main(int argc, char **argv) {
 	log4c_category_t* logcat = NULL;
 	
 	/* set argument defaults */
+#ifndef WITHOUT_LOG4C
 	arguments.loglvl = LOG4C_PRIORITY_CRIT;
+#else
+	arguments.loglvl = 0;
+#endif
 	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 	
 	if (log4c_init()) {
-		fprintf(stdout, "Could not initialize logging subsystem.\n");
+		fprintf(stdout, "Could not initialize the logging subsystem.\n");
 		return 1;
 	}
 	

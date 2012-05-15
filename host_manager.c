@@ -5,6 +5,7 @@
 
 #include "hosts.h"
 #include "host_manager.h"
+#include "logging.h"
 #include "whois_lookup.h"
 #include "network_addr.h"
 
@@ -60,11 +61,11 @@ int destroy_host_manager(host_manager *c_host_manager) {
 
 int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_host) {
 	unsigned int current_host_i;
+	char logStr[LOGGING_STR_LEN + 1];
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if ((strncmp(new_host->hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) && (memcmp(&new_host->ipv4_addr, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0)) {
-#ifdef DEBUG
-			printf("DEBUG: skipping dupplicate host: %s\n", new_host->hostname);
-#endif
+			snprintf(logStr, sizeof(logStr), "skipping dupplicate host: %s", new_host->hostname);
+			LOGGING_QUICK_DEBUG("kraken.host_manager", logStr)
 			return 0;
 		}
 	}
@@ -182,9 +183,10 @@ int host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_
 				break;
 			}
 		} else {
-			printf("ERROR: could not parse cidr address: %s\n", (char *)&cur_who_resp->cidr_s);
+			char logStr[LOGGING_STR_LEN + 1];
+			snprintf(logStr, sizeof(logStr), "could not parse cidr address: %s", (char *)&cur_who_resp->cidr_s);
+			LOGGING_QUICK_ERROR("kraken.host_manager", logStr)
 		}
-		
 	}
 	return 0;
 }

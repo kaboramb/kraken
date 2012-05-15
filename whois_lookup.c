@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 
 #include "hosts.h"
+#include "logging.h"
 #include "whois_lookup.h"
 #include "host_manager.h"
 #include "network_addr.h"
@@ -235,7 +236,7 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 		} else if (req_type == WHOIS_REQ_TYPE_HOST) {
 			snprintf(reqBuffer, sizeof(reqBuffer), "%s\r\n", request);
 		} else {
-			printf("ERROR: could not determine WHOIS request type\n");
+			LOGGING_QUICK_ERROR("kraken.whois", "could not determine WHOIS request type")
 			return 2;
 		}
 	} else if (target_server == WHOIS_SRV_RIPE) {
@@ -245,18 +246,18 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 		} else if (req_type == WHOIS_REQ_TYPE_HOST) {
 			snprintf(reqBuffer, sizeof(reqBuffer), "%s\r\n", request);
 		} else {
-			printf("ERROR: could not determine WHOIS request type\n");
+			LOGGING_QUICK_ERROR("kraken.whois", "could not determine WHOIS request type")
 			return 2;
 		}
 	}
 	if (server_info == NULL) {
-		printf("ERROR: could not lookup the IP of the whois server\n");
+		LOGGING_QUICK_ERROR("kraken.whois", "could not lookup the IP of the whois server")
 		return 3;
 	}
 	
 	sock = socket(server_info->h_addrtype, SOCK_STREAM, 0);
 	if (sock == -1) {
-		printf("ERROR: could not allocate a socket\n");
+		LOGGING_QUICK_ERROR("kraken.whois", "could not allocate a socket")
 		return 1;
 	}
 	
@@ -273,11 +274,11 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 		addrCtr += 1;
 	}
 	if (addrCtr) {
-		printf("ERROR: could not connect to WHOIS server\n");
+		LOGGING_QUICK_ERROR("kraken.whois", "could not connect to WHOIS server")
 		return 4;
 	}
 	if (send(sock, reqBuffer, szReq, 0) != szReq) {
-		printf("ERROR: failed to send the expected amount of data");
+		LOGGING_QUICK_ERROR("kraken.whois", "failed to send the expected amount of data")
 		return 5;
 	}
 	
@@ -307,6 +308,7 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 }
 
 int whois_fill_host_manager(host_manager *c_host_manager) {
+	char logStr[LOGGING_STR_LEN + 1];
 	unsigned int current_host_i;
 	single_host_info *current_host;
 	whois_record tmp_who_resp;
@@ -324,7 +326,8 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 		ret_val = whois_lookup_ip(&current_host->ipv4_addr, &tmp_who_resp);
 		if (ret_val == 0) {
 			inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
-			printf("INFO: got whois record for %s, %s\n", ipstr, tmp_who_resp.cidr_s);
+			snprintf(logStr, sizeof(logStr), "got whois record for %s, %s", ipstr, tmp_who_resp.cidr_s);
+			LOGGING_QUICK_INFO("kraken.whois", logStr);
 			host_manager_add_whois(c_host_manager, &tmp_who_resp);
 			host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
 			current_host->whois_data = cur_who_resp;
