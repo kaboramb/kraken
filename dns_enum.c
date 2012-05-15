@@ -13,11 +13,14 @@
 #include "hosts.h"
 #include "host_manager.h"
 #include "dns_enum.h"
+#include "logging.h"
 #include "network_addr.h"
 
 static void callback_nameserver_servers(void *args, int status, int timeouts, unsigned char *abuf, int alen) {
+	char errStr[LOGGING_STR_LEN + 1] = "lookup of nameservers failed with errors: ";
 	if(status != ARES_SUCCESS){
-		printf("ERROR: lookup of nameservers failed with error: %s\n", ares_strerror(status));
+		strncat(errStr, ares_strerror(status), LOGGING_STR_LEN);
+		LOGGING_QUICK_ERROR("kraken.dns_enum", errStr)
 		return;
 	}
 	struct hostent *host;
@@ -35,8 +38,10 @@ static void callback_nameserver_servers(void *args, int status, int timeouts, un
 }
 
 static void callback_nameserver_hosts(void *args, int status, int timeouts, struct hostent *host) {
+	char errStr[LOGGING_STR_LEN + 1] = "lookup of IP address failed with error: ";
 	if(!host || status != ARES_SUCCESS){
-		printf("ERROR: lookup of IP address failed with error: %s\n", ares_strerror(status));
+		strncat(errStr, ares_strerror(status), LOGGING_STR_LEN);
+		LOGGING_QUICK_ERROR("kraken.dns_enum", errStr)
 		return;
 	}
 	struct domain_ns_list *nameservers;
@@ -53,8 +58,10 @@ static void callback_nameserver_hosts(void *args, int status, int timeouts, stru
 }
 
 static void callback_host(void *c_host_manager, int status, int timeouts, struct hostent *host) {
+	char errStr[LOGGING_STR_LEN + 1] = "lookup of IP address failed with error: ";
 	if(!host || status != ARES_SUCCESS){
-		/* printf("INFO: lookup of IP address failed with error: %s\n", ares_strerror(status)); */
+		strncat(errStr, ares_strerror(status), LOGGING_STR_LEN);
+		LOGGING_QUICK_TRACE("kraken.dns_enum", errStr)
 		return;
 	}
 	int i = 0;
@@ -94,21 +101,24 @@ static void wait_ares(ares_channel channel, int max_allowed) {
 }
 
 int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers) {
+	char logStr[LOGGING_STR_LEN + 1];
 	ares_channel channel;
 	int status;
 	int i;
-#ifdef DEBUG
-	printf("INFO: querying nameservers for domain: %s\n", target_domain);
-#endif
+	
+	snprintf(logStr, sizeof(logStr), "querying nameservers for domain: %s", target_domain);
+	LOGGING_QUICK_INFO("kraken.dns_enum", logStr)
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS){
-		printf("ERROR: ares_library_init: %s\n", ares_strerror(status));
+		snprintf(logStr, sizeof(logStr), "could not initialize ares with error: %s", ares_strerror(status));
+		LOGGING_QUICK_ERROR("kraken.dns_enum", logStr)
 		return 1;
 	}
 
 	status = ares_init(&channel);
 	if(status != ARES_SUCCESS) {
-		printf("ERROR: ares_init_options: %s\n", ares_strerror(status));
+		snprintf(logStr, sizeof(logStr), "could not initialize ares options with error: %s", ares_strerror(status));
+		LOGGING_QUICK_ERROR("kraken.dns_enum", logStr)
 		return 1;
 	}
 	
@@ -116,20 +126,20 @@ int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameserv
 	wait_ares(channel, 0);
 	
 	for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); ++i) {
-#ifdef DEBUG
-		printf("INFO: looking up IP for name server %s\n", nameservers->servers[i]);
-#endif
+		snprintf(logStr, sizeof(logStr), "looking up IP for name server %s", nameservers->servers[i]);
+		LOGGING_QUICK_INFO("kraken.dns_enum", logStr)
 		ares_gethostbyname(channel, nameservers->servers[i], AF_INET, callback_nameserver_hosts, (domain_ns_list *)nameservers);
 	}
 	wait_ares(channel, 0);
 	
 	ares_destroy(channel);
 	ares_library_cleanup();
-	printf("INFO: finished determining name servers\n");
+	LOGGING_QUICK_INFO("kraken.dns_enum", "finished determining name servers")
 	return 0;
 }
 
 int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_manager, domain_ns_list *nameservers) {
+	char logStr[LOGGING_STR_LEN + 1];
 	ares_channel channel;
 	int status;
 	unsigned int query_counter = 0;
@@ -140,19 +150,21 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS){
-		printf("ERROR: ares_library_init: %s\n", ares_strerror(status));
+		snprintf(logStr, sizeof(logStr), "could not initialize ares with error: %s", ares_strerror(status));
+		LOGGING_QUICK_ERROR("kraken.dns_enum", logStr)
 		return 1;
 	}
 
 	status = ares_init(&channel);
-	if (status != ARES_SUCCESS) {
-		printf("ERROR: ares_init: %s\n", ares_strerror(status));
+	if(status != ARES_SUCCESS) {
+		snprintf(logStr, sizeof(logStr), "could not initialize ares options with error: %s", ares_strerror(status));
+		LOGGING_QUICK_ERROR("kraken.dns_enum", logStr)
 		return 1;
 	}
 	
 	if (nameservers != NULL) {
 		// set the name servers //
-		printf("INFO: swithcing to use supplied name servers\n");
+		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")
 		struct ares_addr_node servers_addr_node[DNS_MAX_NS_HOSTS];
 		struct in_addr blank_address;
 		memset(&servers_addr_node, '\0', sizeof(servers_addr_node));
@@ -169,10 +181,11 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
 	
-	printf("INFO: bruteforcing names for domain: %s\n", target_domain);
+	snprintf(logStr, sizeof(logStr), "bruteforcing names for domain: %s", target_domain);
+	LOGGING_QUICK_INFO("kraken.dns_enum", logStr)
 
 	if ((fierceprefixes = fopen(FIERCE_PREFIXES_PATH, "r")) == NULL) {
-		printf("ERROR: cannot open file from fierce containing prefixes\n");
+		LOGGING_QUICK_ERROR("kraken.dns_enum", "cannot open file containing host name prefixes")
 		ares_destroy(channel);
 		ares_library_cleanup();
 		return 2;
@@ -191,11 +204,13 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	
 	ares_destroy(channel);
 	ares_library_cleanup();
-	printf("INFO: finished bruteforcing %u queries\n", query_counter);
+	snprintf(logStr, sizeof(logStr),  "finished bruteforcing, %u queries were used", query_counter);
+	LOGGING_QUICK_INFO("kraken.dns_enum", logStr);
 	return 0;
 }
 
 int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host_manager, domain_ns_list *nameservers) {
+	char logStr[LOGGING_STR_LEN + 1];
 	ares_channel channel;
 	single_host_info *h_info_chk = NULL;
 	int status;
@@ -203,22 +218,25 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 	int i;
 	struct in_addr c_ip;
 	char ipstr[INET6_ADDRSTRLEN];
+	char netstr[INET6_ADDRSTRLEN];
 	
 	status = ares_library_init(ARES_LIB_INIT_ALL);
-	if (status != ARES_SUCCESS) {
-		printf("ERROR: ares_library_init: %s\n", ares_strerror(status));
+	if (status != ARES_SUCCESS){
+		snprintf(logStr, sizeof(logStr), "could not initialize ares with error: %s", ares_strerror(status));
+		LOGGING_QUICK_ERROR("kraken.dns_enum", logStr)
 		return 1;
 	}
-	
+
 	status = ares_init(&channel);
-	if (status != ARES_SUCCESS) {
-		printf("ERROR: ares_init: %s\n", ares_strerror(status));
+	if(status != ARES_SUCCESS) {
+		snprintf(logStr, sizeof(logStr), "could not initialize ares options with error: %s", ares_strerror(status));
+		LOGGING_QUICK_ERROR("kraken.dns_enum", logStr)
 		return 1;
 	}
 	
 	if (nameservers != NULL) {
 		// set the name servers //
-		printf("INFO: swithcing to use supplied name servers\n");
+		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")
 		struct ares_addr_node servers_addr_node[DNS_MAX_NS_HOSTS];
 		struct in_addr blank_address;
 		memset(&servers_addr_node, '\0', sizeof(servers_addr_node));
@@ -236,9 +254,9 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 	}
 	
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
-	printf("INFO: bruteforcing names in network: %s ", ipstr);	/* TODO make network_info to string function */
-	inet_ntop(AF_INET, &target_net->subnetmask, ipstr, sizeof(ipstr));
-	printf("%s\n", ipstr);
+	inet_ntop(AF_INET, &target_net->subnetmask, ipstr, sizeof(netstr));
+	snprintf(logStr, sizeof(logStr), "bruteforcing names in network: %s %s", ipstr, netstr); /* TODO make network_info to string function */
+	LOGGING_QUICK_INFO("kraken.dns_enum", logStr)
 	
 	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
 	
@@ -258,49 +276,57 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 	
 	ares_destroy(channel);
 	ares_library_cleanup();
+	snprintf(logStr, sizeof(logStr), "finished bruteforcing, %u queries were used", query_counter);
+	LOGGING_QUICK_INFO("kraken.dns_enum", logStr);
 	return 0;
 }
 
 int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
+	char logStr[LOGGING_STR_LEN + 1];
 	domain_ns_list nameservers;
-	char ip[INET_ADDRSTRLEN];
+	char ipstr[INET_ADDRSTRLEN];
 	int i;
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	memset(&nameservers, '\0', sizeof(nameservers));
-	printf("INFO: enumerating domain: %s\n", target_domain);
+	snprintf(logStr, sizeof(logStr), "enumerating domain: %s", target_domain);
+	LOGGING_QUICK_INFO("kraken.dns_enum", logStr)
 	
 	dns_get_nameservers_for_domain(target_domain, &nameservers);
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
-		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ip, sizeof(ip));
-		printf("INFO: found name server %s %s\n", nameservers.servers[i], ip);
+		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
+		snprintf(logStr, sizeof(logStr), "found name server %s %s", nameservers.servers[i], ipstr);
+		LOGGING_QUICK_INFO("kraken.dns_enum", logStr)
 	}
 	
 	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers);
 	
-	printf("INFO: dns enumerate domain finished\n");
+	LOGGING_QUICK_INFO("kraken.dns_enum", "dns enumerate domain finished")
 	return 0;
 }
 
 int dns_enumerate_network(char *target_domain, network_info *target_net, host_manager *c_host_manager) {
+	char logStr[LOGGING_STR_LEN + 1];
 	domain_ns_list nameservers;
 	char ipstr[INET6_ADDRSTRLEN];
+	char netstr[INET6_ADDRSTRLEN];
 	int i;
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	memset(&nameservers, '\0', sizeof(nameservers));
 	
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
-	printf("INFO: enumerating network: %s ", ipstr);	/* TODO make network_info to string function */
-	inet_ntop(AF_INET, &target_net->subnetmask, ipstr, sizeof(ipstr));
-	printf("%s for domain: %s\n", ipstr, target_domain);
+	inet_ntop(AF_INET, &target_net->subnetmask, ipstr, sizeof(netstr));
+	snprintf(logStr, sizeof(logStr), "enumerating network: %s %s", ipstr, netstr);
+	LOGGING_QUICK_INFO("kraken.dns_enum", logStr);
 	
 	dns_get_nameservers_for_domain(target_domain, &nameservers);
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
 		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
-		printf("INFO: found name server %s %s\n", nameservers.servers[i], ipstr);
+		snprintf(logStr, sizeof(logStr), "found name server %s %s", nameservers.servers[i], ipstr);
+		LOGGING_QUICK_INFO("kraken.dns_enum", logStr)
 	}
 	
 	dns_bruteforce_names_in_range(target_net, c_host_manager, &nameservers);
 	
-	printf("INFO: dns enumerate network finished\n");
+	LOGGING_QUICK_INFO("kraken.dns_enum", "dns enumerate network finished")
 	return 0;
 }

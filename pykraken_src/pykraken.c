@@ -19,7 +19,7 @@ static PyObject *pykraken_whois_lookup_ip(PyObject *self, PyObject *args) {
 	PyObject *pyTmpStr = NULL;
 	
 	if (pyWhoResp == NULL) {
-		PyErr_SetString(PyExc_Exception, "could not create a dictionary to store the results");
+		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
 	
@@ -28,12 +28,12 @@ static PyObject *pykraken_whois_lookup_ip(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	if (inet_pton(AF_INET, ipstr, &target_ip) == 0) {
-		PyErr_SetString(PyExc_Exception, "invalid IP address");
+		PyErr_SetString(PyExc_ValueError, "invalid IP address");
 		Py_DECREF(pyWhoResp);
 		return NULL;
 	}
 	if (whois_lookup_ip(&target_ip, &who_resp) != 0) {
-		PyErr_SetString(PyExc_Exception, "whois lookup failed");
+		PyErr_SetString(PyExc_ValueError, "whois lookup failed");
 		Py_DECREF(pyWhoResp);
 		return NULL;
 	}
@@ -91,7 +91,7 @@ static PyObject *pykraken_get_nameservers(PyObject *self, PyObject *args) {
 	PyObject *nsIpaddr;
 	
 	if (nsList == NULL) {
-		PyErr_SetString(PyExc_Exception, "could not create a dictionary to store the results");
+		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
 	
@@ -123,7 +123,7 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 	PyObject *pyHostList = PyDict_New();
 	
 	if (pyHostList == NULL) {
-		PyErr_SetString(PyExc_Exception, "could not create a dictionary to store the results");
+		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
 	
@@ -133,7 +133,7 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 	}
 	
 	if (init_host_manager(&c_host_manager) != 0) {
-		PyErr_SetString(PyExc_Exception, "could not initialize the host manager, it is likely that there is not enough memory");
+		PyErr_SetString(PyExc_MemoryError, "could not initialize the host manager, it is likely that there is not enough memory");
 		return NULL;
 	}
 	
@@ -148,7 +148,7 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 			Py_DECREF(pyTmpStr);
 		} else {
 			destroy_host_manager(&c_host_manager);
-			PyErr_SetString(PyExc_Exception, "could not convert a C string to a Python string");
+			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
 			Py_DECREF(pyHostList);
 			return NULL;
 		}
@@ -169,7 +169,7 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 	PyObject *pyHostList = PyDict_New();
 	
 	if (pyHostList == NULL) {
-		PyErr_SetString(PyExc_Exception, "could not create a dictionary to store the results");
+		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
 	
@@ -179,13 +179,13 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 	}
 	
 	if (netaddr_cidr_str_to_nwk(pTargetNetwork, &network) != 0) {
-		PyErr_SetString(PyExc_Exception, "invalid CIDR network");
+		PyErr_SetString(PyExc_ValueError, "invalid CIDR network");
 		Py_DECREF(pyHostList);
 		return NULL;
 	}
 	
 	if (init_host_manager(&c_host_manager) != 0) {
-		PyErr_SetString(PyExc_Exception, "could not initialize the host manager, it is likely that there is not enough memory");
+		PyErr_SetString(PyExc_MemoryError, "could not initialize the host manager, it is likely that there is not enough memory");
 		return NULL;
 	}
 	
@@ -200,7 +200,7 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 			Py_DECREF(pyTmpStr);
 		} else {
 			destroy_host_manager(&c_host_manager);
-			PyErr_SetString(PyExc_Exception, "could not convert a C string to a Python string");
+			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
 			Py_DECREF(pyHostList);
 			return NULL;
 		}
@@ -220,12 +220,12 @@ static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
 	}
 	
 	if (netaddr_cidr_str_to_nwk(pCidrNetwork, &network) != 0) {
-		PyErr_SetString(PyExc_Exception, "invalid CIDR network");
+		PyErr_SetString(PyExc_ValueError, "invalid CIDR network");
 		return NULL;
 	}
 	
 	if (inet_pton(AF_INET, pIpAddr, &packedIp) == 0) {
-		PyErr_SetString(PyExc_Exception, "invalid IP address");
+		PyErr_SetString(PyExc_ValueError, "invalid IP address");
 		return NULL;
 	}
 	

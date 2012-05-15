@@ -25,34 +25,53 @@
 #include <arpa/inet.h>
 #include <ares.h>
 #include <argp.h>
+#ifndef WITHOUT_LOG4C
+#include <log4c.h>
+#endif
 #include "hosts.h"
 #include "host_manager.h"
-#include "dns_enum.h"
 #include "gui_main.h"
+#include "logging.h"
 #include "whois_lookup.h"
 
 const char *argp_program_version = "kraken 0.1";
 const char *argp_program_bug_address = "<smcintyre@securestate.net>";
 static char doc[] = "Enumerate targets.";
-static char args_doc[] = "TARGET_DOMAIN";
+static char args_doc[] = "";
 
 static struct argp_option options[] = {
+	{ "loglvl",   'L', "LOG_LEVEL", 0, "Log level (DEBUG, INFO, ERROR, WARNING, CRITICAL)" },
 	{ 0 }
 };
 
 struct arguments {
-	char *target_domains[1];
+	//char *target_domains[1];
+	int loglvl;
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 	struct arguments *arguments = state->input;
 	
 	switch (key) {
+		case 'L':
+			if (strncasecmp(arg, "CRITICAL", 8) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_CRIT;
+			} else if (strncasecmp(arg, "ERROR", 5) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_ERROR;
+			} else if (strncasecmp(arg, "WARNING", 7) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_WARN;
+			} else if (strncasecmp(arg, "INFO", 4) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_INFO;
+			} else if (strncasecmp(arg, "DEBUG", 5) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_DEBUG;
+			} else {
+				 argp_usage(state);
+			}
+			break;
 		case ARGP_KEY_ARG:
 			if (state->arg_num >= 1)
 			/* Too many arguments. */
-			argp_usage (state);
-			arguments->target_domains[state->arg_num] = arg;
+			argp_usage(state);
 			break;
 		case ARGP_KEY_END:
 			break;
@@ -72,15 +91,28 @@ int main(int argc, char **argv) {
 	single_host_info current_host;
 	whois_record current_who_rec;
 	char ipstr[INET_ADDRSTRLEN];
+	log4c_category_t* logcat = NULL;
+	
+	/* set argument defaults */
+	arguments.loglvl = LOG4C_PRIORITY_CRIT;
 	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
-	if (init_host_manager(&c_host_manager) != 0) {
-		printf("ERROR: could not initialize the host manager, it is likely that there is not enough memory\n");
-		return 0;
+	
+	if (log4c_init()) {
+		fprintf(stdout, "Could not initialize logging subsystem.\n");
+		return 1;
 	}
 	
-	/* dns_enumerate_domain(arguments.target_domains[0], &c_host_manager); */
-	/* whois_fill_host_manager(&c_host_manager); */
+#ifndef WITHOUT_LOG4C
+	logcat = log4c_category_get("kraken");
+	log4c_category_set_priority(logcat, arguments.loglvl);
+	log4c_category_set_appender(logcat, log4c_appender_get("stdout"));
+#endif
+	
+	if (init_host_manager(&c_host_manager) != 0) {
+		LOGGING_QUICK_FATAL("kraken", "could not initialize the host manager, it is likely that there is not enough memory")
+		return 0;
+	}
 	
 	gui_show_main_window(&c_host_manager);
 	

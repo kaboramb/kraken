@@ -15,11 +15,8 @@
 #define WHOIS_SRV_ARIN 1
 #define WHOIS_SRV_RIPE 2
 
-#define WHOIS_SRV_IP_ARIN "199.212.0.48" /* TODO: make this the name whois.arin.net not the IP */
-#define WHOIS_SRV_HOST_ARIN "whois.arin.net" /*TODO: fix this to a working server */
-
-#define WHOIS_SRV_IP_RIPE "193.0.6.135" /* TODO: make this the name whois.ripe.net not the IP */
-#define WHOIS_SRV_HOST_RIPE "whois.ripe.net" /*TODO: fix this to a working server */
+#define WHOIS_SRV_HOST_ARIN "whois.arin.net"
+#define WHOIS_SRV_HOST_RIPE "whois.ripe.net"
 
 /* this is a duplicate */
 #define DNS_MAX_FQDN_LENGTH 255

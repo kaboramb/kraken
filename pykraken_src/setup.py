@@ -15,7 +15,8 @@ pykraken = Extension('pykraken',
 			],
 			libraries = ['cares'],
 			include_dirs = ['/usr/local/include', '/usr/include', '..'],
-			library_dirs = ['/usr/local/lib', '/usr/lib']
+			library_dirs = ['/usr/local/lib', '/usr/lib'],
+			define_macros = [ ('WITHOUT_LOG4C', None) ],
 			)
 
 setup (
