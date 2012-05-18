@@ -40,7 +40,7 @@ static char doc[] = "Enumerate targets.";
 static char args_doc[] = "";
 
 static struct argp_option options[] = {
-	{ "loglvl",   'L', "LOG_LEVEL", 0, "Log level (DEBUG, INFO, ERROR, WARNING, CRITICAL)" },
+	{ "loglvl",   'L', "LOG_LEVEL", 0, "Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)" },
 	{ 0 }
 };
 
@@ -54,16 +54,34 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 	
 	switch (key) {
 		case 'L':
-			if (strncasecmp(arg, "CRITICAL", 8) == 0) {
+			if (strncasecmp(arg, "FATAL", 5) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_FATAL;
+			} else if (strncasecmp(arg, "ALERT", 5) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_ALERT;
+			} else if (strncasecmp(arg, "CRITICAL", 8) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_CRIT;
+			} else if (arg[0] == 'C') {
 				arguments->loglvl = LOG4C_PRIORITY_CRIT;
 			} else if (strncasecmp(arg, "ERROR", 5) == 0) {
 				arguments->loglvl = LOG4C_PRIORITY_ERROR;
+			} else if (arg[0] == 'E') {
+				arguments->loglvl = LOG4C_PRIORITY_ERROR;
 			} else if (strncasecmp(arg, "WARNING", 7) == 0) {
 				arguments->loglvl = LOG4C_PRIORITY_WARN;
+			} else if (arg[0] == 'W') {
+				arguments->loglvl = LOG4C_PRIORITY_WARN;
+			} else if (strncasecmp(arg, "NOTICE", 6) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_NOTICE;
 			} else if (strncasecmp(arg, "INFO", 4) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_INFO;
+			} else if (arg[0] == 'I') {
 				arguments->loglvl = LOG4C_PRIORITY_INFO;
 			} else if (strncasecmp(arg, "DEBUG", 5) == 0) {
 				arguments->loglvl = LOG4C_PRIORITY_DEBUG;
+			} else if (arg[0] == 'D') {
+				arguments->loglvl = LOG4C_PRIORITY_DEBUG;
+			} else if (strncasecmp(arg, "TRACE", 5) == 0) {
+				arguments->loglvl = LOG4C_PRIORITY_TRACE;
 			} else {
 				 argp_usage(state);
 			}
@@ -95,7 +113,7 @@ int main(int argc, char **argv) {
 	
 	/* set argument defaults */
 #ifndef WITHOUT_LOG4C
-	arguments.loglvl = LOG4C_PRIORITY_CRIT;
+	arguments.loglvl = LOG4C_PRIORITY_ERROR;
 #else
 	arguments.loglvl = 0;
 #endif
@@ -117,25 +135,27 @@ int main(int argc, char **argv) {
 		LOGGING_QUICK_FATAL("kraken", "could not initialize the host manager, it is likely that there is not enough memory")
 		return 0;
 	}
-	
+	LOGGING_QUICK_WARNING("kraken", "releasing the kraken")
 	gui_show_main_window(&c_host_manager);
 	
-	printf("\n");
-	printf("Summary: %u hosts found on %u networks\n", c_host_manager.known_hosts, c_host_manager.known_whois_records);
-	printf("Hosts found:\n");
-	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
-		current_host = c_host_manager.hosts[current_host_i];
-		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
-		printf("\t%s %s\n", current_host.hostname, ipstr);
-	}
-	printf("\n");
-	printf("Networks found:\n");
-	for (current_who_i = 0; current_who_i < c_host_manager.known_whois_records; current_who_i++) {
-		current_who_rec = c_host_manager.whois_records[current_who_i];
-		printf("\t%s\n", current_who_rec.cidr_s);
+	if (c_host_manager.known_hosts) {
+		printf("\n");
+		printf("Summary: %u hosts found on %u networks\n", c_host_manager.known_hosts, c_host_manager.known_whois_records);
+		printf("Hosts found:\n");
+		for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
+			current_host = c_host_manager.hosts[current_host_i];
+			inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
+			printf("\t%s %s\n", current_host.hostname, ipstr);
+		}
+		printf("\n");
+		printf("Networks found:\n");
+		for (current_who_i = 0; current_who_i < c_host_manager.known_whois_records; current_who_i++) {
+			current_who_rec = c_host_manager.whois_records[current_who_i];
+			printf("\t%s\n", current_who_rec.cidr_s);
+		}
 	}
 	
-	printf("\nNow Exiting...\n");
+	LOGGING_QUICK_WARNING("kraken", "good luck and good hunting")
 	destroy_host_manager(&c_host_manager);
 	return 0;
 }

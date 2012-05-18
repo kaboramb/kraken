@@ -145,7 +145,6 @@ int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *
 
 int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record) {
 	if (c_host_manager->known_whois_records >= c_host_manager->current_whois_record_capacity) {
-		/* FIXME: if the buffersize is increased and the new whois_records are moved over then all the pointers in the hosts section will be invalid */
 		void *tmpbuffer = malloc(sizeof(struct whois_record) * (c_host_manager->current_whois_record_capacity + WHOIS_CAPACITY_INCREMENT_SIZE));
 		if (tmpbuffer == NULL) {
 			return 1;
@@ -155,6 +154,7 @@ int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_recor
 		memcpy(tmpbuffer, c_host_manager->whois_records, (sizeof(struct whois_record) * c_host_manager->known_whois_records));
 		free(c_host_manager->whois_records);
 		c_host_manager->whois_records = tmpbuffer;
+		host_manager_sync_whois_data(c_host_manager);
 	}
 	
 	memcpy(&c_host_manager->whois_records[c_host_manager->known_whois_records], new_record, sizeof(whois_record));
@@ -189,4 +189,19 @@ int host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_
 		}
 	}
 	return 0;
+}
+
+void host_manager_sync_whois_data(host_manager *c_host_manager) {
+	unsigned int current_host_i;
+	single_host_info *current_host;
+	whois_record *cur_who_resp = NULL;
+	
+	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		current_host = &c_host_manager->hosts[current_host_i];
+		host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
+		if (cur_who_resp != NULL) {
+			current_host->whois_data = cur_who_resp;
+		}
+	}
+	return;
 }

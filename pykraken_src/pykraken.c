@@ -5,6 +5,7 @@
 #include "hosts.h"
 #include "host_manager.h"
 #include "dns_enum.h"
+#include "http_scan.h"
 #include "network_addr.h"
 #include "whois_lookup.h"
 
@@ -235,12 +236,61 @@ static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
 	Py_RETURN_FALSE;
 }
 
+static PyObject *pykraken_scrape_for_links(PyObject *self, PyObject *args) {
+	char *pServer;
+	char *pDomain;
+	char linkStr[HTTP_SCHEME_SZ + DNS_MAX_FQDN_LENGTH + HTTP_RESOURCE_SZ + 5]; /* len(":///") + 1 */
+	http_link *link_anchor;
+	http_link *link_current = NULL;
+	unsigned int link_position = 0;
+	unsigned int link_counter = 1;
+	PyObject *pyTmpStr = NULL;
+	PyObject *pyLinkList = NULL;
+	
+	if (!PyArg_ParseTuple(args, "s", &pServer)) {
+		return NULL;
+	}
+	http_scrape_for_links(pServer, &link_anchor);
+	if (link_anchor == NULL) {
+		return PyTuple_New(0);
+	}
+	for (link_current = link_anchor->next; link_current; link_current = link_current->next) {
+		link_counter++;
+	}
+	pyLinkList = PyTuple_New(link_counter);
+	if (pyLinkList == NULL) {
+		PyErr_SetString(PyExc_MemoryError, "could not create a tuple to store the results");
+		http_free_link(link_anchor);
+		return NULL;
+	}
+	for (link_current = link_anchor; link_current; link_current = link_current->next) {
+		memset(linkStr, '\0', sizeof(linkStr));
+		strncat(linkStr, link_current->scheme, HTTP_SCHEME_SZ);
+		strcat(linkStr, "://");
+		strncat(linkStr, link_current->hostname, DNS_MAX_FQDN_LENGTH);
+		strcat(linkStr, "/");
+		strncat(linkStr, link_current->path, HTTP_RESOURCE_SZ);
+		pyTmpStr = PyString_FromString(linkStr);
+		if (pyTmpStr == NULL) {
+			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
+			Py_DECREF(pyLinkList);
+			http_free_link(link_anchor);
+			return NULL;
+		}
+		PyTuple_SetItem(pyLinkList, link_position, pyTmpStr);
+		link_position++;
+	}
+	http_free_link(link_anchor);
+	return pyLinkList;
+}
+
 static PyMethodDef PyKrakenMethods[] = {
 	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "whois_lookup_ip(target_ip)\nRetrieve the whois record pretaining to an IP address\n\n@type target_ip: String\n@param target_ip: ip address to retreive whois information for"},
 	{"get_nameservers", pykraken_get_nameservers, METH_VARARGS, "get_nameservers(target_domain)\nEnumerate nameservers for a domain\n\n@type target_domain: String\n@param target_domain: the domain to retreive the list of name servers for"},
 	{"enumerate_domain", pykraken_enumerate_domain, METH_VARARGS, "enumerate_domain(target_domain)\nEnumerate hostnames for a domain\n\n@type target_domain: String\n@param target_domain: the domain to enumerate hostnames for"},
 	{"enumerate_network", pykraken_enumerate_network, METH_VARARGS, "enumerate_network(target_domain, target_network)\nEnumerate hostnames for a network\n\n@type target_domain: String\n@param target_domain: the domain who's name servers to use\n@type target_network: String\n@param target_network: the network in CIDR notation to bruteforce records for"},
 	{"ip_in_cidr", pykraken_ip_in_cidr, METH_VARARGS, "ip_in_cidr(target_ip, target_network)\nCheck if an IP address is in a CIDR network\n\n@type target_ip: String\n@param target_ip: the ip to check\n@type target_network: String\n@param target_network: the network to check"},
+	{"scrape_for_links", pykraken_scrape_for_links, METH_VARARGS, ""},
 	{NULL, NULL, 0, NULL}
 };
 

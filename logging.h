@@ -1,3 +1,18 @@
+/*
+ * Acceptable Log Levels For Log4C:
+ *     fatal:    LOG4C_PRIORITY_FATAL
+ *     alert:    LOG4C_PRIORITY_ALERT
+ *     critical: LOG4C_PRIORITY_CRIT
+ *     error:    LOG4C_PRIORITY_ERROR
+ *     warning:  LOG4C_PRIORITY_WARN
+ *     notice:   LOG4C_PRIORITY_NOTICE
+ *     info:     LOG4C_PRIORITY_INFO
+ *     debug:    LOG4C_PRIORITY_DEBUG
+ *     trace:    LOG4C_PRIORITY_TRACE
+ *     notset:   LOG4C_PRIORITY_NOTSET
+ *     unknown:  LOG4C_PRIORITY_UNKNOWN
+ */
+
 #ifndef _KRAKEN_LOGGING_H
 #define _KRAKEN_LOGGING_H
 
