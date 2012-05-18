@@ -238,19 +238,30 @@ static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
 
 static PyObject *pykraken_scrape_for_links(PyObject *self, PyObject *args) {
 	char *pServer;
-	char *pDomain;
 	char linkStr[HTTP_SCHEME_SZ + DNS_MAX_FQDN_LENGTH + HTTP_RESOURCE_SZ + 5]; /* len(":///") + 1 */
-	http_link *link_anchor;
+	http_link *link_anchor = NULL;
 	http_link *link_current = NULL;
 	unsigned int link_position = 0;
 	unsigned int link_counter = 1;
+	int ret_val = 0;
 	PyObject *pyTmpStr = NULL;
 	PyObject *pyLinkList = NULL;
 	
 	if (!PyArg_ParseTuple(args, "s", &pServer)) {
 		return NULL;
 	}
-	http_scrape_for_links(pServer, &link_anchor);
+	ret_val = http_scrape_for_links(pServer, &link_anchor);
+	if (ret_val != 0) {
+		switch (ret_val) {
+			case 1: PyErr_SetString(PyExc_MemoryError, "could not allocate memory to process the request");
+			case 2: PyErr_SetString(PyExc_Exception, "the HTTP request failed");
+			case 3: PyErr_SetString(PyExc_Exception, "the web server attempted to redirect to a different server");
+			case 4: PyErr_SetString(PyExc_Exception, "the content type was not provided in the web servers response");
+			default: PyErr_SetString(PyExc_Exception, "an unknown error occured");
+		}
+		http_free_link(link_anchor);
+		return NULL;
+	}
 	if (link_anchor == NULL) {
 		return PyTuple_New(0);
 	}
@@ -284,6 +295,25 @@ static PyObject *pykraken_scrape_for_links(PyObject *self, PyObject *args) {
 	return pyLinkList;
 }
 
+static PyObject *pykraken_redirect_on_same_server(PyObject *self, PyObject *args) {
+	char *original_url;
+	char *redirect_url;
+	int ret_val = 0;
+	
+	if (!PyArg_ParseTuple(args, "ss", &original_url, &redirect_url)) {
+		return NULL;
+	}
+	ret_val = http_redirect_on_same_server(original_url, redirect_url);
+	if (ret_val == -1) {
+		PyErr_SetString(PyExc_ValueError, "a problem occured while parsing the URLs");
+		return NULL;
+	}
+	if (ret_val == 1) {
+		Py_RETURN_TRUE;
+	}
+	Py_RETURN_FALSE;
+}
+
 static PyMethodDef PyKrakenMethods[] = {
 	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "whois_lookup_ip(target_ip)\nRetrieve the whois record pretaining to an IP address\n\n@type target_ip: String\n@param target_ip: ip address to retreive whois information for"},
 	{"get_nameservers", pykraken_get_nameservers, METH_VARARGS, "get_nameservers(target_domain)\nEnumerate nameservers for a domain\n\n@type target_domain: String\n@param target_domain: the domain to retreive the list of name servers for"},
@@ -291,6 +321,7 @@ static PyMethodDef PyKrakenMethods[] = {
 	{"enumerate_network", pykraken_enumerate_network, METH_VARARGS, "enumerate_network(target_domain, target_network)\nEnumerate hostnames for a network\n\n@type target_domain: String\n@param target_domain: the domain who's name servers to use\n@type target_network: String\n@param target_network: the network in CIDR notation to bruteforce records for"},
 	{"ip_in_cidr", pykraken_ip_in_cidr, METH_VARARGS, "ip_in_cidr(target_ip, target_network)\nCheck if an IP address is in a CIDR network\n\n@type target_ip: String\n@param target_ip: the ip to check\n@type target_network: String\n@param target_network: the network to check"},
 	{"scrape_for_links", pykraken_scrape_for_links, METH_VARARGS, ""},
+	{"redirect_on_same_server", pykraken_redirect_on_same_server, METH_VARARGS, ""},
 	{NULL, NULL, 0, NULL}
 };
 
