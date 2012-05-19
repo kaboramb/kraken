@@ -277,6 +277,12 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 			return 3;
 		}
 	}
+	if (redirect_count == HTTP_MAX_REDIRECTS) {
+		LOGGING_QUICK_WARNING("kraken.http_scan", "received too many redirects")
+		free(webpage_b);
+		curl_easy_cleanup(curl);
+		return 6;
+	}
 
 	snprintf(logStr, sizeof(logStr), "%lu bytes were read from the page", webpage_sz);
 	LOGGING_QUICK_DEBUG("kraken.http_scan", logStr)

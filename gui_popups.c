@@ -26,7 +26,6 @@ void popup_error_invalid_cidr_network(gpointer window) {
 }
 
 void callback_bf_domain(GtkWidget *widget, popup_data *userdata) {
-	GtkTreeModel *model;
 	const gchar *text_entry;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
 	
@@ -46,14 +45,13 @@ void callback_bf_domain(GtkWidget *widget, popup_data *userdata) {
 	dns_enumerate_domain(target_domain, userdata->c_host_manager);
 	whois_fill_host_manager(userdata->c_host_manager);
 	
-	model = gui_refresh_tree_model(NULL, userdata->c_host_manager);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(userdata->tree_view), model);
+	gui_model_update_tree_and_marquee((main_gui_data*)userdata);
 	
 	free(userdata);
 	return;
 }
 
-gboolean gui_popup_bf_domain(GtkWidget *tree_view, host_manager *c_host_manager) {
+gboolean gui_popup_bf_domain(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
@@ -90,14 +88,15 @@ gboolean gui_popup_bf_domain(GtkWidget *tree_view, host_manager *c_host_manager)
 	
 	entry = gtk_entry_new();
 	gtk_entry_set_max_length(GTK_ENTRY(entry), DNS_MAX_FQDN_LENGTH);
-	if (strlen(c_host_manager->lw_domain) > 0) {
-		gtk_entry_set_text(GTK_ENTRY(entry), c_host_manager->lw_domain);
+	if (strlen(m_data->c_host_manager->lw_domain) > 0) {
+		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
 	}
 	
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
-	p_data->tree_view = tree_view;
-	p_data->c_host_manager = c_host_manager;
+	p_data->tree_view = m_data->tree_view;
+	p_data->main_marquee = m_data->main_marquee;
+	p_data->c_host_manager = m_data->c_host_manager;
 	
 	
 	g_signal_connect(entry, "activate", G_CALLBACK(callback_bf_domain), p_data);
@@ -135,7 +134,6 @@ gboolean gui_popup_bf_domain(GtkWidget *tree_view, host_manager *c_host_manager)
 }
 
 void callback_bf_network(GtkWidget *widget, popup_data *userdata) {
-	GtkTreeModel *model;
 	const gchar *text_entry;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
 	network_info target_network;
@@ -163,14 +161,13 @@ void callback_bf_network(GtkWidget *widget, popup_data *userdata) {
 	dns_enumerate_network(target_domain, &target_network, userdata->c_host_manager);
 	whois_fill_host_manager(userdata->c_host_manager);
 	
-	model = gui_refresh_tree_model(NULL, userdata->c_host_manager);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(userdata->tree_view), model);
+	gui_model_update_tree_and_marquee((main_gui_data*)userdata);
 	
 	free(userdata);
 	return;
 }
 
-gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager, char *cidr_str) {
+gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry0;
@@ -208,8 +205,8 @@ gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager
 	
 	entry0 = gtk_entry_new();
 	gtk_entry_set_max_length(GTK_ENTRY(entry0), DNS_MAX_FQDN_LENGTH);
-	if (strlen(c_host_manager->lw_domain) > 0) {
-		gtk_entry_set_text(GTK_ENTRY(entry0), c_host_manager->lw_domain);
+	if (strlen(m_data->c_host_manager->lw_domain) > 0) {
+		gtk_entry_set_text(GTK_ENTRY(entry0), m_data->c_host_manager->lw_domain);
 	}
 	g_signal_connect(entry0, "activate", G_CALLBACK(callback_bf_domain), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry0, TRUE, TRUE, 0);
@@ -238,8 +235,9 @@ gboolean gui_popup_bf_network(GtkWidget *tree_view, host_manager *c_host_manager
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry0;
 	p_data->text_entry1 = entry1;
-	p_data->tree_view = tree_view;
-	p_data->c_host_manager = c_host_manager;
+	p_data->tree_view = m_data->tree_view;
+	p_data->main_marquee = m_data->main_marquee;
+	p_data->c_host_manager = m_data->c_host_manager;
 	
 	/* get the button */
 	button = gtk_button_new();

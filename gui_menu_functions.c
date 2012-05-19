@@ -33,12 +33,12 @@ GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata) {
 	return gtk_item_factory_get_widget(item_factory, "<main>");
 }
 
-void gui_menu_edit_dns_forward_bf(menu_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_bf_domain(userdata->tree_view, userdata->c_host_manager);
+void gui_menu_edit_dns_forward_bf(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	gui_popup_bf_domain(userdata);
 	return;
 }
 
-void gui_menu_edit_dns_reverse_bf(menu_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_bf_network(userdata->tree_view, userdata->c_host_manager, NULL);
+void gui_menu_edit_dns_reverse_bf(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	gui_popup_bf_network(userdata, NULL);
 	return;
 }

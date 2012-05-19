@@ -9,10 +9,10 @@
 int gui_show_main_window(host_manager *c_host_manager) {
 	GtkWidget *window;
 	GtkWidget *scroll_window;
-	GtkWidget *main_vbox;
+	GtkWidget *main_vbox, *hbox;
 	GtkWidget *main_menu_bar;
 	GtkWidget *view;
-	menu_data m_data;
+	main_gui_data m_data;
 	
 	gtk_init(NULL, NULL);
 	
@@ -37,10 +37,17 @@ int gui_show_main_window(host_manager *c_host_manager) {
 	m_data.c_host_manager = c_host_manager;
 	main_menu_bar = get_main_menubar(window, &m_data);
 	
+	hbox = gtk_hbox_new(FALSE, 0);
+	m_data.main_marquee = hbox;
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
+	gtk_widget_show(hbox);
+	
 	gtk_box_pack_start(GTK_BOX(main_vbox), main_menu_bar, FALSE, TRUE, 0);
-	gtk_box_pack_end(GTK_BOX(main_vbox), scroll_window, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(main_vbox), scroll_window, TRUE, TRUE, 0);
+	gtk_box_pack_end(GTK_BOX(main_vbox), hbox, FALSE, FALSE, 0);
 	
 	gtk_widget_show_all(window);
+	gui_model_update_tree_and_marquee(&m_data);
 	gtk_main();
 	return 0;
 }

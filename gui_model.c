@@ -22,7 +22,7 @@ enum {
 	SORTID_WHO_ORGNAME,
 };
 
-void view_popup_menu_onDoSomething(GtkWidget *menuitem, menu_data *m_data) {
+void view_popup_menu_onDoSomething(GtkWidget *menuitem, main_gui_data *m_data) {
 	char logStr[LOGGING_STR_LEN + 1];
 	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
 	GtkTreeSelection *selection;
@@ -42,7 +42,7 @@ void view_popup_menu_onDoSomething(GtkWidget *menuitem, menu_data *m_data) {
 	return;
 }
 
-void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, menu_data *m_data) {
+void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, main_gui_data *m_data) {
 	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
@@ -67,17 +67,17 @@ void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, menu_data *m_
 		return;
 	}
 	
-	gui_popup_bf_network(m_data->tree_view, m_data->c_host_manager, who_r->cidr_s);
+	gui_popup_bf_network(m_data, who_r->cidr_s);
 	free(m_data);
 	return;
 }
 
 void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer userdata) {
 	GtkWidget *menu, *menuitem;
-	menu_data *m_data;
+	main_gui_data *m_data;
 	menu = gtk_menu_new();
 	
-	m_data = malloc(sizeof(menu_data));
+	m_data = malloc(sizeof(main_gui_data));
 	m_data->tree_view = treeview;
 	m_data->c_host_manager = userdata;
 	
@@ -117,6 +117,26 @@ gboolean view_onButtonPressed(GtkWidget *treeview, GdkEventButton *event, gpoint
 gboolean view_onPopupMenu(GtkWidget *treeview, gpointer userdata) {
 	view_popup_menu(treeview, NULL, userdata);
 	return TRUE;
+}
+
+int gui_model_update_tree_and_marquee(main_gui_data *m_data) {
+	GtkTreeModel *model;
+	GtkWidget *label;
+	char msg[32];
+	
+	model = gui_refresh_tree_model(NULL, m_data->c_host_manager);
+	gtk_tree_view_set_model(GTK_TREE_VIEW(m_data->tree_view), model);
+	
+	gtk_container_foreach(GTK_CONTAINER(m_data->main_marquee), (GtkCallback)gtk_widget_destroy, NULL);
+	label = gtk_label_new("Status: Waiting");
+	gtk_box_pack_start(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);
+	gtk_widget_show(label);
+	
+	snprintf(msg, 32, "Hosts: %u Networks: %u", m_data->c_host_manager->known_hosts, m_data->c_host_manager->known_whois_records);
+	label = gtk_label_new(msg);
+	gtk_box_pack_end(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);
+	gtk_widget_show(label);
+	return 0;
 }
 
 GtkTreeModel *gui_refresh_tree_model(GtkListStore *store, host_manager *c_host_manager) {
