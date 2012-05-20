@@ -254,7 +254,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 	}
 	
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
-	inet_ntop(AF_INET, &target_net->subnetmask, ipstr, sizeof(netstr));
+	inet_ntop(AF_INET, &target_net->subnetmask, netstr, sizeof(netstr));
 	snprintf(logStr, sizeof(logStr), "bruteforcing names in network: %s %s", ipstr, netstr); /* TODO make network_info to string function */
 	LOGGING_QUICK_INFO("kraken.dns_enum", logStr)
 	
@@ -314,7 +314,7 @@ int dns_enumerate_network(char *target_domain, network_info *target_net, host_ma
 	memset(&nameservers, '\0', sizeof(nameservers));
 	
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
-	inet_ntop(AF_INET, &target_net->subnetmask, ipstr, sizeof(netstr));
+	inet_ntop(AF_INET, &target_net->subnetmask, netstr, sizeof(netstr));
 	snprintf(logStr, sizeof(logStr), "enumerating network: %s %s", ipstr, netstr);
 	LOGGING_QUICK_INFO("kraken.dns_enum", logStr);
 	

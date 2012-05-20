@@ -38,7 +38,6 @@ void view_popup_menu_onDoSomething(GtkWidget *menuitem, main_gui_data *m_data) {
 		g_free(name);
 	}
 	/* else no row selected */
-	free(m_data);
 	return;
 }
 
@@ -58,28 +57,20 @@ void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, main_gui_data
 		g_free(name);
 		host_manager_get_whois(m_data->c_host_manager, &target_ip, &who_r);
 	} else {
-		free(m_data);
 		return;
 	}
 	if (who_r == NULL) {
 		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retrieve the desired whois record")
-		free(m_data);
 		return;
 	}
 	
 	gui_popup_bf_network(m_data, who_r->cidr_s);
-	free(m_data);
 	return;
 }
 
-void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer userdata) {
+void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data) {
 	GtkWidget *menu, *menuitem;
-	main_gui_data *m_data;
 	menu = gtk_menu_new();
-	
-	m_data = malloc(sizeof(main_gui_data));
-	m_data->tree_view = treeview;
-	m_data->c_host_manager = userdata;
 	
 	menuitem = gtk_menu_item_new_with_label("Show WHOIS Data");
 	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoSomething, m_data);
@@ -172,15 +163,15 @@ GtkTreeModel *gui_refresh_tree_model(GtkListStore *store, host_manager *c_host_m
 	return GTK_TREE_MODEL(store);
 }
 
-GtkWidget *create_view_and_model(host_manager *c_host_manager) {
+GtkWidget *create_view_and_model(host_manager *c_host_manager, main_gui_data *m_data) {
 	GtkCellRenderer *renderer;
 	GtkTreeViewColumn *col;
 	GtkTreeModel *model;
 	GtkWidget *view;
 	
 	view = gtk_tree_view_new();
-	g_signal_connect(view, "button-press-event", (GCallback)view_onButtonPressed, c_host_manager);
-	g_signal_connect(view, "popup-menu", (GCallback)view_onPopupMenu, c_host_manager);
+	g_signal_connect(view, "button-press-event", (GCallback)view_onButtonPressed, m_data);
+	g_signal_connect(view, "popup-menu", (GCallback)view_onPopupMenu, m_data);
 	
 	renderer = gtk_cell_renderer_text_new();
 	col = gtk_tree_view_column_new();

@@ -30,7 +30,7 @@ int gui_show_main_window(host_manager *c_host_manager) {
 	gtk_container_set_border_width(GTK_CONTAINER(scroll_window), 5);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
 	
-	view = create_view_and_model(c_host_manager);
+	view = create_view_and_model(c_host_manager, &m_data);
 	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll_window), view);
 	
 	m_data.tree_view = view;
