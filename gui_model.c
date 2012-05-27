@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <arpa/inet.h>
+#include <string.h>
 #include "gui_model.h"
 #include "gui_menu_functions.h"
 #include "gui_popups.h"
 #include "hosts.h"
 #include "host_manager.h"
+#include "http_scan.h"
 #include "logging.h"
 #include "whois_lookup.h"
 
@@ -68,6 +70,42 @@ void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, main_gui_data
 	return;
 }
 
+void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_data) {
+	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
+	GtkTreeSelection *selection;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	http_link *link_anchor = NULL;
+	char *target_url;
+	int ret_val = 0;
+
+	selection = gtk_tree_view_get_selection(treeview);
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gchar *name;
+		gtk_tree_model_get(model, &iter, COL_HOSTNAME, &name, -1);
+		target_url = malloc(strlen(name) + 9); // len(http:///) + 1
+		if (target_url == NULL) {
+			g_free(name);
+			return;
+		}
+		memset(target_url, '\0', strlen(name) + 9);
+		strcat(target_url, "http://");
+		strncat(target_url, name, strlen(name));
+		strcat(target_url, "/");
+		g_free(name);
+		ret_val = http_scrape_for_links(target_url, &link_anchor);
+		if (ret_val) {
+			LOGGING_QUICK_ERROR("kraken.gui.model", "there was an error requesting the page")
+		}
+		free(target_url);
+		gui_popup_select_hosts_from_http_links(m_data, link_anchor);
+		http_free_link(link_anchor);
+	} else {
+		return;
+	}
+	return;
+}
+
 void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data) {
 	GtkWidget *menu, *menuitem;
 	menu = gtk_menu_new();
@@ -78,6 +116,10 @@ void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data
 	
 	menuitem = gtk_menu_item_new_with_label("DNS Bruteforce Network");
 	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoDNSBruteforceNetwork, m_data);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	
+	menuitem = gtk_menu_item_new_with_label("HTTP Scan For Links");
+	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoHttpScanLinks, m_data);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	
 	gtk_widget_show_all(menu);

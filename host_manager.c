@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #include "hosts.h"
 #include "host_manager.h"
@@ -61,6 +63,7 @@ int destroy_host_manager(host_manager *c_host_manager) {
 
 int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_host) {
 	unsigned int current_host_i;
+	whois_record *who_data;
 	char logStr[LOGGING_STR_LEN + 1];
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if ((strncmp(new_host->hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) && (memcmp(&new_host->ipv4_addr, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0)) {
@@ -82,9 +85,50 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 		c_host_manager->hosts = tmpbuffer;
 	}
 	
+	if (new_host->whois_data == NULL) {
+		host_manager_get_whois(c_host_manager, &new_host->ipv4_addr, &who_data);
+		if (who_data != NULL) {
+			new_host->whois_data = who_data;
+		}
+	}
+	
 	memcpy(&c_host_manager->hosts[c_host_manager->known_hosts], new_host, sizeof(single_host_info));
 	c_host_manager->known_hosts++;
 	
+	return 0;
+}
+
+int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname) {
+	single_host_info new_host;
+	struct addrinfo hints;
+	struct addrinfo *result, *rp;
+	struct sockaddr_in *sin;
+	int s;
+	
+	memset(&hints, '\0', sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+	hints.ai_protocol = 0;
+	hints.ai_canonname = NULL;
+	hints.ai_addr = NULL;
+	hints.ai_next = NULL;
+	s = getaddrinfo(hostname, NULL, &hints, &result);
+	if (s != 0) {
+		LOGGING_QUICK_ERROR("kraken.host_manager", "could not resolve the hostname")
+		return 1;
+	}
+	
+	for (rp = result; rp != NULL; rp = rp->ai_next) {
+		if (rp->ai_family == AF_INET) {
+			sin = (struct sockaddr_in *)rp->ai_addr;
+			init_single_host(&new_host);
+			memcpy(&new_host.ipv4_addr, &sin->sin_addr, sizeof(struct in_addr));
+			strncpy(new_host.hostname, hostname, DNS_MAX_FQDN_LENGTH);
+			host_manager_add_host(c_host_manager, &new_host);
+			destroy_single_host(&new_host);
+		}
+	}
 	return 0;
 }
 

@@ -218,7 +218,15 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 	char *redirected_url;
 	char *content_type;
 	int redirect_count = 0;
+	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
 	http_link *link_current = *link_anchor;
+	unsigned int link_counter = 0;
+	
+	if (pvt_link_anchor) {
+		while (pvt_link_anchor->next) {
+			pvt_link_anchor = pvt_link_anchor->next;
+		}
+	}
 
 	webpage_f = open_memstream(&webpage_b, &webpage_sz);
 	if (webpage_f == NULL) {
@@ -298,10 +306,24 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 		http_get_links_from_html(webpage_b, &link_current);
 		*link_anchor = link_current;
 	} else {
+		snprintf(logStr, LOGGING_STR_LEN, "received invalid content type of: %s", content_type);
+		LOGGING_QUICK_WARNING("kraken.http_scan", logStr)
 		free(webpage_b);
 		curl_easy_cleanup(curl);
 		return 5;
 	}
+	if (link_current && (pvt_link_anchor == NULL)) {
+		for (link_current = *link_anchor; link_current; link_current = link_current->next) {
+			link_counter++;
+		}
+	} else if (pvt_link_anchor) {
+		for (link_current = pvt_link_anchor; link_current; link_current = link_current->next) {
+			link_counter++;
+		}
+	}
+		
+	snprintf(logStr, LOGGING_STR_LEN, "gathered %u new links", link_counter);
+	LOGGING_QUICK_INFO("kraken.http_scan", logStr)
 	free(webpage_b);
 	curl_easy_cleanup(curl);
 	return 0;
