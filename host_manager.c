@@ -33,6 +33,7 @@ int init_host_manager(host_manager *c_host_manager) {
 		return 1;
 	}
 	memset(c_host_manager->lw_domain, '\0', DNS_MAX_FQDN_LENGTH + 1);
+	c_host_manager->save_file_path = NULL;
 	c_host_manager->known_hosts = 0;
 	c_host_manager->current_capacity = HOST_CAPACITY_INCREMENT_SIZE;
 	memset(c_host_manager->hosts, 0, (sizeof(struct single_host_info) * HOST_CAPACITY_INCREMENT_SIZE));
@@ -49,6 +50,10 @@ int init_host_manager(host_manager *c_host_manager) {
 }
 
 int destroy_host_manager(host_manager *c_host_manager) {
+	if (c_host_manager->save_file_path != NULL) {
+		free(c_host_manager->save_file_path);
+		c_host_manager->save_file_path = NULL;
+	}
 	memset(c_host_manager->hosts, 0, (sizeof(struct single_host_info) * c_host_manager->current_capacity));
 	free(c_host_manager->hosts);
 	c_host_manager->known_hosts = 0;
@@ -99,11 +104,16 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 }
 
 int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname) {
+	char logStr[LOGGING_STR_LEN + 1];
 	single_host_info new_host;
+	whois_record tmp_who_resp;
+	whois_record *cur_who_resp = NULL;
 	struct addrinfo hints;
 	struct addrinfo *result, *rp;
 	struct sockaddr_in *sin;
+	int ret_val;
 	int s;
+	char ipstr[INET6_ADDRSTRLEN];
 	
 	memset(&hints, '\0', sizeof(struct addrinfo));
 	hints.ai_family = AF_INET;
@@ -125,6 +135,21 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname)
 			init_single_host(&new_host);
 			memcpy(&new_host.ipv4_addr, &sin->sin_addr, sizeof(struct in_addr));
 			strncpy(new_host.hostname, hostname, DNS_MAX_FQDN_LENGTH);
+			
+			host_manager_get_whois(c_host_manager, &new_host.ipv4_addr, &cur_who_resp);
+			if (cur_who_resp != NULL) {
+				new_host.whois_data = cur_who_resp;
+			} else {
+				ret_val = whois_lookup_ip(&new_host.ipv4_addr, &tmp_who_resp);
+				if (ret_val == 0) {
+					inet_ntop(AF_INET, &new_host.ipv4_addr, ipstr, sizeof(ipstr));
+					snprintf(logStr, sizeof(logStr), "got whois record for %s, %s", ipstr, tmp_who_resp.cidr_s);
+					LOGGING_QUICK_INFO("kraken.host_manager", logStr);
+					host_manager_add_whois(c_host_manager, &tmp_who_resp);
+					host_manager_get_whois(c_host_manager, &new_host.ipv4_addr, &cur_who_resp);
+					new_host.whois_data = cur_who_resp;
+				}
+			}
 			host_manager_add_host(c_host_manager, &new_host);
 			destroy_single_host(&new_host);
 		}

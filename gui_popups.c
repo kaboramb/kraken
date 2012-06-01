@@ -412,7 +412,6 @@ void callback_add_selected_hosts(GtkWidget *widget, popup_data *userdata) {
 			do {
 				gtk_tree_model_get(treemodel, &citer, COL_SELECT, &selected, COL_DOMAIN, &hostname, -1);
 				if (selected) {
-					printf("Selected Hostname %s\n", hostname);
 					host_manager_quick_add_by_name(userdata->c_host_manager, hostname);
 				}
 				g_free(hostname);
