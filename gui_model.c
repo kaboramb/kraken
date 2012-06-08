@@ -25,18 +25,15 @@ enum {
 };
 
 void view_popup_menu_onDoSomething(GtkWidget *menuitem, main_gui_data *m_data) {
-	char logStr[LOGGING_STR_LEN + 1];
 	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
-
 	selection = gtk_tree_view_get_selection(treeview);
 	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
 		gchar *name;
 		gtk_tree_model_get(model, &iter, COL_IPADDR, &name, -1);
-		snprintf(logStr, sizeof(logStr), "selected row is: %s", name);
-		LOGGING_QUICK_DEBUG("kraken.gui.model", logStr)
+		logging_log("kraken.gui.model", LOGGING_DEBUG, "selected row is: %s", name);
 		g_free(name);
 	}
 	/* else no row selected */

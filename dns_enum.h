@@ -3,7 +3,7 @@
 
 #include "network_addr.h"
 
-#define DNS_MAX_SIM_QUERIES 16
+#define DNS_MAX_SIM_QUERIES 8
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in hosts.h */
 #define DNS_MAX_NS_HOSTS 4
 

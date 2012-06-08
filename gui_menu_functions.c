@@ -11,7 +11,10 @@
 
 static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/File",									NULL,		NULL,							0, 	"<Branch>" },
+	{ "/File/Open",								NULL,		gui_menu_file_open,				0,	NULL	},
+	{ "/File/Save",								"<CTRL>S",	gui_menu_file_save,				0,	NULL	},
 	{ "/File/Save As",							NULL,		gui_menu_file_save_as,			0,	NULL	},
+	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
 	{ "/File/Quit",								"<CTRL>Q",	gtk_main_quit,					0, 	"<StockItem>",	GTK_STOCK_QUIT },
 	{ "/Edit",									NULL,		NULL,							0,	"<Branch>" },
 	{ "/Edit/Add Hosts",						NULL,		NULL,							0,	"<Branch>" },
@@ -40,11 +43,60 @@ GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata) {
 	return gtk_item_factory_get_widget(item_factory, "<main>");
 }
 
+void gui_menu_file_open(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	GtkWidget *dialog;
+	gint response;
+	if ((userdata->c_host_manager->known_hosts > 0) || (userdata->c_host_manager->known_whois_records > 0)) {
+		response = gui_popup_question_yes_no_dialog(NULL, "Merge With Existing Data?", "Merge?");
+		if (response == GTK_RESPONSE_NO) {
+			destroy_host_manager(userdata->c_host_manager); /* out with the old */
+			init_host_manager(userdata->c_host_manager); /* in with the new */
+		}
+	}
+	dialog = gtk_file_chooser_dialog_new("Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		char *filename;
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		response = import_host_manager_from_xml(userdata->c_host_manager, filename);
+		if (response != 0) {
+			GUI_POPUP_ERROR_IMPORT_FAILED(NULL);
+		}
+		gui_model_update_tree_and_marquee(userdata);
+		userdata->c_host_manager->save_file_path = malloc(strlen(filename) + 1);
+		strncpy(userdata->c_host_manager->save_file_path, filename, (strlen(filename) + 1));
+		g_free(filename);
+	}
+	gtk_widget_destroy(dialog);
+	return;
+}
+
+void gui_menu_file_save(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	gint response;
+	if ((userdata->c_host_manager->known_hosts == 0) && (userdata->c_host_manager->known_whois_records == 0)) {
+		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
+		return;
+	}
+	if (userdata->c_host_manager->save_file_path == NULL) {
+		gui_menu_file_save_as(userdata, action, widget);
+		return;
+	}
+	
+	response = export_host_manager_to_xml(userdata->c_host_manager, userdata->c_host_manager->save_file_path);
+	if (response != 0) {
+		GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
+	}
+	return;
+}
+
 void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *widget) {
 	GtkWidget *dialog;
 	guint log_handler;
 	const char *domain = "Gtk";
 	gint response;
+	if ((userdata->c_host_manager->known_hosts == 0) && (userdata->c_host_manager->known_whois_records == 0)) {
+		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
+		return;
+	}
 	dialog = gtk_file_chooser_dialog_new("Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL),
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
 	if (userdata->c_host_manager->save_file_path == NULL) {
@@ -68,6 +120,9 @@ void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *wid
 		userdata->c_host_manager->save_file_path = malloc(strlen(filename) + 1);
 		strncpy(userdata->c_host_manager->save_file_path, filename, (strlen(filename) + 1));
 		response = export_host_manager_to_xml(userdata->c_host_manager, filename);
+		if (response != 0) {
+			GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
+		}
 		g_free(filename);
 	}
 	gtk_widget_destroy(dialog);

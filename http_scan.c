@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <curl/curl.h>
-#include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <libxml/parser.h>
 #include <uriparser/Uri.h>
 #include "hosts.h"
 #include "http_scan.h"
@@ -107,6 +108,7 @@ static void process_html_nodes_for_links(xmlNode *a_node, http_link **tmp_link) 
 						continue;
 					}
 					xmlChar *value = xmlNodeListGetString(cur_node->doc, attribute->children, 1);
+					assert(value != NULL);
 					/* if we wanted to continue to crawl additional pages on the same server, the
 					 * code would go here before we run strncasecmp() on the scheme */
 					if (strncasecmp((char *)value, "http", 4) == 0) { /* matches http and https */
@@ -192,6 +194,11 @@ int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 		return 1;
 	}
 	root_element = xmlDocGetRootElement(page);
+	if (root_element == NULL) {
+		LOGGING_QUICK_ERROR("kraken.http_scan", "could not retrieve the root element of the HTML document")
+		xmlFreeDoc(page);
+		return 1;
+	}
 	process_html_nodes_for_links(root_element, &link_current);
 	*link_anchor = link_current;
 	if (*link_anchor == NULL) {
@@ -208,7 +215,6 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 	 * a previous call to this or a similar function */
 	/* this function will follow redirects but only when on the same
 	 * server in the future I may change this to on the same domain */
-	char logStr[LOGGING_STR_LEN + 1];
 	size_t webpage_sz;
 	FILE *webpage_f = NULL;
 	char *webpage_b = NULL;
@@ -239,6 +245,7 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
 	curl_res = curl_easy_perform(curl);
 	fclose(webpage_f);
+	assert(webpage_b != NULL);
 	if (curl_res != 0) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
 		free(webpage_b);
@@ -248,8 +255,7 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 	if (http_code != 200) {
-		snprintf(logStr, sizeof(logStr), "web server responded with: %lu", http_code);
-		LOGGING_QUICK_DEBUG("kraken.http_scan", logStr)
+		logging_log("kraken.http_scan", LOGGING_DEBUG, "web server responded with: %lu", http_code);
 	}
 	while (((http_code == 301) || (http_code == 302)) && (redirect_count < HTTP_MAX_REDIRECTS)) {
 		redirect_count++;
@@ -274,12 +280,10 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 			}
 			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 			if (http_code != 200) {
-				snprintf(logStr, sizeof(logStr), "web server responded with: %lu", http_code);
-				LOGGING_QUICK_DEBUG("kraken.http_scan", logStr)
+				logging_log("kraken.http_scan", LOGGING_DEBUG, "web server responded with: %lu", http_code);
 			}
 		} else {
-			snprintf(logStr, sizeof(logStr), "web server attempted to redirect us off site to: %s", redirected_url);
-			LOGGING_QUICK_ERROR("kraken.http_scan", logStr)
+			logging_log("kraken.http_scan", LOGGING_ERROR, "web server attempted to redirect us off site to: %s", redirected_url);
 			free(webpage_b);
 			curl_easy_cleanup(curl);
 			return 3;
@@ -292,8 +296,7 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 		return 6;
 	}
 
-	snprintf(logStr, sizeof(logStr), "%lu bytes were read from the page", webpage_sz);
-	LOGGING_QUICK_DEBUG("kraken.http_scan", logStr)
+	logging_log("kraken.http_scan", LOGGING_DEBUG, "%lu bytes were read from the page", webpage_sz);
 
 	curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &content_type);
 	if (content_type == NULL) {
@@ -306,8 +309,7 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 		http_get_links_from_html(webpage_b, &link_current);
 		*link_anchor = link_current;
 	} else {
-		snprintf(logStr, LOGGING_STR_LEN, "received invalid content type of: %s", content_type);
-		LOGGING_QUICK_WARNING("kraken.http_scan", logStr)
+		logging_log("kraken.http_scan", LOGGING_WARNING, "received invalid content type of: %s", content_type);
 		free(webpage_b);
 		curl_easy_cleanup(curl);
 		return 5;
@@ -321,9 +323,8 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 			link_counter++;
 		}
 	}
-		
-	snprintf(logStr, LOGGING_STR_LEN, "gathered %u new links", link_counter);
-	LOGGING_QUICK_INFO("kraken.http_scan", logStr)
+	
+	logging_log("kraken.http_scan", LOGGING_INFO, "gathered %u new links", link_counter);
 	free(webpage_b);
 	curl_easy_cleanup(curl);
 	return 0;

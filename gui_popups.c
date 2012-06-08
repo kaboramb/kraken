@@ -51,28 +51,22 @@ int host_in_domain(char *hostname, char *domain) {
 	return 0;
 }
 
-void popup_error_invalid_domain_name(gpointer window) {
+void gui_popup_error_dialog(gpointer window, const char *message, const char *title) {
 	GtkWidget *dialog;
-	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "Invalid Domain Name");
-	gtk_window_set_title(GTK_WINDOW(dialog), "Error: Invalid Domain");
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message);
+	gtk_window_set_title(GTK_WINDOW(dialog), title);
 	gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
 }
 
-void popup_error_invalid_cidr_network(gpointer window) {
+gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title) {
 	GtkWidget *dialog;
-	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "Invalid CIDR Network");
-	gtk_window_set_title(GTK_WINDOW(dialog), "Error: Invalid Network");
-	gtk_dialog_run(GTK_DIALOG(dialog));
+	gint response;
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, message);
+	gtk_window_set_title(GTK_WINDOW(dialog), title);
+	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
-}
-
-void popup_error_no_hosts_found_in_links(gpointer window) {
-	GtkWidget *dialog;
-	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "No Links Were Found");
-	gtk_window_set_title(GTK_WINDOW(dialog), "Error: No Links");
-	gtk_dialog_run(GTK_DIALOG(dialog));
-	gtk_widget_destroy(dialog);
+	return response;
 }
 
 void callback_bf_domain(GtkWidget *widget, popup_data *userdata) {
@@ -84,7 +78,7 @@ void callback_bf_domain(GtkWidget *widget, popup_data *userdata) {
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 	
 	if (strlen(target_domain) == 0) {
-		popup_error_invalid_domain_name(userdata->popup_window);
+		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(userdata->popup_window);
 		gtk_widget_destroy(userdata->popup_window);
 		free(userdata);
 		return;
@@ -196,7 +190,7 @@ void callback_bf_network(GtkWidget *widget, popup_data *userdata) {
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 	
 	if (strlen(target_domain) == 0) {
-		popup_error_invalid_domain_name(userdata->popup_window);
+		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(userdata->popup_window);
 		gtk_widget_destroy(userdata->popup_window);
 		free(userdata);
 		return;
@@ -204,7 +198,7 @@ void callback_bf_network(GtkWidget *widget, popup_data *userdata) {
 	
 	text_entry = gtk_entry_get_text(GTK_ENTRY(userdata->text_entry1));
 	if (netaddr_cidr_str_to_nwk((char *)text_entry, &target_network) != 0) {
-		popup_error_invalid_cidr_network(userdata->popup_window);
+		GUI_POPUP_ERROR_INVALID_CIDR_NETWORK(userdata->popup_window);
 		gtk_widget_destroy(userdata->popup_window);
 		free(userdata);
 		return;
@@ -525,7 +519,7 @@ gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link
 	gtk_widget_show_all(window);
 	
 	if (link_anchor == NULL) {
-		popup_error_no_hosts_found_in_links(window);
+		GUI_POPUP_ERROR_INVALID_NO_HOSTS_FOUND_IN_LINKS(window);
 		gtk_widget_destroy(window);
 		free(p_data);
 		return TRUE;

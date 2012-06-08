@@ -27,6 +27,39 @@ int destroy_single_host(single_host_info *c_host) {
 	return 0;
 }
 
+int single_host_add_alias(single_host_info *c_host, const char *alias) {
+	char (*block)[DNS_MAX_FQDN_LENGTH + 1];
+	unsigned int current_name_i;
+	if (c_host->aliases == NULL) {
+		/* adding the first alias */
+		c_host->aliases = malloc(DNS_MAX_FQDN_LENGTH + 1);
+		if (c_host->aliases == NULL) {
+			return 1;
+		}
+		memset(c_host->aliases, '\0', DNS_MAX_FQDN_LENGTH + 1);
+		strncpy(c_host->aliases[0], alias, DNS_MAX_FQDN_LENGTH);
+		c_host->n_aliases = 1;
+	} else {
+		/* adding an additional alias */
+		for (current_name_i = 0; current_name_i < c_host->n_aliases; current_name_i++) {
+			if (strncasecmp(c_host->aliases[current_name_i], alias, DNS_MAX_FQDN_LENGTH) == 0) {
+				return 0;
+			}
+		}
+		block = malloc((DNS_MAX_FQDN_LENGTH + 1) * (c_host->n_aliases + 1));
+		if (block == NULL) {
+			return 1;
+		}
+		memset(block, '\0', (DNS_MAX_FQDN_LENGTH + 1) * (c_host->n_aliases + 1));
+		memcpy(block, c_host->aliases, (DNS_MAX_FQDN_LENGTH + 1) * c_host->n_aliases);
+		strncpy(block[c_host->n_aliases], alias, DNS_MAX_FQDN_LENGTH);
+		free(c_host->aliases);
+		c_host->aliases = block;
+		c_host->n_aliases += 1;
+	}
+	return 0;
+}
+
 int init_host_manager(host_manager *c_host_manager) {
 	c_host_manager->hosts = malloc(sizeof(struct single_host_info) * HOST_CAPACITY_INCREMENT_SIZE);
 	if (c_host_manager->hosts == NULL) {
@@ -66,14 +99,13 @@ int destroy_host_manager(host_manager *c_host_manager) {
 	return 0;
 }
 
-int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_host) {
+int host_manager_add_host(host_manager *c_host_manager, single_host_info *c_host) {
+	char (*block)[DNS_MAX_FQDN_LENGTH + 1];
 	unsigned int current_host_i;
 	whois_record *who_data;
-	char logStr[LOGGING_STR_LEN + 1];
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
-		if ((strncmp(new_host->hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) && (memcmp(&new_host->ipv4_addr, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0)) {
-			snprintf(logStr, sizeof(logStr), "skipping dupplicate host: %s", new_host->hostname);
-			LOGGING_QUICK_DEBUG("kraken.host_manager", logStr)
+		if ((strncasecmp(c_host->hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) && (memcmp(&c_host->ipv4_addr, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0)) {
+			logging_log("kraken.host_manager", LOGGING_DEBUG, "skipping dupplicate host: %s", c_host->hostname);
 			return 0;
 		}
 	}
@@ -90,21 +122,31 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 		c_host_manager->hosts = tmpbuffer;
 	}
 	
-	if (new_host->whois_data == NULL) {
-		host_manager_get_whois(c_host_manager, &new_host->ipv4_addr, &who_data);
+	if (c_host->whois_data == NULL) {
+		host_manager_get_whois(c_host_manager, &c_host->ipv4_addr, &who_data);
 		if (who_data != NULL) {
-			new_host->whois_data = who_data;
+			c_host->whois_data = who_data;
 		}
 	}
 	
-	memcpy(&c_host_manager->hosts[c_host_manager->known_hosts], new_host, sizeof(single_host_info));
+	memcpy(&c_host_manager->hosts[c_host_manager->known_hosts], c_host, sizeof(single_host_info));
+	if (c_host->aliases != NULL) {
+		block = malloc((DNS_MAX_FQDN_LENGTH + 1) * (c_host->n_aliases));
+		if (block == NULL) {
+			c_host_manager->hosts[c_host_manager->known_hosts].aliases = NULL;
+			c_host_manager->hosts[c_host_manager->known_hosts].n_aliases = 0;
+			return 1;
+		} else {
+			memset(block, '\0', (DNS_MAX_FQDN_LENGTH + 1) * (c_host->n_aliases));
+			memcpy(block, c_host->aliases, (DNS_MAX_FQDN_LENGTH + 1) * c_host->n_aliases);
+			c_host_manager->hosts[c_host_manager->known_hosts].aliases = block;
+		}
+	}
 	c_host_manager->known_hosts++;
-	
 	return 0;
 }
 
 int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname) {
-	char logStr[LOGGING_STR_LEN + 1];
 	single_host_info new_host;
 	whois_record tmp_who_resp;
 	whois_record *cur_who_resp = NULL;
@@ -143,8 +185,7 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname)
 				ret_val = whois_lookup_ip(&new_host.ipv4_addr, &tmp_who_resp);
 				if (ret_val == 0) {
 					inet_ntop(AF_INET, &new_host.ipv4_addr, ipstr, sizeof(ipstr));
-					snprintf(logStr, sizeof(logStr), "got whois record for %s, %s", ipstr, tmp_who_resp.cidr_s);
-					LOGGING_QUICK_INFO("kraken.host_manager", logStr);
+					logging_log("kraken.host_manager", LOGGING_INFO, "got whois record for %s, %s", ipstr, tmp_who_resp.cidr_s);
 					host_manager_add_whois(c_host_manager, &tmp_who_resp);
 					host_manager_get_whois(c_host_manager, &new_host.ipv4_addr, &cur_who_resp);
 					new_host.whois_data = cur_who_resp;
@@ -157,44 +198,11 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname)
 	return 0;
 }
 
-int host_manager_add_alias_to_host(host_manager *c_host_manager, char *hostname, char* alias) {
-	single_host_info *current_host;
-	char (*block)[DNS_MAX_FQDN_LENGTH + 1];
+int host_manager_add_alias_to_host(host_manager *c_host_manager, char *hostname, char *alias) {
 	unsigned int current_host_i;
-	unsigned int current_name_i;
-	int duplicate = 0;
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if (strncmp(hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) {
-			current_host = &c_host_manager->hosts[current_host_i];
-			if (current_host->aliases == NULL) {
-				/* adding the first alias */
-				current_host->aliases = malloc(DNS_MAX_FQDN_LENGTH + 1);
-				memset(current_host->aliases, '\0', DNS_MAX_FQDN_LENGTH + 1);
-				strncpy(current_host->aliases[0], alias, DNS_MAX_FQDN_LENGTH);
-				current_host->n_aliases = 1;
-			} else {
-				/* adding an additional alias */
-				duplicate = 0;
-				for (current_name_i = 0; current_name_i < current_host->n_aliases; current_name_i++) {
-					if (strncasecmp(current_host->aliases[current_name_i], alias, DNS_MAX_FQDN_LENGTH) == 0) {
-						duplicate = 1;
-						break;
-					}
-				}
-				if (duplicate) {
-					continue;
-				}
-				block = malloc((DNS_MAX_FQDN_LENGTH + 1) * (current_host->n_aliases + 1));
-				if (block == NULL) {
-					return 1;
-				}
-				memset(block, '\0', (DNS_MAX_FQDN_LENGTH + 1) * (current_host->n_aliases + 1));
-				memcpy(block, current_host->aliases, (DNS_MAX_FQDN_LENGTH + 1) * current_host->n_aliases);
-				strncpy(block[current_host->n_aliases], alias, DNS_MAX_FQDN_LENGTH);
-				free(current_host->aliases);
-				current_host->aliases = block;
-				current_host->n_aliases += 1;
-			}
+			single_host_add_alias(&c_host_manager->hosts[current_host_i], alias);
 		}
 	}
 	return 0;
@@ -213,6 +221,16 @@ int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *
 }
 
 int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record) {
+	unsigned int current_who_i;
+	whois_record *cur_who_rec;
+	
+	for (current_who_i = 0; current_who_i < c_host_manager->known_whois_records; current_who_i ++) {
+		cur_who_rec = &c_host_manager->whois_records[current_who_i];
+		if (strncmp(cur_who_rec->cidr_s, new_record->cidr_s, strlen(cur_who_rec->cidr_s)) == 0) {
+			logging_log("kraken.host_manager", LOGGING_DEBUG, "skipping dupplicate whois record for network: %s", cur_who_rec->cidr_s);
+			return 0;
+		}
+	}
 	if (c_host_manager->known_whois_records >= c_host_manager->current_whois_record_capacity) {
 		void *tmpbuffer = malloc(sizeof(struct whois_record) * (c_host_manager->current_whois_record_capacity + WHOIS_CAPACITY_INCREMENT_SIZE));
 		if (tmpbuffer == NULL) {
@@ -252,9 +270,7 @@ int host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_
 				break;
 			}
 		} else {
-			char logStr[LOGGING_STR_LEN + 1];
-			snprintf(logStr, sizeof(logStr), "could not parse cidr address: %s", (char *)&cur_who_resp->cidr_s);
-			LOGGING_QUICK_ERROR("kraken.host_manager", logStr)
+			logging_log("kraken.host_manager", LOGGING_ERROR, "could not parse cidr address: %s", (char *)&cur_who_resp->cidr_s);
 		}
 	}
 	return 0;

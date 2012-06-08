@@ -308,7 +308,6 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 }
 
 int whois_fill_host_manager(host_manager *c_host_manager) {
-	char logStr[LOGGING_STR_LEN + 1];
 	unsigned int current_host_i;
 	single_host_info *current_host;
 	whois_record tmp_who_resp;
@@ -326,8 +325,7 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 		ret_val = whois_lookup_ip(&current_host->ipv4_addr, &tmp_who_resp);
 		if (ret_val == 0) {
 			inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
-			snprintf(logStr, sizeof(logStr), "got whois record for %s, %s", ipstr, tmp_who_resp.cidr_s);
-			LOGGING_QUICK_INFO("kraken.whois", logStr);
+			logging_log("kraken.whois", LOGGING_INFO, "got whois record for %s, %s", ipstr, tmp_who_resp.cidr_s);
 			host_manager_add_whois(c_host_manager, &tmp_who_resp);
 			host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
 			current_host->whois_data = cur_who_resp;

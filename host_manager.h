@@ -6,6 +6,7 @@
 
 int init_single_host(single_host_info *c_host);
 int destroy_single_host(single_host_info *c_host);
+int single_host_add_alias(single_host_info *c_host, const char *alias);
 
 int init_host_manager(host_manager *c_host_manager);
 int destroy_host_manager(host_manager *c_host_manager);
