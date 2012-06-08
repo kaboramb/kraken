@@ -1,6 +1,7 @@
 #include <ares.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -93,6 +94,34 @@ static void wait_ares(ares_channel channel, int max_allowed) {
 	}
 }
 
+void dns_enum_opts_init(dns_enum_opts *d_opts) {
+	memset(d_opts, '\0', sizeof(struct dns_enum_opts));
+	d_opts->max_sim_queries = DNS_MAX_SIM_QUERIES;
+	d_opts->wordlist = NULL;
+	d_opts->progress_update = NULL;
+	d_opts->progress_update_data = NULL;
+	return;
+}
+
+void dns_enum_opts_destroy(dns_enum_opts *d_opts) {
+	if (d_opts->wordlist != NULL) {
+		free(d_opts->wordlist);
+	}
+	memset(d_opts, '\0', sizeof(struct dns_enum_opts));
+	return;
+}
+
+int dns_enum_opts_set_wordlist(dns_enum_opts *d_opts, const char *wordlist) {
+	if (d_opts->wordlist != NULL) {
+		free(d_opts->wordlist);
+	}
+	d_opts->wordlist = malloc(strlen(wordlist) + 1);
+	assert(d_opts->wordlist != NULL);
+	strncpy(d_opts->wordlist, wordlist, strlen(wordlist));
+	d_opts->wordlist[strlen(wordlist)] = '\0';
+	return 0;
+}
+
 char *dns_get_domain(char *originalname) {
 	/* this returns a pointer to the second-to-top-level domain */
 	char *pCur = originalname;
@@ -172,11 +201,12 @@ int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameserv
 	return (i + 1);
 }
 
-int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_manager, domain_ns_list *nameservers) {
+int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_manager, domain_ns_list *nameservers, dns_enum_opts *d_opts) {
 	ares_channel channel;
 	int status;
+	unsigned int wordlist_lines = 0;
 	unsigned int query_counter = 0;
-	FILE *fierceprefixes;
+	FILE *hostlist;
 	char line[MAX_LINE];
 	char hostname[MAX_LINE];
 	int i;
@@ -214,23 +244,34 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	
 	logging_log("kraken.dns_enum", LOGGING_INFO, "bruteforcing names for domain: %s", target_domain);
 
-	if ((fierceprefixes = fopen(FIERCE_PREFIXES_PATH, "r")) == NULL) {
+	if ((hostlist = fopen(d_opts->wordlist, "r")) == NULL) {
 		LOGGING_QUICK_ERROR("kraken.dns_enum", "cannot open file containing host name prefixes")
 		ares_destroy(channel);
 		ares_library_cleanup();
 		return 2;
 	}
+	
+	while (fgets(line, MAX_LINE, hostlist)) {
+		wordlist_lines += 1;
+	}
+	fseek(hostlist, 0, SEEK_SET);
+	logging_log("kraken.dns_enum", LOGGING_DEBUG, "bruteforcing %u hostnames", wordlist_lines);
 
-	while (fgets(line, MAX_LINE, fierceprefixes)) {
+	while (fgets(line, MAX_LINE, hostlist)) {
 		line[strlen(line) - 1] = '\0'; /* kill the newline byte */
 		snprintf(hostname, MAX_LINE, "%s.%s", line, target_domain);
-		//printf("Searching for %s\n", hostname);
 		ares_gethostbyname(channel, hostname, AF_INET, callback_host, (host_manager *)c_host_manager);
 		query_counter += 1;
-		wait_ares(channel, DNS_MAX_SIM_QUERIES);
+		wait_ares(channel, d_opts->max_sim_queries);
+		if (d_opts->progress_update != NULL) {
+			d_opts->progress_update(query_counter, wordlist_lines, d_opts->progress_update_data);
+		}
 	}
 	
 	wait_ares(channel, 0);
+	if (d_opts->progress_update != NULL) {
+		d_opts->progress_update(wordlist_lines, wordlist_lines, d_opts->progress_update_data);
+	}
 	
 	ares_destroy(channel);
 	ares_library_cleanup();
@@ -238,10 +279,11 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	return 0;
 }
 
-int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host_manager, domain_ns_list *nameservers) {
+int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host_manager, domain_ns_list *nameservers, dns_enum_opts *d_opts) {
 	ares_channel channel;
 	single_host_info *h_info_chk = NULL;
 	int status;
+	unsigned int num_of_hosts = 0;
 	unsigned int query_counter = 0;
 	int i;
 	struct in_addr c_ip;
@@ -279,12 +321,17 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
 	
+	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
+	while (netaddr_ip_in_nwk(&c_ip, target_net) == 1) {
+		num_of_hosts += 1;
+		c_ip.s_addr = htonl(ntohl(c_ip.s_addr) + 1);
+	}
+	
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
 	inet_ntop(AF_INET, &target_net->subnetmask, netstr, sizeof(netstr));
-	logging_log("kraken.dns_enum", LOGGING_INFO, "bruteforcing names in network: %s %s", ipstr, netstr);
+	logging_log("kraken.dns_enum", LOGGING_INFO, "bruteforcing a total of %u names in network: %s %s", num_of_hosts, ipstr, netstr);
 	
 	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
-	
 	while (netaddr_ip_in_nwk(&c_ip, target_net) == 1) {
 		host_manager_get_host_by_addr(c_host_manager, &c_ip, &h_info_chk);
 		if (h_info_chk != NULL) {
@@ -294,10 +341,16 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 		ares_gethostbyaddr(channel, &c_ip, sizeof(c_ip), AF_INET, callback_host, (host_manager *)c_host_manager);
 		query_counter += 1;
 		c_ip.s_addr = htonl(ntohl(c_ip.s_addr) + 1);
-		wait_ares(channel, DNS_MAX_SIM_QUERIES);
+		wait_ares(channel, d_opts->max_sim_queries);
+		if (d_opts->progress_update != NULL) {
+			d_opts->progress_update(query_counter, num_of_hosts, d_opts->progress_update_data);
+		}
 	}
 	
 	wait_ares(channel, 0);
+	if (d_opts->progress_update != NULL) {
+		d_opts->progress_update(num_of_hosts, num_of_hosts, d_opts->progress_update_data);
+	}
 	
 	ares_destroy(channel);
 	ares_library_cleanup();
@@ -305,12 +358,27 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 	return 0;
 }
 
-int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
+int dns_enumerate_domain(host_manager *c_host_manager, char *target_domain, const char *hostfile) {
+	int response;
+	dns_enum_opts d_opts;
+	dns_enum_opts_init(&d_opts);
+	dns_enum_opts_set_wordlist(&d_opts, hostfile);
+	response = dns_enumerate_domain_ex(c_host_manager, target_domain, &d_opts);
+	dns_enum_opts_destroy(&d_opts);	
+	return response;
+}
+
+int dns_enumerate_domain_ex(host_manager *c_host_manager, char *target_domain, dns_enum_opts *d_opts) {
 	domain_ns_list nameservers;
 	single_host_info c_host;
 	char ipstr[INET_ADDRSTRLEN];
 	int i;
+	
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
+	if (access(d_opts->wordlist, R_OK) == -1) {
+		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not read file: %s", d_opts->wordlist);
+		return -2;
+	}
 	memset(&nameservers, '\0', sizeof(nameservers));
 	logging_log("kraken.dns_enum", LOGGING_INFO, "enumerating domain: %s", target_domain);
 	
@@ -326,20 +394,24 @@ int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 		host_manager_add_host(c_host_manager, &c_host);
 		destroy_single_host(&c_host);
 	}
-	
-	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers);
-	
+	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers, d_opts);
 	LOGGING_QUICK_INFO("kraken.dns_enum", "dns enumerate domain finished")
 	return 0;
 }
 
-int dns_enumerate_network(char *target_domain, network_info *target_net, host_manager *c_host_manager) {
+int dns_enumerate_network_ex(char *target_domain, network_info *target_net, host_manager *c_host_manager, dns_enum_opts *d_opts) {
 	domain_ns_list nameservers;
+	dns_enum_opts new_opts;
 	char ipstr[INET6_ADDRSTRLEN];
 	char netstr[INET6_ADDRSTRLEN];
 	int i;
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	memset(&nameservers, '\0', sizeof(nameservers));
+	
+	dns_enum_opts_init(&new_opts);
+	if (d_opts == NULL) {
+		d_opts = &new_opts;
+	}
 	
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
 	inet_ntop(AF_INET, &target_net->subnetmask, netstr, sizeof(netstr));
@@ -351,8 +423,8 @@ int dns_enumerate_network(char *target_domain, network_info *target_net, host_ma
 		logging_log("kraken.dns_enum", LOGGING_INFO, "found name server %s %s", nameservers.servers[i], ipstr);
 	}
 	
-	dns_bruteforce_names_in_range(target_net, c_host_manager, &nameservers);
-	
+	dns_bruteforce_names_in_range(target_net, c_host_manager, &nameservers, d_opts);
+	dns_enum_opts_destroy(&new_opts);
 	LOGGING_QUICK_INFO("kraken.dns_enum", "dns enumerate network finished")
 	return 0;
 }

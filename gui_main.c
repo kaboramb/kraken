@@ -47,7 +47,7 @@ int gui_show_main_window(host_manager *c_host_manager) {
 	gtk_box_pack_end(GTK_BOX(main_vbox), hbox, FALSE, FALSE, 0);
 	
 	gtk_widget_show_all(window);
-	gui_model_update_tree_and_marquee(&m_data);
+	gui_model_update_tree_and_marquee(&m_data, NULL);
 	gtk_main();
 	return 0;
 }

@@ -35,32 +35,50 @@ gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, cons
 	return response;
 }
 
-void callback_bf_domain(GtkWidget *widget, popup_data *userdata) {
+void callback_update_progress(unsigned int current, unsigned int high, popup_data *p_data) {
+	gdouble percent = (gdouble)current / high;
+	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(p_data->misc_widget), percent);
+	while (gtk_events_pending()) {
+		gtk_main_iteration();
+	}
+	return;
+}
+
+void callback_bf_domain(GtkWidget *widget, popup_data *p_data) {
 	const gchar *text_entry;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
+	dns_enum_opts d_opts;
 	
 	memset(target_domain, '\0', sizeof(target_domain));
-	text_entry = gtk_entry_get_text(GTK_ENTRY(userdata->text_entry0));
+	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 	
 	if (strlen(target_domain) == 0) {
-		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(userdata->popup_window);
-		gtk_widget_destroy(userdata->popup_window);
-		free(userdata);
+		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
+		gtk_widget_destroy(p_data->popup_window);
+		free(p_data);
 		return;
 	}
 	
-	gtk_widget_destroy(userdata->popup_window);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Enumerating Domain");
+	gui_model_update_marquee((main_gui_data *)p_data, "Enumerating Domain");
 	
-	if (dns_enumerate_domain(target_domain, userdata->c_host_manager) == -1) {
-		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(userdata->popup_window);
-		gtk_widget_destroy(userdata->popup_window);
+	dns_enum_opts_init(&d_opts);
+	dns_enum_opts_set_wordlist(&d_opts, FIERCE_PREFIXES_PATH);
+	d_opts.progress_update = (void *)&callback_update_progress;
+	d_opts.progress_update_data = p_data;
+	if (dns_enumerate_domain_ex(p_data->c_host_manager, target_domain, &d_opts) == -1) {
+		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
+		gui_model_update_marquee((main_gui_data *)p_data, NULL);
 	} else {
-		whois_fill_host_manager(userdata->c_host_manager);
-		gui_model_update_tree_and_marquee((main_gui_data*)userdata);
+		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Requesting WHOIS Records");
+		gui_model_update_marquee((main_gui_data *)p_data, "Requesting WHOIS Records");
+		whois_fill_host_manager(p_data->c_host_manager);
+		gui_model_update_tree_and_marquee((main_gui_data *)p_data, NULL);
 	}
-	
-	free(userdata);
+	gtk_widget_destroy(p_data->popup_window);
+	dns_enum_opts_destroy(&d_opts);
+	free(p_data);
 	return;
 }
 
@@ -81,7 +99,7 @@ gboolean gui_popup_bf_domain(main_gui_data *m_data) {
 	/* get the main popup window */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 115);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 165);
 	gtk_window_set_title(GTK_WINDOW(window), "DNS Forward Bruteforce");
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
 	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);
@@ -113,11 +131,14 @@ gboolean gui_popup_bf_domain(main_gui_data *m_data) {
 	p_data->tree_view = m_data->tree_view;
 	p_data->main_marquee = m_data->main_marquee;
 	p_data->c_host_manager = m_data->c_host_manager;
-	
+	p_data->misc_widget = gtk_progress_bar_new();
 	
 	g_signal_connect(entry, "activate", G_CALLBACK(callback_bf_domain), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
+	
+	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
+	gtk_widget_show(p_data->misc_widget);
 	
 	/* get the button */
 	button = gtk_button_new();
@@ -149,37 +170,46 @@ gboolean gui_popup_bf_domain(main_gui_data *m_data) {
 	return TRUE;
 }
 
-void callback_bf_network(GtkWidget *widget, popup_data *userdata) {
+void callback_bf_network(GtkWidget *widget, popup_data *p_data) {
 	const gchar *text_entry;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
 	network_info target_network;
+	dns_enum_opts d_opts;
 	
 	memset(target_domain, '\0', sizeof(target_domain));
-	text_entry = gtk_entry_get_text(GTK_ENTRY(userdata->text_entry0));
+	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 	
 	if (strlen(target_domain) == 0) {
-		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(userdata->popup_window);
-		gtk_widget_destroy(userdata->popup_window);
-		free(userdata);
+		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
+		gtk_widget_destroy(p_data->popup_window);
+		free(p_data);
 		return;
 	}
 	
-	text_entry = gtk_entry_get_text(GTK_ENTRY(userdata->text_entry1));
+	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry1));
 	if (netaddr_cidr_str_to_nwk((char *)text_entry, &target_network) != 0) {
-		GUI_POPUP_ERROR_INVALID_CIDR_NETWORK(userdata->popup_window);
-		gtk_widget_destroy(userdata->popup_window);
-		free(userdata);
+		GUI_POPUP_ERROR_INVALID_CIDR_NETWORK(p_data->popup_window);
+		gtk_widget_destroy(p_data->popup_window);
+		free(p_data);
 		return;
 	}
-	gtk_widget_destroy(userdata->popup_window);
 	
-	dns_enumerate_network(target_domain, &target_network, userdata->c_host_manager);
-	whois_fill_host_manager(userdata->c_host_manager);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Enumerating Network");
+	gui_model_update_marquee((main_gui_data *)p_data, "Enumerating Network");
 	
-	gui_model_update_tree_and_marquee((main_gui_data*)userdata);
-	
-	free(userdata);
+	dns_enum_opts_init(&d_opts);
+	d_opts.progress_update = (void *)&callback_update_progress;
+	d_opts.progress_update_data = p_data;
+	if (dns_enumerate_network_ex(target_domain, &target_network, p_data->c_host_manager, &d_opts) == 0) {
+		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Requesting WHOIS Records");
+		gui_model_update_marquee((main_gui_data *)p_data, "Requesting WHOIS Records");
+		whois_fill_host_manager(p_data->c_host_manager);
+		gui_model_update_tree_and_marquee((main_gui_data*)p_data, NULL);
+	}
+	gtk_widget_destroy(p_data->popup_window);
+	dns_enum_opts_destroy(&d_opts);
+	free(p_data);
 	return;
 }
 
@@ -201,7 +231,7 @@ gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
 	/* get the main popup window */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 165);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 205);
 	gtk_window_set_title(GTK_WINDOW(window), "DNS Reverse Bruteforce");
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
 	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);
@@ -256,6 +286,10 @@ gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
 	p_data->tree_view = m_data->tree_view;
 	p_data->main_marquee = m_data->main_marquee;
 	p_data->c_host_manager = m_data->c_host_manager;
+	p_data->misc_widget = gtk_progress_bar_new();
+	
+	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
+	gtk_widget_show(p_data->misc_widget);
 	
 	/* get the button */
 	button = gtk_button_new();
@@ -383,7 +417,7 @@ void callback_add_selected_hosts(GtkWidget *widget, popup_data *userdata) {
 	} while (gtk_tree_model_iter_next(treemodel, &piter));
 	
 	gtk_widget_destroy(userdata->popup_window);
-	gui_model_update_tree_and_marquee((main_gui_data*)userdata);
+	gui_model_update_tree_and_marquee((main_gui_data*)userdata, NULL);
 	free(userdata);
 	return;
 }

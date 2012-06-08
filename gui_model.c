@@ -181,23 +181,34 @@ gboolean view_onPopupMenu(GtkWidget *treeview, gpointer userdata) {
 	return TRUE;
 }
 
-int gui_model_update_tree_and_marquee(main_gui_data *m_data) {
-	GtkTreeModel *model;
+void gui_model_update_marquee(main_gui_data *m_data, const char *status) {
 	GtkWidget *label;
-	char msg[32];
+	char msg[GUI_MODEL_MAX_MARQUEE_SIZE + 1];
+	
+	gtk_container_foreach(GTK_CONTAINER(m_data->main_marquee), (GtkCallback)gtk_widget_destroy, NULL);
+	snprintf(msg, GUI_MODEL_MAX_MARQUEE_SIZE, "Status: %s", status);
+	label = gtk_label_new(msg);
+	gtk_box_pack_start(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);
+	gtk_widget_show(label);
+	while (gtk_events_pending()) {
+		gtk_main_iteration();
+	}
+	return;
+}
+
+int gui_model_update_tree_and_marquee(main_gui_data *m_data, const char *status) {
+	GtkTreeModel *model;
 	
 	model = gui_refresh_tree_model(NULL, m_data->c_host_manager);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(m_data->tree_view), model);
-	
-	gtk_container_foreach(GTK_CONTAINER(m_data->main_marquee), (GtkCallback)gtk_widget_destroy, NULL);
-	label = gtk_label_new("Status: Waiting");
-	gtk_box_pack_start(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);
-	gtk_widget_show(label);
-	
-	snprintf(msg, 32, "Hosts: %u Networks: %u", m_data->c_host_manager->known_hosts, m_data->c_host_manager->known_whois_records);
-	label = gtk_label_new(msg);
-	gtk_box_pack_end(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);
-	gtk_widget_show(label);
+	if (status != NULL) {
+		gui_model_update_marquee(m_data, status);
+	} else {
+		gui_model_update_marquee(m_data, "Waiting");
+	}
+	while (gtk_events_pending()) {
+		gtk_main_iteration();
+	}
 	return 0;
 }
 

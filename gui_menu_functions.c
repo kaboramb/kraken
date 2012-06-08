@@ -61,7 +61,7 @@ void gui_menu_file_open(main_gui_data *userdata, guint action, GtkWidget *widget
 		if (response != 0) {
 			GUI_POPUP_ERROR_IMPORT_FAILED(NULL);
 		}
-		gui_model_update_tree_and_marquee(userdata);
+		gui_model_update_tree_and_marquee(userdata, NULL);
 		if (userdata->c_host_manager->save_file_path != NULL) {
 			free(userdata->c_host_manager->save_file_path);
 		}

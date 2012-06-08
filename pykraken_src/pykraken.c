@@ -119,6 +119,7 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 	single_host_info current_host;
 	unsigned int current_host_i = 0;
 	char *pTargetDomain;
+	char *pHostFileList;
 	char ipstr[INET_ADDRSTRLEN];
 	PyObject *pyTmpStr = NULL;
 	PyObject *pyHostList = PyDict_New();
@@ -128,7 +129,7 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	if (!PyArg_ParseTuple(args, "s", &pTargetDomain)) {
+	if (!PyArg_ParseTuple(args, "ss", &pTargetDomain, &pHostFileList)) {
 		Py_DECREF(pyHostList);
 		return NULL;
 	}
@@ -138,7 +139,7 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	dns_enumerate_domain(pTargetDomain, &c_host_manager);
+	dns_enumerate_domain(&c_host_manager, pTargetDomain, pHostFileList);
 	
 	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
 		current_host = c_host_manager.hosts[current_host_i];
@@ -190,7 +191,7 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	dns_enumerate_network(pTargetDomain, &network, &c_host_manager);
+	dns_enumerate_network_ex(pTargetDomain, &network, &c_host_manager, NULL);
 	
 	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
 		current_host = c_host_manager.hosts[current_host_i];
@@ -317,7 +318,7 @@ static PyObject *pykraken_redirect_on_same_server(PyObject *self, PyObject *args
 static PyMethodDef PyKrakenMethods[] = {
 	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "whois_lookup_ip(target_ip)\nRetrieve the whois record pretaining to an IP address\n\n@type target_ip: String\n@param target_ip: ip address to retreive whois information for"},
 	{"get_nameservers", pykraken_get_nameservers, METH_VARARGS, "get_nameservers(target_domain)\nEnumerate nameservers for a domain\n\n@type target_domain: String\n@param target_domain: the domain to retreive the list of name servers for"},
-	{"enumerate_domain", pykraken_enumerate_domain, METH_VARARGS, "enumerate_domain(target_domain)\nEnumerate hostnames for a domain\n\n@type target_domain: String\n@param target_domain: the domain to enumerate hostnames for"},
+	{"enumerate_domain", pykraken_enumerate_domain, METH_VARARGS, "enumerate_domain(target_domain, host_list)\nEnumerate hostnames for a domain\n\n@type target_domain: String\n@param target_domain: the domain to enumerate hostnames for\n@type host_list: String\n@param host_list: path to a file containing a list of host names to bruteforce"},
 	{"enumerate_network", pykraken_enumerate_network, METH_VARARGS, "enumerate_network(target_domain, target_network)\nEnumerate hostnames for a network\n\n@type target_domain: String\n@param target_domain: the domain who's name servers to use\n@type target_network: String\n@param target_network: the network in CIDR notation to bruteforce records for"},
 	{"ip_in_cidr", pykraken_ip_in_cidr, METH_VARARGS, "ip_in_cidr(target_ip, target_network)\nCheck if an IP address is in a CIDR network\n\n@type target_ip: String\n@param target_ip: the ip to check\n@type target_network: String\n@param target_network: the network to check"},
 	{"scrape_for_links", pykraken_scrape_for_links, METH_VARARGS, ""},
