@@ -126,6 +126,7 @@ int main(int argc, char **argv) {
 	}
 	
 #ifndef WITHOUT_LOG4C
+	log4c_init();
 	logcat = log4c_category_get("kraken");
 	log4c_category_set_priority(logcat, arguments.loglvl);
 	log4c_category_set_appender(logcat, log4c_appender_get("stdout"));
@@ -157,5 +158,8 @@ int main(int argc, char **argv) {
 	
 	LOGGING_QUICK_WARNING("kraken", "good luck and good hunting")
 	destroy_host_manager(&c_host_manager);
+#ifndef WITHOUT_LOG4C
+	log4c_fini();
+#endif
 	return 0;
 }

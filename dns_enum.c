@@ -262,6 +262,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 
 int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 	domain_ns_list nameservers;
+	single_host_info c_host;
 	char ipstr[INET_ADDRSTRLEN];
 	int i;
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
@@ -272,6 +273,11 @@ int dns_enumerate_domain(char *target_domain, host_manager *c_host_manager) {
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
 		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
 		logging_log("kraken.dns_enum", LOGGING_INFO, "found name server %s %s", nameservers.servers[i], ipstr);
+		init_single_host(&c_host);
+		memcpy(&c_host.ipv4_addr, &nameservers.ipv4_addrs[i], sizeof(struct in_addr));
+		strncpy(c_host.hostname, nameservers.servers[i], DNS_MAX_FQDN_LENGTH);
+		host_manager_add_host(c_host_manager, &c_host);
+		destroy_single_host(&c_host);
 	}
 	
 	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers);
