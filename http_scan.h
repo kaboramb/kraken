@@ -17,5 +17,6 @@ typedef struct http_link {
 int http_redirect_on_same_server(const char *original_url, const char *redirect_url);
 void http_free_link(http_link *current_link);
 int http_scrape_for_links(char *target_url, http_link **link_anchor);
+int http_scrape_for_links_ex(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor);
 
 #endif

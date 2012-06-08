@@ -210,49 +210,17 @@ int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 	return 0;
 }
 
-int http_scrape_for_links(char *target_url, http_link **link_anchor) {
-	/* link_anchor should either be NULL or an existing list returned by
-	 * a previous call to this or a similar function */
-	/* this function will follow redirects but only when on the same
-	 * server in the future I may change this to on the same domain */
-	size_t webpage_sz;
-	FILE *webpage_f = NULL;
-	char *webpage_b = NULL;
-	CURL *curl;
+int http_process_request_scan_for_links(CURL *curl, const char *target_url, char *webpage_b, http_link **link_anchor, http_link **pvt_link_anchor) {
 	CURLcode curl_res;
-	long http_code = 0;
-	char *redirected_url;
-	char *content_type;
-	int redirect_count = 0;
-	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
+	size_t webpage_sz;
 	http_link *link_current = *link_anchor;
+	FILE *webpage_f = NULL;
+	long http_code = 0;
+	int redirect_count = 0;
 	unsigned int link_counter = 0;
+	char *content_type;
+	char *redirected_url;
 	
-	if (pvt_link_anchor) {
-		while (pvt_link_anchor->next) {
-			pvt_link_anchor = pvt_link_anchor->next;
-		}
-	}
-
-	webpage_f = open_memstream(&webpage_b, &webpage_sz);
-	if (webpage_f == NULL) {
-		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
-		return 1;
-	}
-
-	curl = curl_easy_init();
-	curl_easy_setopt(curl, CURLOPT_URL, target_url);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
-	curl_res = curl_easy_perform(curl);
-	fclose(webpage_f);
-	assert(webpage_b != NULL);
-	if (curl_res != 0) {
-		LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
-		free(webpage_b);
-		curl_easy_cleanup(curl);
-		return 2;
-	}
-
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 	if (http_code != 200) {
 		logging_log("kraken.http_scan", LOGGING_DEBUG, "web server responded with: %lu", http_code);
@@ -314,17 +282,124 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 		curl_easy_cleanup(curl);
 		return 5;
 	}
-	if (link_current && (pvt_link_anchor == NULL)) {
+	if (link_current && (*pvt_link_anchor == NULL)) {
 		for (link_current = *link_anchor; link_current; link_current = link_current->next) {
 			link_counter++;
 		}
-	} else if (pvt_link_anchor) {
-		for (link_current = pvt_link_anchor; link_current; link_current = link_current->next) {
+	} else if (*pvt_link_anchor) {
+		for (link_current = *pvt_link_anchor; link_current; link_current = link_current->next) {
 			link_counter++;
 		}
 	}
 	
 	logging_log("kraken.http_scan", LOGGING_INFO, "gathered %u new links", link_counter);
+	return 0;
+}
+
+int http_scrape_for_links(char *target_url, http_link **link_anchor) {
+	/* link_anchor should either be NULL or an existing list returned by
+	 * a previous call to this or a similar function */
+	/* this function will follow redirects but only when on the same
+	 * server in the future I may change this to on the same domain */
+	size_t webpage_sz;
+	FILE *webpage_f = NULL;
+	char *webpage_b = NULL;
+	CURL *curl;
+	CURLcode curl_res;
+	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
+	
+	if (pvt_link_anchor) {
+		while (pvt_link_anchor->next) {
+			pvt_link_anchor = pvt_link_anchor->next;
+		}
+	}
+
+	webpage_f = open_memstream(&webpage_b, &webpage_sz);
+	if (webpage_f == NULL) {
+		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
+		return 1;
+	}
+
+	curl = curl_easy_init();
+	curl_easy_setopt(curl, CURLOPT_URL, target_url);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
+	curl_res = curl_easy_perform(curl);
+	fclose(webpage_f);
+	assert(webpage_b != NULL);
+	if (curl_res != 0) {
+		LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
+		free(webpage_b);
+		curl_easy_cleanup(curl);
+		return 2;
+	}
+
+	http_process_request_scan_for_links(curl, target_url, webpage_b, link_anchor, &pvt_link_anchor);
+
+	free(webpage_b);
+	curl_easy_cleanup(curl);
+	return 0;
+}
+
+int http_scrape_for_links_ex(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor) {
+	/* link_anchor should either be NULL or an existing list returned by
+	 * a previous call to this or a similar function */
+	/* this function will follow redirects but only when on the same
+	 * server in the future I may change this to on the same domain */
+	size_t webpage_sz;
+	FILE *webpage_f = NULL;
+	char *webpage_b = NULL;
+	CURL *curl;
+	CURLcode curl_res;
+	struct curl_slist *headers = NULL;
+	char ipstr[INET_ADDRSTRLEN];
+	char hoststr[DNS_MAX_FQDN_LENGTH + 7];
+	char *target_url = NULL;
+	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
+	
+	if (pvt_link_anchor) {
+		while (pvt_link_anchor->next) {
+			pvt_link_anchor = pvt_link_anchor->next;
+		}
+	}
+
+	inet_ntop(AF_INET, addr, ipstr, sizeof(ipstr));
+	target_url = malloc(strlen(ipstr) + strlen(resource) + 9);
+	assert(target_url != NULL);
+	snprintf(target_url, (strlen(ipstr) + strlen(resource) + 9), "http://%s%s", ipstr, resource);
+	snprintf(hoststr, (DNS_MAX_FQDN_LENGTH + 7), "Host: %s", hostname);
+	
+	webpage_f = open_memstream(&webpage_b, &webpage_sz);
+	if (webpage_f == NULL) {
+		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
+		return 1;
+	}
+
+	curl = curl_easy_init();
+	curl_easy_setopt(curl, CURLOPT_URL, target_url);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
+	headers = curl_slist_append(headers, hoststr);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+	
+	curl_res = curl_easy_perform(curl);
+	
+	free(target_url);
+	target_url = malloc(strlen(hostname) + strlen(resource) + 9);
+	assert(target_url != NULL);
+	snprintf(target_url, (strlen(hostname) + strlen(resource) + 9), "http://%s%s", hostname, resource);
+	
+	curl_slist_free_all(headers);
+	fclose(webpage_f);
+	assert(webpage_b != NULL);
+	if (curl_res != 0) {
+		LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
+		free(webpage_b);
+		curl_easy_cleanup(curl);
+		return 2;
+	}
+	
+	http_process_request_scan_for_links(curl, target_url, webpage_b, link_anchor, &pvt_link_anchor);
+	
+	free(target_url);
 	free(webpage_b);
 	curl_easy_cleanup(curl);
 	return 0;

@@ -62,7 +62,11 @@ void gui_menu_file_open(main_gui_data *userdata, guint action, GtkWidget *widget
 			GUI_POPUP_ERROR_IMPORT_FAILED(NULL);
 		}
 		gui_model_update_tree_and_marquee(userdata);
+		if (userdata->c_host_manager->save_file_path != NULL) {
+			free(userdata->c_host_manager->save_file_path);
+		}
 		userdata->c_host_manager->save_file_path = malloc(strlen(filename) + 1);
+		userdata->c_host_manager->save_file_path[strlen(filename)] = '\0';
 		strncpy(userdata->c_host_manager->save_file_path, filename, (strlen(filename) + 1));
 		g_free(filename);
 	}
@@ -118,7 +122,8 @@ void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *wid
 			userdata->c_host_manager->save_file_path = NULL;
 		}
 		userdata->c_host_manager->save_file_path = malloc(strlen(filename) + 1);
-		strncpy(userdata->c_host_manager->save_file_path, filename, (strlen(filename) + 1));
+		memset(userdata->c_host_manager->save_file_path, '\0', (strlen(filename) + 1));
+		userdata->c_host_manager->save_file_path[strlen(filename)] = '\0';
 		response = export_host_manager_to_xml(userdata->c_host_manager, filename);
 		if (response != 0) {
 			GUI_POPUP_ERROR_EXPORT_FAILED(NULL);

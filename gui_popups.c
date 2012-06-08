@@ -17,40 +17,6 @@ enum {
 	NUM_COLS
 };
 
-char *get_domain(char *originalname) {
-	/* this returns a pointer to the second-to-top-level domain */
-	char *pCur = originalname;
-	int dotfound = 0;
-	
-	pCur += strlen(originalname);
-	while (pCur != originalname) {
-		if (*pCur == '.') {
-			if (dotfound == 1) {
-				return (pCur + 1);
-			} else {
-				dotfound = 1;
-			}
-		}
-		pCur -= 1;
-	}
-	if (dotfound == 1) {
-		return pCur;
-	}
-	return NULL;
-}
-
-int host_in_domain(char *hostname, char *domain) {
-	char *hdomain;
-	hdomain = get_domain(hostname);
-	if (hdomain == NULL) {
-		return 0;
-	}
-	if (strncasecmp(hdomain, domain, strlen(domain)) == 0) {
-		return 1;
-	}
-	return 0;
-}
-
 void gui_popup_error_dialog(gpointer window, const char *message, const char *title) {
 	GtkWidget *dialog;
 	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message);
@@ -86,10 +52,13 @@ void callback_bf_domain(GtkWidget *widget, popup_data *userdata) {
 	
 	gtk_widget_destroy(userdata->popup_window);
 	
-	dns_enumerate_domain(target_domain, userdata->c_host_manager);
-	whois_fill_host_manager(userdata->c_host_manager);
-	
-	gui_model_update_tree_and_marquee((main_gui_data*)userdata);
+	if (dns_enumerate_domain(target_domain, userdata->c_host_manager) == -1) {
+		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(userdata->popup_window);
+		gtk_widget_destroy(userdata->popup_window);
+	} else {
+		whois_fill_host_manager(userdata->c_host_manager);
+		gui_model_update_tree_and_marquee((main_gui_data*)userdata);
+	}
 	
 	free(userdata);
 	return;
@@ -335,7 +304,7 @@ GtkTreeModel *gui_refresh_http_link_domain_selection_model(GtkTreeStore *store, 
 			item_in_list = FALSE;
 			do {
 				gtk_tree_model_get(treemodel, &domainsearchiter, COL_DOMAIN, &domain, -1);
-				if (host_in_domain(link_current->hostname, domain) == 1) {
+				if (dns_host_in_domain(link_current->hostname, domain) == 1) {
 					gtk_tree_model_iter_children(treemodel, &hostsearchiter, &domainsearchiter);
 					do {
 						gtk_tree_model_get(treemodel, &hostsearchiter, COL_DOMAIN, &hostname, -1);
@@ -357,7 +326,7 @@ GtkTreeModel *gui_refresh_http_link_domain_selection_model(GtkTreeStore *store, 
 				continue;
 			}
 		}
-		domain = get_domain(link_current->hostname);
+		domain = dns_get_domain(link_current->hostname);
 		if (domain == NULL) {
 			LOGGING_QUICK_WARNING("kraken.gui.popups", "skipping an invalid domain name")
 			continue;

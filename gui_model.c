@@ -40,6 +40,32 @@ void view_popup_menu_onDoSomething(GtkWidget *menuitem, main_gui_data *m_data) {
 	return;
 }
 
+void view_popup_menu_onDoDNSBruteforceDomain(GtkWidget *menuitem, main_gui_data *m_data) {
+	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
+	GtkTreeSelection *selection;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+
+	selection = gtk_tree_view_get_selection(treeview);
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gchar *name;
+		char *domain = NULL;
+		gtk_tree_model_get(model, &iter, COL_HOSTNAME, &name, -1);
+		if (name != NULL) {
+			domain = dns_get_domain(name);
+			if (domain != NULL) {
+				strncpy(m_data->c_host_manager->lw_domain, domain, DNS_MAX_FQDN_LENGTH);
+			}
+			g_free(name);
+		}
+	} else {
+		return;
+	}
+	
+	gui_popup_bf_domain(m_data);
+	return;
+}
+
 void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, main_gui_data *m_data) {
 	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
 	GtkTreeSelection *selection;
@@ -73,32 +99,34 @@ void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_dat
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	http_link *link_anchor = NULL;
-	char *target_url;
+	struct in_addr ip;
 	int ret_val = 0;
 
 	selection = gtk_tree_view_get_selection(treeview);
 	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
 		gchar *name;
-		gtk_tree_model_get(model, &iter, COL_HOSTNAME, &name, -1);
-		target_url = malloc(strlen(name) + 9); // len(http:///) + 1
-		if (target_url == NULL) {
-			g_free(name);
+		gchar *ipstr;
+		gtk_tree_model_get(model, &iter, COL_IPADDR, &ipstr, -1);
+		if (ipstr == NULL) {
+			LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
 			return;
 		}
-		memset(target_url, '\0', strlen(name) + 9);
-		strcat(target_url, "http://");
-		strncat(target_url, name, strlen(name));
-		strcat(target_url, "/");
-		g_free(name);
-		ret_val = http_scrape_for_links(target_url, &link_anchor);
+		gtk_tree_model_get(model, &iter, COL_HOSTNAME, &name, -1);
+		if (name == NULL) {
+			LOGGING_QUICK_WARNING("kraken.gui.model", "could not retreive host name");
+			name = ipstr;
+		}
+		inet_pton(AF_INET, ipstr, &ip);
+		ret_val = http_scrape_for_links_ex(name, &ip, "/", &link_anchor);
+		if (name != ipstr) {
+			g_free(name);
+		}
+		g_free(ipstr);
 		if (ret_val) {
 			LOGGING_QUICK_ERROR("kraken.gui.model", "there was an error requesting the page")
 		}
-		free(target_url);
 		gui_popup_select_hosts_from_http_links(m_data, link_anchor);
 		http_free_link(link_anchor);
-	} else {
-		return;
 	}
 	return;
 }
@@ -109,6 +137,10 @@ void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data
 	
 	menuitem = gtk_menu_item_new_with_label("Show WHOIS Data");
 	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoSomething, m_data);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	
+	menuitem = gtk_menu_item_new_with_label("DNS Bruteforce Domain");
+	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoDNSBruteforceDomain, m_data);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	
 	menuitem = gtk_menu_item_new_with_label("DNS Bruteforce Network");
