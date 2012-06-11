@@ -200,14 +200,24 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname)
 	return 0;
 }
 
-int host_manager_add_alias_to_host(host_manager *c_host_manager, char *hostname, char *alias) {
+void host_manager_add_alias_to_host(host_manager *c_host_manager, char *hostname, char *alias) {
 	unsigned int current_host_i;
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if (strncmp(hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) {
 			single_host_add_alias(&c_host_manager->hosts[current_host_i], alias);
 		}
 	}
-	return 0;
+	return;
+}
+
+void host_manager_set_host_status(host_manager *c_host_manager, struct in_addr *target_ip, const char status) {
+	unsigned int current_host_i;
+	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		if (memcmp(target_ip, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0) {
+			c_host_manager->hosts[current_host_i].is_up = status;
+		}
+	}
+	return;
 }
 
 int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *target_ip, single_host_info **desired_host) {

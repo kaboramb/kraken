@@ -46,16 +46,20 @@ GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata) {
 void gui_menu_file_open(main_gui_data *userdata, guint action, GtkWidget *widget) {
 	GtkWidget *dialog;
 	gint response;
+	gboolean merge = FALSE;
 	if ((userdata->c_host_manager->known_hosts > 0) || (userdata->c_host_manager->known_whois_records > 0)) {
 		response = gui_popup_question_yes_no_dialog(NULL, "Merge With Existing Data?", "Merge?");
 		if (response == GTK_RESPONSE_NO) {
-			destroy_host_manager(userdata->c_host_manager); /* out with the old */
-			init_host_manager(userdata->c_host_manager); /* in with the new */
+			merge = TRUE;
 		}
 	}
 	dialog = gtk_file_chooser_dialog_new("Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		char *filename;
+		if (merge == TRUE) {
+			destroy_host_manager(userdata->c_host_manager); /* out with the old */
+			init_host_manager(userdata->c_host_manager); /* in with the new */
+		}
 		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
 		response = import_host_manager_from_xml(userdata->c_host_manager, filename);
 		if (response != 0) {
@@ -122,7 +126,7 @@ void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *wid
 			userdata->c_host_manager->save_file_path = NULL;
 		}
 		userdata->c_host_manager->save_file_path = malloc(strlen(filename) + 1);
-		memset(userdata->c_host_manager->save_file_path, '\0', (strlen(filename) + 1));
+		strncpy(userdata->c_host_manager->save_file_path, filename, strlen(filename));
 		userdata->c_host_manager->save_file_path[strlen(filename)] = '\0';
 		response = export_host_manager_to_xml(userdata->c_host_manager, filename);
 		if (response != 0) {

@@ -124,6 +124,8 @@ void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_dat
 		g_free(ipstr);
 		if (ret_val) {
 			LOGGING_QUICK_ERROR("kraken.gui.model", "there was an error requesting the page")
+		} else {
+			host_manager_set_host_status(m_data->c_host_manager, &ip, KRAKEN_HOST_UP);
 		}
 		gui_popup_select_hosts_from_http_links(m_data, link_anchor);
 		http_free_link(link_anchor);
@@ -183,13 +185,20 @@ gboolean view_onPopupMenu(GtkWidget *treeview, gpointer userdata) {
 
 void gui_model_update_marquee(main_gui_data *m_data, const char *status) {
 	GtkWidget *label;
-	char msg[GUI_MODEL_MAX_MARQUEE_SIZE + 1];
+	char msg[GUI_MODEL_MAX_MARQUEE_MSG_SIZE + 1];
 	
 	gtk_container_foreach(GTK_CONTAINER(m_data->main_marquee), (GtkCallback)gtk_widget_destroy, NULL);
-	snprintf(msg, GUI_MODEL_MAX_MARQUEE_SIZE, "Status: %s", status);
+	
+	snprintf(msg, GUI_MODEL_MAX_MARQUEE_MSG_SIZE, "Status: %s", status);
 	label = gtk_label_new(msg);
 	gtk_box_pack_start(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);
 	gtk_widget_show(label);
+	
+	snprintf(msg, GUI_MODEL_MAX_MARQUEE_MSG_SIZE, "Hosts: %u Networks: %u", m_data->c_host_manager->known_hosts, m_data->c_host_manager->known_whois_records);
+	label = gtk_label_new(msg);
+	gtk_box_pack_end(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);
+	gtk_widget_show(label);
+	
 	while (gtk_events_pending()) {
 		gtk_main_iteration();
 	}

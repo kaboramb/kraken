@@ -51,8 +51,13 @@ void callback_bf_domain(GtkWidget *widget, popup_data *p_data) {
 	
 	memset(target_domain, '\0', sizeof(target_domain));
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
+	if (strlen(target_domain) > DNS_MAX_FQDN_LENGTH) {
+		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
+		gtk_widget_destroy(p_data->popup_window);
+		free(p_data);
+		return;
+	}
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
-	
 	if (strlen(target_domain) == 0) {
 		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
 		gtk_widget_destroy(p_data->popup_window);
@@ -231,7 +236,7 @@ gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
 	/* get the main popup window */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 205);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 230);
 	gtk_window_set_title(GTK_WINDOW(window), "DNS Reverse Bruteforce");
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
 	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);

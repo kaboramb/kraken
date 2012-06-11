@@ -3,7 +3,7 @@
 
 #include "hosts.h"
 
-#define GUI_MODEL_MAX_MARQUEE_SIZE 32
+#define GUI_MODEL_MAX_MARQUEE_MSG_SIZE 32
 
 typedef struct main_gui_data {
 	GtkWidget *tree_view;
