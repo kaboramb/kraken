@@ -26,6 +26,14 @@ void gui_popup_error_dialog(gpointer window, const char *message, const char *ti
 	gtk_widget_destroy(dialog);
 }
 
+void gui_popup_info_dialog(gpointer window, const char *message, const char *title) {
+	GtkWidget *dialog;
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_INFO, GTK_BUTTONS_OK, message);
+	gtk_window_set_title(GTK_WINDOW(dialog), title);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
+}
+
 gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title) {
 	GtkWidget *dialog;
 	gint response;

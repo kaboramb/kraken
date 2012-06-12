@@ -11,6 +11,9 @@
 
 static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/File",									NULL,		NULL,							0, 	"<Branch>" },
+	{ "/File/Export",							NULL,		NULL,							0,	"<Branch>" },
+	{ "/File/Export/CSV",						NULL,		gui_menu_file_export_csv,		0,	NULL		},
+	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
 	{ "/File/Open",								NULL,		gui_menu_file_open,				0,	NULL	},
 	{ "/File/Save",								"<CTRL>S",	gui_menu_file_save,				0,	NULL	},
 	{ "/File/Save As",							NULL,		gui_menu_file_save_as,			0,	NULL	},
@@ -42,6 +45,39 @@ GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata) {
 	gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
 
 	return gtk_item_factory_get_widget(item_factory, "<main>");
+}
+
+void gui_menu_file_export_csv(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	GtkWidget *dialog;
+	guint log_handler;
+	const char *domain = "Gtk";
+	gint response;
+	if ((userdata->c_host_manager->known_hosts == 0) && (userdata->c_host_manager->known_whois_records == 0)) {
+		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
+		return;
+	}
+	dialog = gtk_file_chooser_dialog_new("Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL),
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), ".");
+	gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "kraken_export.csv");
+	
+	log_handler = g_log_set_handler(domain, G_LOG_LEVEL_WARNING, suppress_log_function, NULL);
+	response = gtk_dialog_run(GTK_DIALOG(dialog));
+	g_log_remove_handler(domain, log_handler);
+	
+	if (response == GTK_RESPONSE_ACCEPT) {
+		char *filename;
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		response = export_host_manager_to_csv(userdata->c_host_manager, filename);
+		if (response != 0) {
+			GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
+		} else {
+			gui_popup_info_dialog(NULL, "Successfully Exported Data", "Info: Export Successful");
+		}
+		g_free(filename);
+	}
+	gtk_widget_destroy(dialog);
+	return;
 }
 
 void gui_menu_file_open(main_gui_data *userdata, guint action, GtkWidget *widget) {

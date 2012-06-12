@@ -40,6 +40,7 @@ int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_fi
 		current_who = &c_host_manager->whois_records[current_record_i];
 		fprintf(csv_f, "%s,%s,%s\n", current_who->cidr_s, current_who->netname, current_who->orgname);
 	}
+	logging_log("kraken.export", LOGGING_INFO, "exported %u hosts and %u whois records", c_host_manager->known_hosts, c_host_manager->known_whois_records);
 	fclose(csv_f);
 	return 0;
 }
