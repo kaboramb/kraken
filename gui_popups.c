@@ -7,6 +7,7 @@
 #include "gui_popups.h"
 #include "gui_model.h"
 #include "host_manager.h"
+#include "http_scan.h"
 #include "logging.h"
 #include "network_addr.h"
 #include "whois_lookup.h"
@@ -44,26 +45,138 @@ void callback_update_progress(unsigned int current, unsigned int high, popup_dat
 	return;
 }
 
-void callback_bf_domain(GtkWidget *widget, popup_data *p_data) {
+void callback_http_scan_links(GtkWidget *widget, popup_data *p_data) {
+	const gchar *text_entry;
+	http_link *link_anchor = NULL;
+	int tmp_val = 0;
+	char target_host[DNS_MAX_FQDN_LENGTH];
+	char target_url[DNS_MAX_FQDN_LENGTH + 9];
+	
+	memset(target_host, '\0', sizeof(target_host));
+	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
+	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
+		GUI_POPUP_ERROR_INVALID_HOST_NAME(p_data->popup_window);
+		gtk_widget_destroy(p_data->popup_window);
+		free(p_data);
+		return;
+	}
+	strncat(target_host, text_entry, DNS_MAX_FQDN_LENGTH);
+	for (tmp_val = 0; tmp_val < strlen(target_host); tmp_val++) {
+		if (*(char *)&target_host[tmp_val] == '/') {
+			target_host[tmp_val] = '\0';
+			break;
+		}
+	}
+	snprintf(target_url, DNS_MAX_FQDN_LENGTH + 9, "http://%s/", target_host);
+	tmp_val = http_scrape_for_links(target_url, &link_anchor);
+	if (tmp_val) {
+		LOGGING_QUICK_ERROR("kraken.gui.popup", "there was an error requesting the page")
+	}
+	gui_popup_select_hosts_from_http_links((main_gui_data *)p_data, link_anchor);
+	http_free_link(link_anchor);
+	gtk_widget_destroy(p_data->popup_window);
+	free(p_data);
+	return;
+}
+
+gboolean gui_popup_http_scan_links(main_gui_data *m_data, char *host_str) {
+	GtkWidget *window;
+	GtkWidget *vbox, *hbox;
+	GtkWidget *entry;
+	GtkWidget *button;
+	GtkWidget *label;
+	GtkWidget *image;
+	popup_data *p_data;
+	p_data = malloc(sizeof(popup_data));
+	if (p_data == NULL) {
+		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
+		return TRUE;
+	}
+	
+	/* get the main popup window */
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 125);
+	gtk_window_set_title(GTK_WINDOW(window), "HTTP Scan For Links");
+	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
+	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);
+	
+	/* get the main vertical box for the window */
+	vbox = gtk_vbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
+	gtk_container_add(GTK_CONTAINER(window), vbox);
+	gtk_widget_show(vbox);
+	
+	/* get a horizontal box to place in the vertical box */
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	gtk_widget_show(hbox);
+	
+	label = gtk_label_new("Target Host: http://");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, TRUE, 0);
+	gtk_widget_show(label);
+	
+	entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(entry), DNS_MAX_FQDN_LENGTH);
+	if (strlen(m_data->c_host_manager->lw_domain) > 0) {
+		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
+	}
+	
+	p_data->popup_window = window;
+	p_data->text_entry0 = entry;
+	p_data->tree_view = m_data->tree_view;
+	p_data->main_marquee = m_data->main_marquee;
+	p_data->c_host_manager = m_data->c_host_manager;
+	
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_http_scan_links), p_data);
+	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
+	gtk_widget_show(entry);
+	
+	/* get the button */
+	button = gtk_button_new();
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_http_scan_links), p_data);
+	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+	gtk_widget_set_can_default(button, TRUE);
+	gtk_widget_grab_default(button);
+	gtk_widget_show(hbox);
+	gtk_widget_show(button);
+	
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
+	
+	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
+	label = gtk_label_new("Start");
+	
+	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 2);
+	gtk_widget_show(image);
+	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 2);
+	gtk_widget_show(label);
+	gtk_widget_show(hbox);
+	gtk_container_add(GTK_CONTAINER(button), hbox);
+	
+	gtk_widget_show(window);
+	
+	return TRUE;
+}
+
+void callback_dns_bf_domain(GtkWidget *widget, popup_data *p_data) {
 	const gchar *text_entry;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
 	dns_enum_opts d_opts;
 	
 	memset(target_domain, '\0', sizeof(target_domain));
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
-	if (strlen(target_domain) > DNS_MAX_FQDN_LENGTH) {
+	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
 		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
 		gtk_widget_destroy(p_data->popup_window);
 		free(p_data);
 		return;
 	}
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
-	if (strlen(target_domain) == 0) {
-		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
-		gtk_widget_destroy(p_data->popup_window);
-		free(p_data);
-		return;
-	}
 	
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Enumerating Domain");
 	gui_model_update_marquee((main_gui_data *)p_data, "Enumerating Domain");
@@ -87,7 +200,7 @@ void callback_bf_domain(GtkWidget *widget, popup_data *p_data) {
 	return;
 }
 
-gboolean gui_popup_bf_domain(main_gui_data *m_data) {
+gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
@@ -138,11 +251,12 @@ gboolean gui_popup_bf_domain(main_gui_data *m_data) {
 	p_data->c_host_manager = m_data->c_host_manager;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
-	g_signal_connect(entry, "activate", G_CALLBACK(callback_bf_domain), p_data);
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_dns_bf_domain), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
 	
 	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
 	gtk_widget_show(p_data->misc_widget);
 	
 	/* get the button */
@@ -150,7 +264,7 @@ gboolean gui_popup_bf_domain(main_gui_data *m_data) {
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_bf_domain), p_data);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_dns_bf_domain), p_data);
 	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);
@@ -175,7 +289,7 @@ gboolean gui_popup_bf_domain(main_gui_data *m_data) {
 	return TRUE;
 }
 
-void callback_bf_network(GtkWidget *widget, popup_data *p_data) {
+void callback_dns_bf_network(GtkWidget *widget, popup_data *p_data) {
 	const gchar *text_entry;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
 	network_info target_network;
@@ -183,14 +297,13 @@ void callback_bf_network(GtkWidget *widget, popup_data *p_data) {
 	
 	memset(target_domain, '\0', sizeof(target_domain));
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
-	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
-	
-	if (strlen(target_domain) == 0) {
+	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
 		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
 		gtk_widget_destroy(p_data->popup_window);
 		free(p_data);
 		return;
 	}
+	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 	
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry1));
 	if (netaddr_cidr_str_to_nwk((char *)text_entry, &target_network) != 0) {
@@ -218,7 +331,7 @@ void callback_bf_network(GtkWidget *widget, popup_data *p_data) {
 	return;
 }
 
-gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
+gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry0;
@@ -262,7 +375,7 @@ gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
 	if (strlen(m_data->c_host_manager->lw_domain) > 0) {
 		gtk_entry_set_text(GTK_ENTRY(entry0), m_data->c_host_manager->lw_domain);
 	}
-	g_signal_connect(entry0, "activate", G_CALLBACK(callback_bf_domain), p_data);
+	g_signal_connect(entry0, "activate", G_CALLBACK(callback_dns_bf_domain), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry0, TRUE, TRUE, 0);
 	gtk_widget_show(entry0);
 	
@@ -281,7 +394,7 @@ gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
 	if (cidr_str != NULL) {
 		gtk_entry_set_text(GTK_ENTRY(entry1), cidr_str);
 	}
-	g_signal_connect(entry1, "activate", G_CALLBACK(callback_bf_domain), p_data);
+	g_signal_connect(entry1, "activate", G_CALLBACK(callback_dns_bf_domain), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry1, TRUE, TRUE, 0);
 	gtk_widget_show(entry1);
 	
@@ -294,6 +407,7 @@ gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
 	p_data->misc_widget = gtk_progress_bar_new();
 	
 	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
 	gtk_widget_show(p_data->misc_widget);
 	
 	/* get the button */
@@ -301,7 +415,7 @@ gboolean gui_popup_bf_network(main_gui_data *m_data, char *cidr_str) {
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_bf_network), p_data);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_dns_bf_network), p_data);
 	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);

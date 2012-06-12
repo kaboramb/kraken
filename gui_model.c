@@ -24,22 +24,6 @@ enum {
 	SORTID_WHO_ORGNAME,
 };
 
-void view_popup_menu_onDoSomething(GtkWidget *menuitem, main_gui_data *m_data) {
-	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
-	GtkTreeSelection *selection;
-	GtkTreeModel *model;
-	GtkTreeIter iter;
-	selection = gtk_tree_view_get_selection(treeview);
-	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
-		gchar *name;
-		gtk_tree_model_get(model, &iter, COL_IPADDR, &name, -1);
-		logging_log("kraken.gui.model", LOGGING_DEBUG, "selected row is: %s", name);
-		g_free(name);
-	}
-	/* else no row selected */
-	return;
-}
-
 void view_popup_menu_onDoDNSBruteforceDomain(GtkWidget *menuitem, main_gui_data *m_data) {
 	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
 	GtkTreeSelection *selection;
@@ -62,7 +46,7 @@ void view_popup_menu_onDoDNSBruteforceDomain(GtkWidget *menuitem, main_gui_data 
 		return;
 	}
 	
-	gui_popup_bf_domain(m_data);
+	gui_popup_dns_bf_domain(m_data);
 	return;
 }
 
@@ -89,7 +73,7 @@ void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, main_gui_data
 		return;
 	}
 	
-	gui_popup_bf_network(m_data, who_r->cidr_s);
+	gui_popup_dns_bf_network(m_data, who_r->cidr_s);
 	return;
 }
 
@@ -136,10 +120,6 @@ void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_dat
 void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data) {
 	GtkWidget *menu, *menuitem;
 	menu = gtk_menu_new();
-	
-	menuitem = gtk_menu_item_new_with_label("Show WHOIS Data");
-	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoSomething, m_data);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	
 	menuitem = gtk_menu_item_new_with_label("DNS Bruteforce Domain");
 	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoDNSBruteforceDomain, m_data);

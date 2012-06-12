@@ -233,7 +233,6 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 			webpage_f = open_memstream(&webpage_b, &webpage_sz);
 			if (webpage_f == NULL) {
 				LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
-				curl_easy_cleanup(curl);
 				return 1;
 			}
 			curl_easy_setopt(curl, CURLOPT_URL, redirected_url);
@@ -242,8 +241,6 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 			fclose(webpage_f);
 			if (curl_res != 0) {
 				LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
-				free(webpage_b);
-				curl_easy_cleanup(curl);
 				return 2;
 			}
 			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
@@ -252,15 +249,11 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 			}
 		} else {
 			logging_log("kraken.http_scan", LOGGING_ERROR, "web server attempted to redirect us off site to: %s", redirected_url);
-			free(webpage_b);
-			curl_easy_cleanup(curl);
 			return 3;
 		}
 	}
 	if (redirect_count == HTTP_MAX_REDIRECTS) {
 		LOGGING_QUICK_WARNING("kraken.http_scan", "received too many redirects")
-		free(webpage_b);
-		curl_easy_cleanup(curl);
 		return 6;
 	}
 
@@ -269,8 +262,6 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 	curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &content_type);
 	if (content_type == NULL) {
 		LOGGING_QUICK_WARNING("kraken.http_scan", "the content type was not provided in the servers response")
-		free(webpage_b);
-		curl_easy_cleanup(curl);
 		return 4;
 	}
 	if (strstr(content_type, "text/html")) {
@@ -278,8 +269,6 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 		*link_anchor = link_current;
 	} else {
 		logging_log("kraken.http_scan", LOGGING_WARNING, "received invalid content type of: %s", content_type);
-		free(webpage_b);
-		curl_easy_cleanup(curl);
 		return 5;
 	}
 	if (link_current && (*pvt_link_anchor == NULL)) {

@@ -20,6 +20,7 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/Edit/Add Hosts",						NULL,		NULL,							0,	"<Branch>" },
 	{ "/Edit/Add Hosts/DNS Forward Bruteforce",	NULL,		gui_menu_edit_dns_forward_bf, 	0,	NULL	},
 	{ "/Edit/Add Hosts/DNS Reverse Bruteforce",	NULL,		gui_menu_edit_dns_reverse_bf, 	0,	NULL	},
+	{ "/Edit/Add Hosts/HTTP Scan For Links",	NULL,		gui_menu_edit_http_scan_for_links,	0,	NULL	},
 };
 
 static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);
@@ -139,11 +140,16 @@ void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *wid
 }
 
 void gui_menu_edit_dns_forward_bf(main_gui_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_bf_domain(userdata);
+	gui_popup_dns_bf_domain(userdata);
 	return;
 }
 
 void gui_menu_edit_dns_reverse_bf(main_gui_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_bf_network(userdata, NULL);
+	gui_popup_dns_bf_network(userdata, NULL);
+	return;
+}
+
+void gui_menu_edit_http_scan_for_links(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	gui_popup_http_scan_links(userdata, NULL);
 	return;
 }
