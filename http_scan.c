@@ -10,6 +10,18 @@
 #include "http_scan.h"
 #include "logging.h"
 
+void http_enum_opts_init(http_enum_opts *h_opts) {
+	memset(h_opts, '\0', sizeof(struct http_enum_opts));
+	h_opts->progress_update = NULL;
+	h_opts->progress_update_data = NULL;
+	return;
+}
+
+void http_enum_opts_destroy(http_enum_opts *h_opts) {
+	memset(h_opts, '\0', sizeof(struct http_enum_opts));
+	return;
+}
+
 int http_redirect_on_same_server(const char *original_url, const char *redirect_url) {
 	/*
 	 * Returns 0 on "No, the redirect url is to a different server"
@@ -212,6 +224,7 @@ int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 
 int http_process_request_scan_for_links(CURL *curl, const char *target_url, char *webpage_b, http_link **link_anchor, http_link **pvt_link_anchor) {
 	CURLcode curl_res;
+	CURL *curl_redir = NULL;
 	size_t webpage_sz;
 	http_link *link_current = *link_anchor;
 	FILE *webpage_f = NULL;
@@ -219,7 +232,7 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 	int redirect_count = 0;
 	unsigned int link_counter = 0;
 	char *content_type;
-	char *redirected_url;
+	char *redirected_url = NULL;
 	
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 	if (http_code != 200) {
@@ -229,21 +242,27 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 		redirect_count++;
 		curl_easy_getinfo(curl, CURLINFO_REDIRECT_URL, &redirected_url);
 		if (http_redirect_on_same_server(target_url, redirected_url) == 1) {
+			if (curl_redir != NULL) {
+				curl_easy_cleanup(curl_redir);
+			}
 			free(webpage_b);
 			webpage_f = open_memstream(&webpage_b, &webpage_sz);
 			if (webpage_f == NULL) {
 				LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
 				return 1;
 			}
-			curl_easy_setopt(curl, CURLOPT_URL, redirected_url);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
-			curl_res = curl_easy_perform(curl);
+			curl_redir = curl_easy_init();
+			curl_easy_setopt(curl_redir, CURLOPT_TIMEOUT, 1);
+			curl_easy_setopt(curl_redir, CURLOPT_URL, redirected_url);
+			curl_easy_setopt(curl_redir, CURLOPT_WRITEDATA, webpage_f);
+			curl_res = curl_easy_perform(curl_redir);
 			fclose(webpage_f);
 			if (curl_res != 0) {
 				LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
+				curl_easy_cleanup(curl_redir);
 				return 2;
 			}
-			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+			curl_easy_getinfo(curl_redir, CURLINFO_RESPONSE_CODE, &http_code);
 			if (http_code != 200) {
 				logging_log("kraken.http_scan", LOGGING_DEBUG, "web server responded with: %lu", http_code);
 			}
@@ -258,8 +277,14 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 	}
 
 	logging_log("kraken.http_scan", LOGGING_DEBUG, "%lu bytes were read from the page", webpage_sz);
-
-	curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &content_type);
+	if (redirected_url == NULL) {
+		curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &content_type);
+	} else {
+		curl_easy_getinfo(curl_redir, CURLINFO_CONTENT_TYPE, &content_type);
+	}
+	if (curl_redir != NULL) {
+		curl_easy_cleanup(curl_redir);
+	}
 	if (content_type == NULL) {
 		LOGGING_QUICK_WARNING("kraken.http_scan", "the content type was not provided in the servers response")
 		return 4;
@@ -310,6 +335,7 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 	}
 
 	curl = curl_easy_init();
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1);
 	curl_easy_setopt(curl, CURLOPT_URL, target_url);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
 	curl_res = curl_easy_perform(curl);
@@ -329,7 +355,7 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 	return 0;
 }
 
-int http_scrape_for_links_ex(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor) {
+int http_scrape_for_links_ip(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor) {
 	/* link_anchor should either be NULL or an existing list returned by
 	 * a previous call to this or a similar function */
 	/* this function will follow redirects but only when on the same
@@ -364,6 +390,7 @@ int http_scrape_for_links_ex(const char *hostname, const struct in_addr *addr, c
 	}
 
 	curl = curl_easy_init();
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1);
 	curl_easy_setopt(curl, CURLOPT_URL, target_url);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
 	headers = curl_slist_append(headers, hoststr);
@@ -391,5 +418,48 @@ int http_scrape_for_links_ex(const char *hostname, const struct in_addr *addr, c
 	free(target_url);
 	free(webpage_b);
 	curl_easy_cleanup(curl);
+	return 0;
+}
+
+int http_enumerate_hosts_ex(host_manager *c_host_manager, http_link **link_anchor, http_enum_opts *h_opts) {
+	single_host_info *c_host;
+	unsigned int current_host_i;
+	unsigned int current_name_i = 0;
+	unsigned int done = 0;
+	unsigned int total = 0;
+	int response = 0;
+	
+	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		c_host = &c_host_manager->hosts[current_host_i];
+		total++;
+		if (c_host->aliases != NULL) {
+			for (current_name_i = 0; current_name_i < c_host->n_aliases; current_name_i++) {
+				total++;
+			}
+		}
+	}
+	
+	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		c_host = &c_host_manager->hosts[current_host_i];
+		response = http_scrape_for_links_ip(c_host->hostname, &c_host->ipv4_addr, "/", link_anchor);
+		done++;
+		if (h_opts->progress_update != NULL) {
+			h_opts->progress_update(done, total, h_opts->progress_update_data);
+		}
+			
+		if (c_host->aliases != NULL) {
+			for (current_name_i = 0; current_name_i < c_host->n_aliases; current_name_i++) {
+				if (response == 0) {
+					response = http_scrape_for_links_ip(c_host->aliases[current_name_i], &c_host->ipv4_addr, "/", link_anchor);
+				} else {
+					LOGGING_QUICK_WARNING("kraken.http_scan", "skipping alises due to scan error")
+				}
+				done++;
+				if (h_opts->progress_update != NULL) {
+					h_opts->progress_update(done, total, h_opts->progress_update_data);
+				}
+			}
+		}
+	}
 	return 0;
 }

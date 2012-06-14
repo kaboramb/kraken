@@ -191,7 +191,7 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	dns_enumerate_network_ex(pTargetDomain, &network, &c_host_manager, NULL);
+	dns_enumerate_network_ex(&c_host_manager, pTargetDomain, &network, NULL);
 	
 	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
 		current_host = c_host_manager.hosts[current_host_i];

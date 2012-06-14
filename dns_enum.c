@@ -399,7 +399,7 @@ int dns_enumerate_domain_ex(host_manager *c_host_manager, char *target_domain, d
 	return 0;
 }
 
-int dns_enumerate_network_ex(char *target_domain, network_info *target_net, host_manager *c_host_manager, dns_enum_opts *d_opts) {
+int dns_enumerate_network_ex(host_manager *c_host_manager, char *target_domain, network_info *target_net, dns_enum_opts *d_opts) {
 	domain_ns_list nameservers;
 	dns_enum_opts new_opts;
 	char ipstr[INET6_ADDRSTRLEN];

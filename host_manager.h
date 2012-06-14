@@ -11,6 +11,7 @@ int single_host_add_alias(single_host_info *c_host, const char *alias);
 int init_host_manager(host_manager *c_host_manager);
 int destroy_host_manager(host_manager *c_host_manager);
 int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_host);
+void host_manager_delete_host(host_manager *c_host_manager, const char *hostname, struct in_addr *target_ip);
 int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname);
 void host_manager_add_alias_to_host(host_manager *c_host_manager, char *hostname, char *alias);
 void host_manager_set_host_status(host_manager *c_host_manager, struct in_addr *target_ip, const char status);

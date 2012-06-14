@@ -87,7 +87,7 @@ void callback_http_scan_links(GtkWidget *widget, popup_data *p_data) {
 	return;
 }
 
-gboolean gui_popup_http_scan_links(main_gui_data *m_data, char *host_str) {
+gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_str) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
@@ -327,7 +327,7 @@ void callback_dns_bf_network(GtkWidget *widget, popup_data *p_data) {
 	dns_enum_opts_init(&d_opts);
 	d_opts.progress_update = (void *)&callback_update_progress;
 	d_opts.progress_update_data = p_data;
-	if (dns_enumerate_network_ex(target_domain, &target_network, p_data->c_host_manager, &d_opts) == 0) {
+	if (dns_enumerate_network_ex(p_data->c_host_manager, target_domain, &target_network, &d_opts) == 0) {
 		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Requesting WHOIS Records");
 		gui_model_update_marquee((main_gui_data *)p_data, "Requesting WHOIS Records");
 		whois_fill_host_manager(p_data->c_host_manager);
@@ -424,6 +424,92 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
 	g_signal_connect(button, "clicked", G_CALLBACK(callback_dns_bf_network), p_data);
+	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+	gtk_widget_set_can_default(button, TRUE);
+	gtk_widget_grab_default(button);
+	gtk_widget_show(hbox);
+	gtk_widget_show(button);
+	
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
+	
+	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
+	label = gtk_label_new("Start");
+	
+	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 2);
+	gtk_widget_show(image);
+	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 2);
+	gtk_widget_show(label);
+	gtk_widget_show(hbox);
+	gtk_container_add(GTK_CONTAINER(button), hbox);
+	
+	gtk_widget_show(window);
+	
+	return TRUE;
+}
+
+void callback_http_scan_all_links(GtkWidget *widget, popup_data *p_data) {
+	http_link *link_anchor = NULL;
+	http_enum_opts h_opts;
+	
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Scanning For Links");
+	gui_model_update_marquee((main_gui_data *)p_data, "Scanning For Links");
+	
+	http_enum_opts_init(&h_opts);
+	h_opts.progress_update = (void *)&callback_update_progress;
+	h_opts.progress_update_data = p_data;
+	http_enumerate_hosts_ex(p_data->c_host_manager, &link_anchor, &h_opts);
+	gui_popup_select_hosts_from_http_links((main_gui_data *)p_data, link_anchor);
+	
+	gtk_widget_destroy(p_data->popup_window);
+	http_enum_opts_destroy(&h_opts);
+	free(p_data);
+	return;
+}
+
+gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
+	GtkWidget *window;
+	GtkWidget *vbox, *hbox;
+	GtkWidget *button;
+	GtkWidget *label;
+	GtkWidget *image;
+	popup_data *p_data;
+	p_data = malloc(sizeof(popup_data));
+	if (p_data == NULL) {
+		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
+		return TRUE;
+	}
+	
+	/* get the main popup window */
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 105);
+	gtk_window_set_title(GTK_WINDOW(window), "HTTP Enumerate Hosts");
+	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
+	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);
+	
+	/* get the main vertical box for the window */
+	vbox = gtk_vbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
+	gtk_container_add(GTK_CONTAINER(window), vbox);
+	gtk_widget_show(vbox);
+	
+	p_data->popup_window = window;
+	p_data->tree_view = m_data->tree_view;
+	p_data->main_marquee = m_data->main_marquee;
+	p_data->c_host_manager = m_data->c_host_manager;
+	p_data->misc_widget = gtk_progress_bar_new();
+	
+	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
+	gtk_widget_show(p_data->misc_widget);
+	
+	/* get the button */
+	button = gtk_button_new();
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_http_scan_all_links), p_data);
 	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);

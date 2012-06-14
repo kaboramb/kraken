@@ -136,7 +136,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *c_host
 			c_host_manager->hosts[c_host_manager->known_hosts].aliases = NULL;
 			c_host_manager->hosts[c_host_manager->known_hosts].n_aliases = 0;
 			c_host_manager->known_hosts++;
-			LOGGING_QUICK_WARNING("kraken.export", "aliases have been lost due to a failed malloc")
+			LOGGING_QUICK_WARNING("kraken.host_manager", "aliases have been lost due to a failed malloc")
 			return 1;
 		} else {
 			memset(block, '\0', (DNS_MAX_FQDN_LENGTH + 1) * (c_host->n_aliases));
@@ -146,6 +146,23 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *c_host
 	}
 	c_host_manager->known_hosts++;
 	return 0;
+}
+
+void host_manager_delete_host(host_manager *c_host_manager, const char *hostname, struct in_addr *target_ip) {
+	unsigned int current_host_i = 0;
+	
+	while (current_host_i < c_host_manager->known_hosts) {
+		if (strncasecmp(c_host_manager->hosts[current_host_i].hostname, hostname, strlen(hostname)) != 0) {
+			current_host_i++;
+			continue;
+		} else if (memcmp(&c_host_manager->hosts[current_host_i].ipv4_addr, target_ip, sizeof(struct in_addr)) != 0) {
+			current_host_i++;
+			continue;
+		}
+		c_host_manager->known_hosts--;
+		memmove(&c_host_manager->hosts[current_host_i], &c_host_manager->hosts[(current_host_i + 1)], (sizeof(struct single_host_info) * (c_host_manager->known_hosts - current_host_i)));
+	}
+	return;
 }
 
 int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname) {

@@ -11,6 +11,7 @@
 #define GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(window) gui_popup_error_dialog(window, "Invalid Domain Name", "Error: Invalid Domain")
 #define GUI_POPUP_ERROR_INVALID_HOST_NAME(window) gui_popup_error_dialog(window, "Invalid Host Name", "Error: Invalid Host")
 #define GUI_POPUP_ERROR_INVALID_NO_HOSTS_FOUND_IN_LINKS(window) gui_popup_error_dialog(window, "No Links Were Found", "Error: No Links")
+#define GUI_POPUP_QUESTION_SURE(window) gui_popup_question_yes_no_dialog(window, "Are You Sure?", "Confirm Action")
 
 typedef struct popup_data {
 	GtkWidget *tree_view;
@@ -25,7 +26,8 @@ typedef struct popup_data {
 void gui_popup_error_dialog(gpointer window, const char *message, const char *title);
 void gui_popup_info_dialog(gpointer window, const char *message, const char *title);
 gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title);
-gboolean gui_popup_http_scan_links(main_gui_data *m_data, char *host_str);
+gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data);
+gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_str);
 gboolean gui_popup_dns_bf_domain(main_gui_data *m_data);
 gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str);
 gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link *link_anchor);

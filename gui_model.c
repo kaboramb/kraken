@@ -101,7 +101,7 @@ void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_dat
 			name = ipstr;
 		}
 		inet_pton(AF_INET, ipstr, &ip);
-		ret_val = http_scrape_for_links_ex(name, &ip, "/", &link_anchor);
+		ret_val = http_scrape_for_links_ip(name, &ip, "/", &link_anchor);
 		if (name != ipstr) {
 			g_free(name);
 		}
@@ -114,6 +114,41 @@ void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_dat
 		gui_popup_select_hosts_from_http_links(m_data, link_anchor);
 		http_free_link(link_anchor);
 	}
+	return;
+}
+
+void view_popup_menu_onDelete(GtkWidget *menuitem, main_gui_data *m_data) {
+	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
+	GtkTreeSelection *selection;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	struct in_addr ip;
+	gint response;
+	
+	selection = gtk_tree_view_get_selection(treeview);
+	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive selection from tree")
+		return;
+	}
+	gchar *name;
+	gchar *ipstr;
+	gtk_tree_model_get(model, &iter, COL_IPADDR, &ipstr, COL_HOSTNAME, &name, -1);
+	if (ipstr == NULL) {
+		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
+		return;
+	}
+	if (name == NULL) {
+		LOGGING_QUICK_WARNING("kraken.gui.model", "could not retreive host name");
+		return;
+	}
+	inet_pton(AF_INET, ipstr, &ip);
+	response = GUI_POPUP_QUESTION_SURE(NULL);
+	if (response) {
+		host_manager_delete_host(m_data->c_host_manager, name, &ip);
+		gui_model_update_tree_and_marquee(m_data, NULL);
+	}
+	g_free(name);
+	g_free(ipstr);
 	return;
 }
 
@@ -131,6 +166,13 @@ void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data
 	
 	menuitem = gtk_menu_item_new_with_label("HTTP Scan For Links");
 	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoHttpScanLinks, m_data);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	
+	menuitem = gtk_separator_menu_item_new();
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+	
+	menuitem = gtk_menu_item_new_with_label("Delete");
+	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDelete, m_data);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 	
 	gtk_widget_show_all(menu);
