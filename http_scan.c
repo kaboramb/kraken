@@ -12,6 +12,8 @@
 
 void http_enum_opts_init(http_enum_opts *h_opts) {
 	memset(h_opts, '\0', sizeof(struct http_enum_opts));
+	h_opts->timeout = HTTP_DEFAULT_TIMEOUT;
+	h_opts->timeout_ms = HTTP_DEFAULT_TIMEOUT_MS;
 	h_opts->progress_update = NULL;
 	h_opts->progress_update_data = NULL;
 	return;
@@ -222,7 +224,7 @@ int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 	return 0;
 }
 
-int http_process_request_scan_for_links(CURL *curl, const char *target_url, char *webpage_b, http_link **link_anchor, http_link **pvt_link_anchor) {
+int http_process_request_for_links(CURL *curl, const char *target_url, char *webpage_b, http_link **link_anchor, http_link **pvt_link_anchor, http_enum_opts *h_opts) {
 	CURLcode curl_res;
 	CURL *curl_redir = NULL;
 	size_t webpage_sz;
@@ -252,7 +254,11 @@ int http_process_request_scan_for_links(CURL *curl, const char *target_url, char
 				return 1;
 			}
 			curl_redir = curl_easy_init();
-			curl_easy_setopt(curl_redir, CURLOPT_TIMEOUT, 1);
+			assert(curl_redir != NULL);
+			curl_easy_setopt(curl_redir, CURLOPT_TIMEOUT, h_opts->timeout);
+			if (h_opts->timeout_ms != 0) {
+				curl_easy_setopt(curl_redir, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
+			}
 			curl_easy_setopt(curl_redir, CURLOPT_URL, redirected_url);
 			curl_easy_setopt(curl_redir, CURLOPT_WRITEDATA, webpage_f);
 			curl_res = curl_easy_perform(curl_redir);
@@ -321,6 +327,7 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 	CURL *curl;
 	CURLcode curl_res;
 	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
+	http_enum_opts h_opts;
 	
 	if (pvt_link_anchor) {
 		while (pvt_link_anchor->next) {
@@ -333,9 +340,14 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
 		return 1;
 	}
-
+	
+	http_enum_opts_init(&h_opts);
 	curl = curl_easy_init();
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1);
+	assert(curl != NULL);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, h_opts.timeout);
+	if (h_opts.timeout_ms != 0) {
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts.timeout_ms);
+	}
 	curl_easy_setopt(curl, CURLOPT_URL, target_url);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
 	curl_res = curl_easy_perform(curl);
@@ -345,17 +357,29 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
 		free(webpage_b);
 		curl_easy_cleanup(curl);
+		http_enum_opts_destroy(&h_opts);
 		return 2;
 	}
 
-	http_process_request_scan_for_links(curl, target_url, webpage_b, link_anchor, &pvt_link_anchor);
-
+	http_process_request_for_links(curl, target_url, webpage_b, link_anchor, &pvt_link_anchor, &h_opts);
+	
 	free(webpage_b);
 	curl_easy_cleanup(curl);
+	http_enum_opts_destroy(&h_opts);
 	return 0;
 }
 
 int http_scrape_for_links_ip(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor) {
+	http_enum_opts h_opts;
+	int response;
+	
+	http_enum_opts_init(&h_opts);
+	response = http_scrape_for_links_ip_ex(hostname, addr, resource, link_anchor, &h_opts);
+	http_enum_opts_destroy(&h_opts);
+	return response;
+}
+
+int http_scrape_for_links_ip_ex(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor, http_enum_opts *h_opts) {
 	/* link_anchor should either be NULL or an existing list returned by
 	 * a previous call to this or a similar function */
 	/* this function will follow redirects but only when on the same
@@ -390,7 +414,11 @@ int http_scrape_for_links_ip(const char *hostname, const struct in_addr *addr, c
 	}
 
 	curl = curl_easy_init();
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1);
+	assert(curl != NULL);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, h_opts->timeout);
+	if (h_opts->timeout_ms != 0) {
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
+	}
 	curl_easy_setopt(curl, CURLOPT_URL, target_url);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
 	headers = curl_slist_append(headers, hoststr);
@@ -413,7 +441,7 @@ int http_scrape_for_links_ip(const char *hostname, const struct in_addr *addr, c
 		return 2;
 	}
 	
-	http_process_request_scan_for_links(curl, target_url, webpage_b, link_anchor, &pvt_link_anchor);
+	http_process_request_for_links(curl, target_url, webpage_b, link_anchor, &pvt_link_anchor, h_opts);
 	
 	free(target_url);
 	free(webpage_b);
@@ -450,7 +478,7 @@ int http_enumerate_hosts_ex(host_manager *c_host_manager, http_link **link_ancho
 		if (c_host->aliases != NULL) {
 			for (current_name_i = 0; current_name_i < c_host->n_aliases; current_name_i++) {
 				if (response == 0) {
-					response = http_scrape_for_links_ip(c_host->aliases[current_name_i], &c_host->ipv4_addr, "/", link_anchor);
+					response = http_scrape_for_links_ip_ex(c_host->aliases[current_name_i], &c_host->ipv4_addr, "/", link_anchor, h_opts);
 				} else {
 					LOGGING_QUICK_WARNING("kraken.http_scan", "skipping alises due to scan error")
 				}
