@@ -7,6 +7,7 @@
 #include <libxml/parser.h>
 #include <uriparser/Uri.h>
 #include "hosts.h"
+#include "host_manager.h"
 #include "http_scan.h"
 #include "logging.h"
 
@@ -14,14 +15,35 @@ void http_enum_opts_init(http_enum_opts *h_opts) {
 	memset(h_opts, '\0', sizeof(struct http_enum_opts));
 	h_opts->timeout = HTTP_DEFAULT_TIMEOUT;
 	h_opts->timeout_ms = HTTP_DEFAULT_TIMEOUT_MS;
+	h_opts->bing_api_key = NULL;
 	h_opts->progress_update = NULL;
 	h_opts->progress_update_data = NULL;
 	return;
 }
 
 void http_enum_opts_destroy(http_enum_opts *h_opts) {
+	if (h_opts->bing_api_key != NULL) {
+		free(h_opts->bing_api_key);
+	}
 	memset(h_opts, '\0', sizeof(struct http_enum_opts));
 	return;
+}
+
+int http_enum_opts_set_bing_api_key(http_enum_opts *h_opts, const char *bing_api_key) {
+	size_t bing_api_key_len;
+	if (h_opts->bing_api_key != NULL) {
+		free(h_opts->bing_api_key);
+		h_opts->bing_api_key = NULL;
+	}
+	if (strlen(bing_api_key) > HTTP_BING_API_KEY_SZ) {
+		return -1;
+	}
+	bing_api_key_len = strlen(bing_api_key);
+	h_opts->bing_api_key = malloc(bing_api_key_len + 1);
+	assert(h_opts->bing_api_key != NULL);
+	strncpy(h_opts->bing_api_key, bing_api_key, bing_api_key_len);
+	h_opts->bing_api_key[bing_api_key_len] = '\0';
+	return 0;
 }
 
 int http_redirect_on_same_server(const char *original_url, const char *redirect_url) {
@@ -205,13 +227,13 @@ int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 	page = xmlReadMemory(tPage, strlen(tPage), "noname.xml", NULL, (XML_PARSE_RECOVER | XML_PARSE_NOERROR));
 	if (page == NULL) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "libxml2 failed to parse provided data")
-		return 1;
+		return -1;
 	}
 	root_element = xmlDocGetRootElement(page);
 	if (root_element == NULL) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "could not retrieve the root element of the HTML document")
 		xmlFreeDoc(page);
-		return 1;
+		return -1;
 	}
 	process_html_nodes_for_links(root_element, &link_current);
 	*link_anchor = link_current;
@@ -490,4 +512,168 @@ int http_enumerate_hosts_ex(host_manager *c_host_manager, http_link **link_ancho
 		}
 	}
 	return 0;
+}
+
+int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *target_domain, char *tPage) {
+	xmlDoc *page;
+	xmlNode *root_element = NULL;
+	xmlNode *cur_node = NULL;
+	xmlNode *ent_node = NULL;
+	xmlNode *con_node = NULL;
+	xmlNode *url_node = NULL;
+	xmlChar *url = NULL;
+	UriParserStateA uri_state;
+	UriUriA uri;
+	size_t len;
+	int num_entries = 0;
+	char hostname[DNS_MAX_FQDN_LENGTH + 1];
+
+	page = xmlReadMemory(tPage, strlen(tPage), "noname.xml", NULL, (XML_PARSE_RECOVER | XML_PARSE_NOERROR));
+	if (page == NULL) {
+		LOGGING_QUICK_ERROR("kraken.http_scan", "libxml2 failed to parse provided data")
+		return -1;
+	}
+	root_element = xmlDocGetRootElement(page);
+	if (root_element == NULL) {
+		LOGGING_QUICK_ERROR("kraken.http_scan", "could not retrieve the root element of the Bing XML document")
+		xmlFreeDoc(page);
+		return -1;
+	}
+	
+	for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type != XML_ELEMENT_NODE) {
+			continue;
+		}
+		if (xmlStrncmp(cur_node->name, (xmlChar *)"entry", 5) != 0) {
+			continue;
+		}
+		num_entries++;
+		for (ent_node = cur_node->children; ent_node; ent_node = ent_node->next) {
+			if (ent_node->type != XML_ELEMENT_NODE) {
+				continue;
+			}
+			if (xmlStrncmp(ent_node->name, (xmlChar *)"content", 7) != 0) {
+				continue;
+			}
+			for (con_node = ent_node->children; con_node; con_node = con_node->next) {
+				if (con_node->type != XML_ELEMENT_NODE) {
+					continue;
+				}
+				if (xmlStrncmp(con_node->name, (xmlChar *)"properties", 10) != 0) {
+					continue;
+				}
+				for (url_node = con_node->children; url_node; url_node = url_node->next) {
+					if (url_node->type != XML_ELEMENT_NODE) {
+						continue;
+					}
+					if (xmlStrncmp(url_node->name, (xmlChar *)"Url", 3) != 0) {
+						continue;
+					}
+					url = xmlNodeGetContent(url_node);
+					if (url == NULL) {
+						continue;
+					}
+					if (xmlStrlen(url) == 0) {
+						xmlFree(url);
+						continue;
+					}
+					if (xmlStrncmp(url, (xmlChar *)"http", 4) != 0) {
+						xmlFree(url);
+						break;
+					}
+					uri_state.uri = &uri;
+					if (uriParseUriA(&uri_state, (char *)url) != URI_SUCCESS) {
+						LOGGING_QUICK_ERROR("kraken.http_scan", "uriparser could not parse a URI extracted from the Bing XML")
+						uriFreeUriMembersA(&uri);
+						xmlFree(url);
+						break;
+					}
+					len = (uri.hostText.afterLast - uri.hostText.first);
+					if (len > DNS_MAX_FQDN_LENGTH) {
+						LOGGING_QUICK_WARNING("kraken.http_scan", "dropping host name due to length")
+						uriFreeUriMembersA(&uri);
+						xmlFree(url);
+						break;
+					}
+					memset(hostname, '\0', sizeof(hostname));
+					strncpy(hostname, uri.hostText.first, len);
+					if (dns_host_in_domain(hostname, (char *)target_domain) == 1) {
+						if (host_manager_quick_add_by_name(c_host_manager, hostname) != 0) {
+							logging_log("kraken.http_scan", LOGGING_ERROR, "failed to add host name %s from Bing XML", hostname);
+						}
+					} else {
+						logging_log("kraken.http_scan", LOGGING_WARNING, "identified host: %s that is not in the target domain", hostname);
+					}
+					uriFreeUriMembersA(&uri);
+					xmlFree(url);
+					break;
+				}
+			}
+		}
+	}
+
+	xmlFreeDoc(page);
+	return num_entries;
+}
+
+int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_domain, http_enum_opts *h_opts) {
+	size_t webpage_sz;
+	FILE *webpage_f = NULL;
+	char *webpage_b = NULL;
+	CURL *curl;
+	CURLcode curl_res;
+	char request_url[512];
+	int num_queries = 0;
+	int num_entries = 0;
+	
+	if (h_opts->bing_api_key == NULL) {
+		logging_log("kraken.http_scan", LOGGING_WARNING, "bing app id was not set");
+		return -1;
+	}
+	if ((strlen(h_opts->bing_api_key) > HTTP_BING_API_KEY_SZ) || (strlen(target_domain) > DNS_MAX_FQDN_LENGTH)) {
+		logging_log("kraken.http_scan", LOGGING_ERROR, "bing app id or domain is too large");
+		return -1;
+	}
+	
+	logging_log("kraken.http_scan", LOGGING_INFO, "enumerating domain: %s", target_domain);
+	
+	do {
+		webpage_f = open_memstream(&webpage_b, &webpage_sz);
+		if (webpage_f == NULL) {
+			LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
+			return -1;
+		}
+		memset(request_url, '\0', sizeof(request_url));
+		snprintf(request_url, sizeof(request_url), "https://api.datamarket.azure.com/Bing/Search/Web?Query=%%27site:%%20%s%%27&$top=%u&$skip=%u&$format=ATOM&Market=%%27en-US%%27", target_domain, HTTP_BING_NUM_RESULTS, (num_queries * HTTP_BING_NUM_RESULTS));
+		
+		curl = curl_easy_init();
+		assert(curl != NULL);
+		curl_easy_setopt(curl, CURLOPT_URL, request_url);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
+		curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+		curl_easy_setopt(curl, CURLOPT_USERNAME, "");
+		curl_easy_setopt(curl, CURLOPT_PASSWORD, h_opts->bing_api_key);
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, h_opts->timeout);
+		if (h_opts->timeout_ms != 0) {
+			curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
+		}
+		curl_res = curl_easy_perform(curl);
+		fclose(webpage_f);
+		assert(webpage_b != NULL);
+		if (curl_res != 0) {
+			LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
+			free(webpage_b);
+			curl_easy_cleanup(curl);
+			return -2;
+		}
+		logging_log("kraken.http_scan", LOGGING_TRACE, "Bing XML result retreived"); // TODO: remove this log line
+		num_queries++;
+		num_entries = http_add_hosts_from_bing_xml(c_host_manager, target_domain, webpage_b);
+		
+		free(webpage_b);
+		curl_easy_cleanup(curl);
+	} while ((num_entries == HTTP_BING_NUM_RESULTS) && ((((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries) < HTTP_BING_MAX_RESULTS));
+	
+	logging_log("kraken.http_scan", LOGGING_INFO, "bing enumeration complete, used %i queries and received %i results", num_queries, (((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries));
+	return (((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries);
 }

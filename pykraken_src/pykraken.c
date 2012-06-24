@@ -315,6 +315,51 @@ static PyObject *pykraken_redirect_on_same_server(PyObject *self, PyObject *args
 	Py_RETURN_FALSE;
 }
 
+static PyObject *pykraken_enumerate_bing(PyObject *self, PyObject *args) {
+	char *target_domain;
+	char *bing_api_key;
+	host_manager c_host_manager;
+	single_host_info current_host;
+	unsigned int current_host_i = 0;
+	char ipstr[INET_ADDRSTRLEN];
+	http_enum_opts h_opts;
+	PyObject *pyTmpStr = NULL;
+	PyObject *pyHostList = PyDict_New();
+	
+	if (pyHostList == NULL) {
+		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
+		return NULL;
+	}
+	
+	if (!PyArg_ParseTuple(args, "ss", &target_domain, &bing_api_key)) {
+		return NULL;
+	}
+	
+	init_host_manager(&c_host_manager);
+	http_enum_opts_init(&h_opts);
+	http_enum_opts_set_bing_api_key(&h_opts, bing_api_key);
+	
+	http_search_engine_bing_ex(&c_host_manager, target_domain, &h_opts);
+	
+	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
+		current_host = c_host_manager.hosts[current_host_i];
+		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
+		pyTmpStr = PyString_FromString(ipstr);
+		if (pyTmpStr) {
+			PyDict_SetItemString(pyHostList, current_host.hostname, pyTmpStr);
+			Py_DECREF(pyTmpStr);
+		} else {
+			destroy_host_manager(&c_host_manager);
+			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
+			Py_DECREF(pyHostList);
+			return NULL;
+		}
+	}
+	http_enum_opts_destroy(&h_opts);
+	destroy_host_manager(&c_host_manager);
+	return pyHostList;
+}
+
 static PyMethodDef PyKrakenMethods[] = {
 	{"whois_lookup_ip", pykraken_whois_lookup_ip, METH_VARARGS, "whois_lookup_ip(target_ip)\nRetrieve the whois record pretaining to an IP address\n\n@type target_ip: String\n@param target_ip: ip address to retreive whois information for"},
 	{"get_nameservers", pykraken_get_nameservers, METH_VARARGS, "get_nameservers(target_domain)\nEnumerate nameservers for a domain\n\n@type target_domain: String\n@param target_domain: the domain to retreive the list of name servers for"},
@@ -323,6 +368,7 @@ static PyMethodDef PyKrakenMethods[] = {
 	{"ip_in_cidr", pykraken_ip_in_cidr, METH_VARARGS, "ip_in_cidr(target_ip, target_network)\nCheck if an IP address is in a CIDR network\n\n@type target_ip: String\n@param target_ip: the ip to check\n@type target_network: String\n@param target_network: the network to check"},
 	{"scrape_for_links", pykraken_scrape_for_links, METH_VARARGS, ""},
 	{"redirect_on_same_server", pykraken_redirect_on_same_server, METH_VARARGS, ""},
+	{"enumerate_bing", pykraken_enumerate_bing, METH_VARARGS, ""},
 	{NULL, NULL, 0, NULL}
 };
 

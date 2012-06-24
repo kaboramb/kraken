@@ -67,7 +67,7 @@ static void callback_host(void *c_host_manager, int status, int timeouts, struct
 		host_manager_add_host(c_host_manager, &new_host);
 	}
 	if (*host->h_aliases) {
-		host_manager_add_alias_to_host(c_host_manager, host->h_name, *host->h_aliases);
+		host_manager_add_alias_to_host_by_name(c_host_manager, host->h_name, *host->h_aliases);
 	}
 	destroy_single_host(&new_host);
 	return;
@@ -112,13 +112,15 @@ void dns_enum_opts_destroy(dns_enum_opts *d_opts) {
 }
 
 int dns_enum_opts_set_wordlist(dns_enum_opts *d_opts, const char *wordlist) {
+	size_t wordlist_len;
 	if (d_opts->wordlist != NULL) {
 		free(d_opts->wordlist);
 	}
-	d_opts->wordlist = malloc(strlen(wordlist) + 1);
+	wordlist_len = strlen(wordlist);
+	d_opts->wordlist = malloc(wordlist_len + 1);
 	assert(d_opts->wordlist != NULL);
-	strncpy(d_opts->wordlist, wordlist, strlen(wordlist));
-	d_opts->wordlist[strlen(wordlist)] = '\0';
+	strncpy(d_opts->wordlist, wordlist, wordlist_len);
+	d_opts->wordlist[wordlist_len] = '\0';
 	return 0;
 }
 

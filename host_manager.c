@@ -165,8 +165,9 @@ void host_manager_delete_host(host_manager *c_host_manager, const char *hostname
 	return;
 }
 
-int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname) {
+int host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hostname) {
 	single_host_info new_host;
+	single_host_info *check_host;
 	whois_record tmp_who_resp;
 	whois_record *cur_who_resp = NULL;
 	struct addrinfo hints;
@@ -175,6 +176,11 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname)
 	int ret_val;
 	int s;
 	char ipstr[INET6_ADDRSTRLEN];
+	
+	host_manager_get_host_by_name(c_host_manager, hostname, &check_host);
+	if (check_host != NULL) {
+		return 0;
+	}
 	
 	memset(&hints, '\0', sizeof(struct addrinfo));
 	hints.ai_family = AF_INET;
@@ -193,6 +199,11 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname)
 	for (rp = result; rp != NULL; rp = rp->ai_next) {
 		if (rp->ai_family == AF_INET) {
 			sin = (struct sockaddr_in *)rp->ai_addr;
+			host_manager_get_host_by_addr(c_host_manager, &sin->sin_addr, &check_host);
+			if (check_host != NULL) {
+				single_host_add_alias(check_host, hostname);
+				continue;
+			}
 			init_single_host(&new_host);
 			memcpy(&new_host.ipv4_addr, &sin->sin_addr, sizeof(struct in_addr));
 			strncpy(new_host.hostname, hostname, DNS_MAX_FQDN_LENGTH);
@@ -217,7 +228,7 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, char *hostname)
 	return 0;
 }
 
-void host_manager_add_alias_to_host(host_manager *c_host_manager, char *hostname, char *alias) {
+void host_manager_add_alias_to_host_by_name(host_manager *c_host_manager, char *hostname, char *alias) {
 	unsigned int current_host_i;
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if (strncmp(hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) {
@@ -247,6 +258,28 @@ int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *
 		}
 	}
 	return 0;
+}
+
+void host_manager_get_host_by_name(host_manager *c_host_manager, const char *hostname, single_host_info **desired_host) {
+	unsigned int current_host_i;
+	single_host_info *c_host;
+	int c_alias;
+	
+	*desired_host = NULL;
+	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		c_host = &c_host_manager->hosts[current_host_i];
+		if (strncasecmp(hostname, c_host->hostname, strlen(hostname)) == 0) {
+			*desired_host = c_host;
+			return;
+		}
+		for (c_alias = 0; c_alias < c_host->n_aliases; c_alias++) {
+			if (strncasecmp(hostname, c_host->aliases[c_alias], strlen(hostname)) == 0) {
+				*desired_host = c_host;
+				return;
+			}
+		}
+	}
+	return;
 }
 
 int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record) {

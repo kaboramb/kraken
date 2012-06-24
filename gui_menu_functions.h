@@ -13,5 +13,6 @@ void gui_menu_edit_dns_forward_bf(main_gui_data *userdata, guint action, GtkWidg
 void gui_menu_edit_dns_reverse_bf(main_gui_data *userdata, guint action, GtkWidget *widget);
 void gui_menu_edit_http_scan_all_for_links(main_gui_data *userdata, guint action, GtkWidget *widget);
 void gui_menu_edit_http_scan_host_for_links(main_gui_data *userdata, guint action, GtkWidget *widget);
+void gui_menu_edit_http_search_bing(main_gui_data *userdata, guint action, GtkWidget *widget);
 
 #endif

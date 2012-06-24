@@ -171,6 +171,115 @@ gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_st
 	return TRUE;
 }
 
+void callback_http_search_bing(GtkWidget *widget, popup_data *p_data) {
+	http_enum_opts h_opts;
+	const gchar *text_entry;
+	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
+	
+	memset(target_domain, '\0', sizeof(target_domain));
+	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
+	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
+		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
+		gtk_widget_destroy(p_data->popup_window);
+		free(p_data);
+		return;
+	}
+	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
+	
+	http_enum_opts_init(&h_opts);
+	http_enum_opts_set_bing_api_key(&h_opts, "");
+	http_search_engine_bing_ex(p_data->c_host_manager, target_domain, &h_opts);
+	gui_model_update_tree_and_marquee((main_gui_data *)p_data, NULL);
+	http_enum_opts_destroy(&h_opts);
+	gtk_widget_destroy(p_data->popup_window);
+	free(p_data);
+	return;
+}
+
+gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
+	GtkWidget *window;
+	GtkWidget *vbox, *hbox;
+	GtkWidget *entry;
+	GtkWidget *button;
+	GtkWidget *label;
+	GtkWidget *image;
+	popup_data *p_data;
+	p_data = malloc(sizeof(popup_data));
+	if (p_data == NULL) {
+		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
+		return TRUE;
+	}
+	
+	/* get the main popup window */
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 125);
+	gtk_window_set_title(GTK_WINDOW(window), "HTTP Search Bing");
+	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
+	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);
+	
+	/* get the main vertical box for the window */
+	vbox = gtk_vbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
+	gtk_container_add(GTK_CONTAINER(window), vbox);
+	gtk_widget_show(vbox);
+	
+	/* get a horizontal box to place in the vertical box */
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	gtk_widget_show(hbox);
+	
+	label = gtk_label_new("Target Domain: ");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, TRUE, 0);
+	gtk_widget_show(label);
+	
+	entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(entry), DNS_MAX_FQDN_LENGTH);
+	if (strlen(m_data->c_host_manager->lw_domain) > 0) {
+		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
+	}
+	
+	p_data->popup_window = window;
+	p_data->text_entry0 = entry;
+	p_data->tree_view = m_data->tree_view;
+	p_data->main_marquee = m_data->main_marquee;
+	p_data->c_host_manager = m_data->c_host_manager;
+	
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_http_search_bing), p_data);
+	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
+	gtk_widget_show(entry);
+	
+	/* get the button */
+	button = gtk_button_new();
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_http_search_bing), p_data);
+	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+	gtk_widget_set_can_default(button, TRUE);
+	gtk_widget_grab_default(button);
+	gtk_widget_show(hbox);
+	gtk_widget_show(button);
+	
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
+	
+	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
+	label = gtk_label_new("Start");
+	
+	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 2);
+	gtk_widget_show(image);
+	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 2);
+	gtk_widget_show(label);
+	gtk_widget_show(hbox);
+	gtk_container_add(GTK_CONTAINER(button), hbox);
+	
+	gtk_widget_show(window);
+	
+	return TRUE;
+}
+
 void callback_dns_bf_domain(GtkWidget *widget, popup_data *p_data) {
 	const gchar *text_entry;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
