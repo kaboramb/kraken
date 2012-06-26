@@ -59,33 +59,33 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 	switch (key) {
 		case 'L':
 			if (strncasecmp(arg, "FATAL", 5) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_FATAL;
+				arguments->loglvl = LOGGING_FATAL;
 			} else if (strncasecmp(arg, "ALERT", 5) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_ALERT;
+				arguments->loglvl = LOGGING_ALERT;
 			} else if (strncasecmp(arg, "CRITICAL", 8) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_CRIT;
+				arguments->loglvl = LOGGING_CRITICAL;
 			} else if (arg[0] == 'C') {
-				arguments->loglvl = LOG4C_PRIORITY_CRIT;
+				arguments->loglvl = LOGGING_CRITICAL;
 			} else if (strncasecmp(arg, "ERROR", 5) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_ERROR;
+				arguments->loglvl = LOGGING_ERROR;
 			} else if (arg[0] == 'E') {
-				arguments->loglvl = LOG4C_PRIORITY_ERROR;
+				arguments->loglvl = LOGGING_ERROR;
 			} else if (strncasecmp(arg, "WARNING", 7) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_WARN;
+				arguments->loglvl = LOGGING_WARNING;
 			} else if (arg[0] == 'W') {
-				arguments->loglvl = LOG4C_PRIORITY_WARN;
+				arguments->loglvl = LOGGING_WARNING;
 			} else if (strncasecmp(arg, "NOTICE", 6) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_NOTICE;
+				arguments->loglvl = LOGGING_NOTICE;
 			} else if (strncasecmp(arg, "INFO", 4) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_INFO;
+				arguments->loglvl = LOGGING_INFO;
 			} else if (arg[0] == 'I') {
-				arguments->loglvl = LOG4C_PRIORITY_INFO;
+				arguments->loglvl = LOGGING_INFO;
 			} else if (strncasecmp(arg, "DEBUG", 5) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_DEBUG;
+				arguments->loglvl = LOGGING_DEBUG;
 			} else if (arg[0] == 'D') {
-				arguments->loglvl = LOG4C_PRIORITY_DEBUG;
+				arguments->loglvl = LOGGING_DEBUG;
 			} else if (strncasecmp(arg, "TRACE", 5) == 0) {
-				arguments->loglvl = LOG4C_PRIORITY_TRACE;
+				arguments->loglvl = LOGGING_TRACE;
 			} else {
 				 argp_usage(state);
 			}
@@ -117,8 +117,10 @@ int main(int argc, char **argv) {
 	single_host_info current_host;
 	whois_record current_who_rec;
 	char ipstr[INET_ADDRSTRLEN];
+#ifndef WITHOUT_LOG4C
 	log4c_category_t* logcat = NULL;
-	
+#endif
+
 	/* set argument defaults */
 	arguments.restore_file = NULL;
 #ifndef WITHOUT_LOG4C
