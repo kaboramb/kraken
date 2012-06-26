@@ -211,7 +211,11 @@ void gui_model_update_marquee(main_gui_data *m_data, const char *status) {
 	
 	gtk_container_foreach(GTK_CONTAINER(m_data->main_marquee), (GtkCallback)gtk_widget_destroy, NULL);
 	
-	snprintf(msg, GUI_MODEL_MAX_MARQUEE_MSG_SIZE, "Status: %s", status);
+	if (status != NULL) {
+		snprintf(msg, GUI_MODEL_MAX_MARQUEE_MSG_SIZE, "Status: %s", status);
+	} else {
+		snprintf(msg, GUI_MODEL_MAX_MARQUEE_MSG_SIZE, "Status: Waiting");
+	}
 	label = gtk_label_new(msg);
 	gtk_box_pack_start(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);
 	gtk_widget_show(label);
@@ -232,11 +236,7 @@ int gui_model_update_tree_and_marquee(main_gui_data *m_data, const char *status)
 	
 	model = gui_refresh_tree_model(NULL, m_data->c_host_manager);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(m_data->tree_view), model);
-	if (status != NULL) {
-		gui_model_update_marquee(m_data, status);
-	} else {
-		gui_model_update_marquee(m_data, "Waiting");
-	}
+	gui_model_update_marquee(m_data, status);
 	while (gtk_events_pending()) {
 		gtk_main_iteration();
 	}

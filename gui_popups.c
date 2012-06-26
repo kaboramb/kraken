@@ -3,6 +3,7 @@
 #include <string.h>
 #include <gtk/gtk.h>
 #include "hosts.h"
+#include "kraken_options.h"
 #include "dns_enum.h"
 #include "gui_popups.h"
 #include "gui_model.h"
@@ -172,6 +173,7 @@ gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_st
 }
 
 void callback_http_search_bing(GtkWidget *widget, popup_data *p_data) {
+	int response;
 	http_enum_opts h_opts;
 	const gchar *text_entry;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
@@ -186,12 +188,29 @@ void callback_http_search_bing(GtkWidget *widget, popup_data *p_data) {
 	}
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 	
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Searching Bing");
+	gui_model_update_marquee((main_gui_data *)p_data, "Searching Bing");
+	
 	http_enum_opts_init(&h_opts);
-	http_enum_opts_set_bing_api_key(&h_opts, "");
-	http_search_engine_bing_ex(p_data->c_host_manager, target_domain, &h_opts);
-	gui_model_update_tree_and_marquee((main_gui_data *)p_data, NULL);
-	http_enum_opts_destroy(&h_opts);
+	h_opts.progress_update = (void *)&callback_update_progress;
+	h_opts.progress_update_data = p_data;
+	if (p_data->k_opts->bing_api_key == NULL) {
+		gui_popup_error_dialog(p_data->popup_window, "Bing API Key Not Set", "Error: Invalid API Key");
+		gui_model_update_marquee((main_gui_data *)p_data, NULL);
+	} else {
+		http_enum_opts_set_bing_api_key(&h_opts, p_data->k_opts->bing_api_key);
+		response = http_search_engine_bing_ex(p_data->c_host_manager, target_domain, &h_opts);
+		if (response < 0) {
+			if (response == -3) {
+				gui_popup_error_dialog(p_data->popup_window, "Invalid Bing API Key", "Error: Invalid API Key");
+			} else {
+				GUI_POPUP_ERROR_GENERIC_ERROR(p_data->popup_window);
+			}
+		}
+		gui_model_update_tree_and_marquee((main_gui_data *)p_data, NULL);
+	}
 	gtk_widget_destroy(p_data->popup_window);
+	http_enum_opts_destroy(&h_opts);
 	free(p_data);
 	return;
 }
@@ -213,7 +232,7 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 	/* get the main popup window */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 125);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 155);
 	gtk_window_set_title(GTK_WINDOW(window), "HTTP Search Bing");
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
 	g_signal_connect_swapped(window, "delete-event", G_CALLBACK(gtk_widget_destroy), window);
@@ -244,11 +263,17 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 	p_data->text_entry0 = entry;
 	p_data->tree_view = m_data->tree_view;
 	p_data->main_marquee = m_data->main_marquee;
+	p_data->k_opts = m_data->k_opts;
 	p_data->c_host_manager = m_data->c_host_manager;
+	p_data->misc_widget = gtk_progress_bar_new();
 	
 	g_signal_connect(entry, "activate", G_CALLBACK(callback_http_search_bing), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
+	
+	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
+	gtk_widget_show(p_data->misc_widget);
 	
 	/* get the button */
 	button = gtk_button_new();
@@ -402,7 +427,6 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 	gtk_container_add(GTK_CONTAINER(button), hbox);
 	
 	gtk_widget_show(window);
-	
 	return TRUE;
 }
 
@@ -553,7 +577,6 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	gtk_container_add(GTK_CONTAINER(button), hbox);
 	
 	gtk_widget_show(window);
-	
 	return TRUE;
 }
 
@@ -639,7 +662,6 @@ gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
 	gtk_container_add(GTK_CONTAINER(button), hbox);
 	
 	gtk_widget_show(window);
-	
 	return TRUE;
 }
 
@@ -849,5 +871,115 @@ gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link
 		free(p_data);
 		return TRUE;
 	}
+	return TRUE;
+}
+
+void callback_manage_kraken_settings(GtkWidget *widget, popup_data *p_data) {
+	const gchar *bing_api_key;
+	
+	bing_api_key = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
+	if ((bing_api_key != NULL) && strlen(bing_api_key)) {
+		kraken_opts_set(p_data->k_opts, KRAKEN_OPT_BING_API_KEY, (char *)bing_api_key);
+	}
+	gtk_widget_destroy(p_data->popup_window);
+	free(p_data);
+	return;
+}
+
+gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
+	GtkWidget *window;
+	GtkWidget *main_vbox, *hbox;
+	GtkWidget *frame;
+	GtkWidget *notebook;
+	GtkWidget *entry;
+	GtkWidget *button;
+	GtkWidget *label;
+	GtkWidget *image;
+	popup_data *p_data;
+	p_data = malloc(sizeof(popup_data));
+	if (p_data == NULL) {
+		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
+		return TRUE;
+	}
+	
+	/* get the main popup window */
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_widget_set_size_request(window, 350, 250);
+	gtk_window_set_title(GTK_WINDOW(window), "Settings");
+	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
+	g_signal_connect(window, "destroy", G_CALLBACK(gtk_widget_destroy), NULL);
+	g_signal_connect(window, "delete-event", G_CALLBACK(gtk_widget_destroy), NULL);
+	
+	frame = gtk_frame_new("Basic Settings");
+	gtk_container_set_border_width(GTK_CONTAINER(frame), 10);
+	gtk_widget_show(frame);
+	
+	notebook = gtk_notebook_new();
+	gtk_container_add(GTK_CONTAINER(window), notebook);
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), frame, gtk_label_new("Basic"));
+	
+	/* get the main vertical box for the window */
+	main_vbox = gtk_vbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(main_vbox), 5);
+	gtk_container_add(GTK_CONTAINER(frame), main_vbox);
+	gtk_widget_show(main_vbox);
+	
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+	gtk_container_add(GTK_CONTAINER(main_vbox), hbox);
+	gtk_widget_show(hbox);
+	
+	label = gtk_label_new("Bing API Key: ");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, TRUE, 0);
+	gtk_widget_show(label);
+	
+	/* get a horizontal box to place in the vertical box */
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+	gtk_container_add(GTK_CONTAINER(main_vbox), hbox);
+	gtk_widget_show(hbox);
+	
+	entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(entry), HTTP_BING_API_KEY_SZ);
+	if (m_data->k_opts->bing_api_key != NULL) {
+		gtk_entry_set_text(GTK_ENTRY(entry), m_data->k_opts->bing_api_key);
+	}
+	
+	p_data->popup_window = window;
+	p_data->text_entry0 = entry;
+	p_data->main_marquee = m_data->main_marquee;
+	p_data->k_opts = m_data->k_opts;
+	p_data->c_host_manager = m_data->c_host_manager;
+	
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_dns_bf_domain), p_data);
+	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
+	gtk_widget_show(entry);
+	
+	/* get the button */
+	button = gtk_button_new();
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 10);
+	gtk_container_add(GTK_CONTAINER(main_vbox), hbox);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_manage_kraken_settings), p_data);
+	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+	gtk_widget_set_can_default(button, TRUE);
+	gtk_widget_grab_default(button);
+	gtk_widget_show(hbox);
+	gtk_widget_show(button);
+	
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
+	
+	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
+	label = gtk_label_new("Apply");
+	
+	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 2);
+	gtk_widget_show(image);
+	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 2);
+	gtk_widget_show(label);
+	gtk_widget_show(hbox);
+	gtk_container_add(GTK_CONTAINER(button), hbox);
+	
+	gtk_widget_show_all(window);
 	return TRUE;
 }

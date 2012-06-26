@@ -2,12 +2,14 @@
 #define _KRAKEN_GUI_MODEL_H
 
 #include "hosts.h"
+#include "kraken_options.h"
 
 #define GUI_MODEL_MAX_MARQUEE_MSG_SIZE 32
 
 typedef struct main_gui_data {
 	GtkWidget *tree_view;
 	GtkWidget *main_marquee;
+	kraken_opts *k_opts;
 	host_manager *c_host_manager;
 } main_gui_data;
 

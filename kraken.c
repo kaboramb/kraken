@@ -33,6 +33,7 @@
 #include "host_manager.h"
 #include "export.h"
 #include "gui_main.h"
+#include "kraken_options.h"
 #include "logging.h"
 #include "whois_lookup.h"
 
@@ -110,6 +111,7 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 int main(int argc, char **argv) {
 	struct arguments arguments;
 	host_manager c_host_manager;
+	kraken_opts k_opts;
 	unsigned int current_host_i;
 	unsigned int current_who_i;
 	single_host_info current_host;
@@ -159,7 +161,8 @@ int main(int argc, char **argv) {
 		}
 	}
 	
-	gui_show_main_window(&c_host_manager);
+	kraken_opts_init(&k_opts);
+	gui_show_main_window(&k_opts, &c_host_manager);
 	
 	if (c_host_manager.known_hosts) {
 		printf("\n");
@@ -179,6 +182,7 @@ int main(int argc, char **argv) {
 	}
 	
 	LOGGING_QUICK_WARNING("kraken", "good luck and good hunting")
+	kraken_opts_destroy(&k_opts);
 	destroy_host_manager(&c_host_manager);
 #ifndef WITHOUT_LOG4C
 	log4c_fini();

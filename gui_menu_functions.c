@@ -26,6 +26,8 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/Edit/Add Hosts/HTTP Scan Host For Links",	NULL,	gui_menu_edit_http_scan_host_for_links,	0,	NULL	},
 	{ "/Edit/Add Hosts/HTTP Scan All For Links",	NULL,	gui_menu_edit_http_scan_all_for_links,	0,	NULL	},
 	{ "/Edit/Add Hosts/HTTP Search Bing",		NULL,		gui_menu_edit_http_search_bing,		0,	NULL	},
+	{ "/Edit/",									NULL,		NULL,							0,	"<Separator>"	},
+	{ "/Edit/Preferences",						NULL,		gui_menu_edit_preferences,		0,	NULL	},
 };
 
 static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);
@@ -177,26 +179,34 @@ void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *wid
 	return;
 }
 
-void gui_menu_edit_dns_forward_bf(main_gui_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_dns_bf_domain(userdata);
+void gui_menu_edit_dns_forward_bf(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_dns_bf_domain(m_data);
 	return;
 }
 
-void gui_menu_edit_dns_reverse_bf(main_gui_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_dns_bf_network(userdata, NULL);
+void gui_menu_edit_dns_reverse_bf(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_dns_bf_network(m_data, NULL);
 	return;
 }
 
-void gui_menu_edit_http_scan_all_for_links(main_gui_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_http_scan_all_for_links(userdata);
+void gui_menu_edit_http_scan_all_for_links(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_http_scan_all_for_links(m_data);
 	return;
 }
 
-void gui_menu_edit_http_scan_host_for_links(main_gui_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_http_scan_host_for_links(userdata, NULL);
+void gui_menu_edit_http_scan_host_for_links(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_http_scan_host_for_links(m_data, NULL);
 	return;
 }
 
-void gui_menu_edit_http_search_bing(main_gui_data *userdata, guint action, GtkWidget *widget) {
-	gui_popup_http_search_bing(userdata);
+void gui_menu_edit_http_search_bing(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	if (m_data->k_opts->bing_api_key == NULL) {
+		gui_popup_error_dialog(NULL, "Bing API Key Not Set", "Error: Invalid API Key");
+	} else {
+		gui_popup_http_search_bing(m_data);
+	}
+}
+
+void gui_menu_edit_preferences(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_manage_kraken_settings(m_data);
 }

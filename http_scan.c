@@ -623,6 +623,7 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 	CURL *curl;
 	CURLcode curl_res;
 	char request_url[512];
+	long http_code;
 	int num_queries = 0;
 	int num_entries = 0;
 	
@@ -666,14 +667,31 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 			curl_easy_cleanup(curl);
 			return -2;
 		}
-		logging_log("kraken.http_scan", LOGGING_TRACE, "Bing XML result retreived"); // TODO: remove this log line
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+		if (http_code != 200) {
+			free(webpage_b);
+			curl_easy_cleanup(curl);
+			if (http_code == 401) {
+				logging_log("kraken.http_scan", LOGGING_WARNING, "invalid Bing API Key");
+				return -3;
+			} else {
+				logging_log("kraken.http_scan", LOGGING_DEBUG, "web server responded with: %lu", http_code);
+			}
+			return -2;
+		}
 		num_queries++;
 		num_entries = http_add_hosts_from_bing_xml(c_host_manager, target_domain, webpage_b);
 		
 		free(webpage_b);
 		curl_easy_cleanup(curl);
+		if (h_opts->progress_update != NULL) {
+			h_opts->progress_update((((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries), HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);
+		}
 	} while ((num_entries == HTTP_BING_NUM_RESULTS) && ((((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries) < HTTP_BING_MAX_RESULTS));
 	
+	if (h_opts->progress_update != NULL) {
+		h_opts->progress_update(HTTP_BING_MAX_RESULTS, HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);
+	}
 	logging_log("kraken.http_scan", LOGGING_INFO, "bing enumeration complete, used %i queries and received %i results", num_queries, (((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries));
 	return (((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries);
 }

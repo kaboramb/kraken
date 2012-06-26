@@ -6,7 +6,7 @@
 #include "host_manager.h"
 #include "whois_lookup.h"
 
-int gui_show_main_window(host_manager *c_host_manager) {
+int gui_show_main_window(kraken_opts *k_opts, host_manager *c_host_manager) {
 	GtkWidget *window;
 	GtkWidget *scroll_window;
 	GtkWidget *main_vbox, *hbox;
@@ -34,6 +34,7 @@ int gui_show_main_window(host_manager *c_host_manager) {
 	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll_window), view);
 	
 	m_data.tree_view = view;
+	m_data.k_opts = k_opts;
 	m_data.c_host_manager = c_host_manager;
 	main_menu_bar = get_main_menubar(window, &m_data);
 	
