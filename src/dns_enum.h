@@ -19,7 +19,6 @@
 #define DNS_QRY_IXFR 251
 #define DNS_QRY_AXFR 252
 
-#define FIERCE_PREFIXES_PATH "/opt/fierce/hosts.txt"
 #define MAX_LINE 512
 
 typedef struct domain_ns_list { /* hold information for up to DNS_MAX_NS_HOSTS name servers */

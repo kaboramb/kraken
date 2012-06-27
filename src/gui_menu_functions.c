@@ -200,11 +200,7 @@ void gui_menu_edit_http_scan_host_for_links(main_gui_data *m_data, guint action,
 }
 
 void gui_menu_edit_http_search_bing(main_gui_data *m_data, guint action, GtkWidget *widget) {
-	if (m_data->k_opts->bing_api_key == NULL) {
-		gui_popup_error_dialog(NULL, "Bing API Key Not Set", "Error: Invalid API Key");
-	} else {
-		gui_popup_http_search_bing(m_data);
-	}
+	gui_popup_http_search_bing(m_data);
 }
 
 void gui_menu_edit_preferences(main_gui_data *m_data, guint action, GtkWidget *widget) {

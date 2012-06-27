@@ -225,6 +225,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		return 1;
 	}
 	
+#ifndef NO_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
 		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")
@@ -243,6 +244,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		servers_addr_node[i].next = NULL;
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
+#endif
 	
 	logging_log("kraken.dns_enum", LOGGING_INFO, "bruteforcing names for domain: %s", target_domain);
 
@@ -304,6 +306,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 		return 1;
 	}
 	
+#ifndef NO_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
 		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")
@@ -322,6 +325,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 		servers_addr_node[i].next = NULL;
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
+#endif
 	
 	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
 	while (netaddr_ip_in_nwk(&c_ip, target_net) == 1) {
@@ -363,6 +367,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 int dns_enumerate_domain(host_manager *c_host_manager, char *target_domain, const char *hostfile) {
 	int response;
 	dns_enum_opts d_opts;
+	
 	dns_enum_opts_init(&d_opts);
 	dns_enum_opts_set_wordlist(&d_opts, hostfile);
 	response = dns_enumerate_domain_ex(c_host_manager, target_domain, &d_opts);
@@ -407,6 +412,7 @@ int dns_enumerate_network_ex(host_manager *c_host_manager, char *target_domain, 
 	char ipstr[INET6_ADDRSTRLEN];
 	char netstr[INET6_ADDRSTRLEN];
 	int i;
+	
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	memset(&nameservers, '\0', sizeof(nameservers));
 	

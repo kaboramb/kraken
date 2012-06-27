@@ -12,10 +12,33 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 
 # Checks for required libraries.
-AC_CHECK_LIB([cares], [ares_library_init])
-AC_CHECK_LIB([curl], [curl_easy_init])
-AC_CHECK_LIB([uriparser], [uriParseUriA])
-AC_CHECK_LIB([xml2], [xmlDocGetRootElement])
+AC_CHECK_LIB([cares], [ares_library_init], [], [
+	AC_MSG_NOTICE([could not find the ares library])
+	AC_MSG_NOTICE([please install c-ares >= 1.7.0])
+	exit 1
+])
+AC_CHECK_LIB([curl], [curl_easy_init], [], [
+	AC_MSG_NOTICE([could not find the curl library])
+	AC_MSG_NOTICE([please install libcurl >= 7.19.1])
+	exit 1
+])
+AC_CHECK_LIB([uriparser], [uriParseUriA], [], [
+	AC_MSG_NOTICE([could not find the uriparser library])
+	AC_MSG_NOTICE([please install liburiparser])
+	exit 1
+])
+AC_CHECK_LIB([xml2], [xmlDocGetRootElement], [], [
+	AC_MSG_NOTICE([could not find the xml2 library])
+	AC_MSG_NOTICE([please install libxml2 >= 2.5.0])
+	exit 1
+])
+
+# Checks libraries for optional features.
+AC_CHECK_LIB([cares], [ares_set_servers], [], [
+	AC_MSG_NOTICE([old ares library detected])
+	AC_MSG_NOTICE([switching DNS servers has been disabled])
+	AC_DEFINE([NO_ARES_SET_SERVERS], [1])
+])
 
 # Checks for optional libraries.
 AS_IF([test "x$with_log4c" != "xno"], [
@@ -26,10 +49,13 @@ AS_IF([test "x$with_log4c" != "xno"], [
 	AC_DEFINE([WITHOUT_LOG4C], [1])
 ])
 
-
 # Checks for required modules.
-PKG_CHECK_MODULES(LIBXML, libxml-2.0 >= 2.5.0, [HAVE_LIBXML2=1], [HAVE_LIBXML2=0])
-PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.24.8, [HAVE_LIBGTK2=1], [HAVE_LIBGTK2=0])
+PKG_CHECK_MODULES(LIBXML, libxml-2.0 >= 2.5.0, [], [])
+PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.20.0, [], [
+	AC_MSG_NOTICE([could not find the gtk library])
+	AC_MSG_NOTICE([please install libgtk+-2.0 >= 2.20.0])
+	exit 1
+])
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
