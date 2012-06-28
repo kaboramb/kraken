@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
 	log4c_category_set_appender(logcat, log4c_appender_get("stdout"));
 #endif
 	
-	if (init_host_manager(&c_host_manager) != 0) {
+	if (host_manager_init(&c_host_manager) != 0) {
 		LOGGING_QUICK_FATAL("kraken", "could not initialize the host manager, it is likely that there is not enough memory")
 		return 0;
 	}
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
 	
 	LOGGING_QUICK_WARNING("kraken", "good luck and good hunting")
 	kraken_opts_destroy(&k_opts);
-	destroy_host_manager(&c_host_manager);
+	host_manager_destroy(&c_host_manager);
 #ifndef WITHOUT_LOG4C
 	log4c_fini();
 #endif

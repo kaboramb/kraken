@@ -4,12 +4,12 @@
 #define HOST_CAPACITY_INCREMENT_SIZE 256
 #define WHOIS_CAPACITY_INCREMENT_SIZE 16
 
-int init_single_host(single_host_info *c_host);
-int destroy_single_host(single_host_info *c_host);
+int single_host_init(single_host_info *c_host);
+int single_host_destroy(single_host_info *c_host);
 int single_host_add_alias(single_host_info *c_host, const char *alias);
 
-int init_host_manager(host_manager *c_host_manager);
-int destroy_host_manager(host_manager *c_host_manager);
+int host_manager_init(host_manager *c_host_manager);
+int host_manager_destroy(host_manager *c_host_manager);
 int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_host);
 void host_manager_delete_host(host_manager *c_host_manager, const char *hostname, struct in_addr *target_ip);
 int host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hostname);

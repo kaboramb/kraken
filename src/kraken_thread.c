@@ -25,3 +25,23 @@ int kraken_thread_is_alive(kraken_thread *k_thread) {
 	}
 	return 0;
 } 
+
+int kraken_thread_mutex_init(kraken_thread_mutex *k_mutex) {
+	pthread_mutex_init(k_mutex, NULL);
+	return 0;
+}
+
+int kraken_thread_mutex_destroy(kraken_thread_mutex *k_mutex) {
+	pthread_mutex_destroy(k_mutex);
+	return 0;
+}
+
+int kraken_thread_mutex_lock(kraken_thread_mutex *k_mutex) {
+	pthread_mutex_lock(k_mutex);
+	return 0;
+}
+
+int kraken_thread_mutex_unlock(kraken_thread_mutex *k_mutex) {
+	pthread_mutex_unlock(k_mutex);
+	return 0;
+}

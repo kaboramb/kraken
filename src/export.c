@@ -219,7 +219,7 @@ int import_host_record_from_xml(xmlNode *host_xml, single_host_info *tmp_host) {
 	xmlChar *attr_value = NULL;
 	
 	assert(host_xml != NULL);
-	init_single_host(tmp_host);
+	single_host_init(tmp_host);
 	for (cur_node = host_xml->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type != XML_ELEMENT_NODE) {
 			continue;
@@ -382,7 +382,7 @@ int import_host_manager_from_xml(host_manager *c_host_manager, const char *sourc
 				if (xmlStrncmp(cur_node->name, (xmlChar *)"host", 4) == 0) {
 					if (import_host_record_from_xml(cur_node, &current_host) == 0) {
 						host_manager_add_host(c_host_manager, &current_host);
-						destroy_single_host(&current_host);
+						single_host_destroy(&current_host);
 					}
 				}
 			}

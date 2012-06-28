@@ -98,8 +98,8 @@ void gui_menu_file_open(main_gui_data *userdata, guint action, GtkWidget *widget
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		char *filename;
 		if (merge == TRUE) {
-			destroy_host_manager(userdata->c_host_manager); /* out with the old */
-			init_host_manager(userdata->c_host_manager); /* in with the new */
+			host_manager_destroy(userdata->c_host_manager); /* out with the old */
+			host_manager_init(userdata->c_host_manager); /* in with the new */
 		}
 		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
 		response = import_host_manager_from_xml(userdata->c_host_manager, filename);

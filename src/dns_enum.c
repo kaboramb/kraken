@@ -60,7 +60,7 @@ static void callback_host(void *c_host_manager, int status, int timeouts, struct
 	}
 	int i = 0;
 	single_host_info new_host;
-	init_single_host(&new_host);
+	single_host_init(&new_host);
 	for (i = 0; host->h_addr_list[i]; ++i) {
 		memcpy(&new_host.ipv4_addr, host->h_addr_list[i], sizeof(struct in_addr));
 		strncpy(new_host.hostname, host->h_name, DNS_MAX_FQDN_LENGTH);
@@ -69,7 +69,7 @@ static void callback_host(void *c_host_manager, int status, int timeouts, struct
 	if (*host->h_aliases) {
 		host_manager_add_alias_to_host_by_name(c_host_manager, host->h_name, *host->h_aliases);
 	}
-	destroy_single_host(&new_host);
+	single_host_destroy(&new_host);
 	return;
 }
 
@@ -395,11 +395,11 @@ int dns_enumerate_domain_ex(host_manager *c_host_manager, char *target_domain, d
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
 		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
 		logging_log("kraken.dns_enum", LOGGING_INFO, "found name server %s %s", nameservers.servers[i], ipstr);
-		init_single_host(&c_host);
+		single_host_init(&c_host);
 		memcpy(&c_host.ipv4_addr, &nameservers.ipv4_addrs[i], sizeof(struct in_addr));
 		strncpy(c_host.hostname, nameservers.servers[i], DNS_MAX_FQDN_LENGTH);
 		host_manager_add_host(c_host_manager, &c_host);
-		destroy_single_host(&c_host);
+		single_host_destroy(&c_host);
 	}
 	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers, d_opts);
 	LOGGING_QUICK_INFO("kraken.dns_enum", "dns enumerate domain finished")

@@ -11,14 +11,14 @@
 #include "whois_lookup.h"
 #include "network_addr.h"
 
-int init_single_host(single_host_info *c_host) {
+int single_host_init(single_host_info *c_host) {
 	memset(c_host, 0, sizeof(struct single_host_info));
 	c_host->aliases = NULL;
 	c_host->whois_data = NULL;
 	return 0;
 }
 
-int destroy_single_host(single_host_info *c_host) {
+int single_host_destroy(single_host_info *c_host) {
 	if (c_host->aliases) {
 		free(c_host->aliases);
 	}
@@ -60,7 +60,7 @@ int single_host_add_alias(single_host_info *c_host, const char *alias) {
 	return 0;
 }
 
-int init_host_manager(host_manager *c_host_manager) {
+int host_manager_init(host_manager *c_host_manager) {
 	c_host_manager->hosts = malloc(sizeof(struct single_host_info) * HOST_CAPACITY_INCREMENT_SIZE);
 	if (c_host_manager->hosts == NULL) {
 		return 1;
@@ -76,18 +76,20 @@ int init_host_manager(host_manager *c_host_manager) {
 		free(c_host_manager->hosts);
 		return 1;
 	}
+	kraken_thread_mutex_init(&c_host_manager->k_mutex);
 	c_host_manager->known_whois_records = 0;
 	c_host_manager->current_whois_record_capacity = WHOIS_CAPACITY_INCREMENT_SIZE;
 	memset(c_host_manager->whois_records, 0, (sizeof(struct whois_record) * WHOIS_CAPACITY_INCREMENT_SIZE));
 	return 0;
 }
 
-int destroy_host_manager(host_manager *c_host_manager) {
+int host_manager_destroy(host_manager *c_host_manager) {
+	kraken_thread_mutex_destroy(&c_host_manager->k_mutex);
 	if (c_host_manager->save_file_path != NULL) {
 		free(c_host_manager->save_file_path);
 		c_host_manager->save_file_path = NULL;
 	}
-	memset(c_host_manager->hosts, 0, (sizeof(struct single_host_info) * c_host_manager->current_capacity));
+	memset(c_host_manager->hosts, '\0', (sizeof(struct single_host_info) * c_host_manager->current_capacity));
 	free(c_host_manager->hosts);
 	c_host_manager->known_hosts = 0;
 	c_host_manager->current_capacity = 0;
@@ -103,9 +105,12 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *c_host
 	char (*block)[DNS_MAX_FQDN_LENGTH + 1];
 	unsigned int current_host_i;
 	whois_record *who_data;
+	
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if ((strncasecmp(c_host->hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) && (memcmp(&c_host->ipv4_addr, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0)) {
 			logging_log("kraken.host_manager", LOGGING_DEBUG, "skipping dupplicate host: %s", c_host->hostname);
+			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 			return 0;
 		}
 	}
@@ -113,6 +118,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *c_host
 	if (c_host_manager->known_hosts >= c_host_manager->current_capacity) {
 		void *tmpbuffer = malloc(sizeof(struct single_host_info) * (c_host_manager->current_capacity + HOST_CAPACITY_INCREMENT_SIZE));
 		if (tmpbuffer == NULL) {
+			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 			return 1;
 		}
 		c_host_manager->current_capacity += HOST_CAPACITY_INCREMENT_SIZE;
@@ -123,7 +129,9 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *c_host
 	}
 	
 	if (c_host->whois_data == NULL) {
+		kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 		host_manager_get_whois(c_host_manager, &c_host->ipv4_addr, &who_data);
+		kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 		if (who_data != NULL) {
 			c_host->whois_data = who_data;
 		}
@@ -137,6 +145,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *c_host
 			c_host_manager->hosts[c_host_manager->known_hosts].n_aliases = 0;
 			c_host_manager->known_hosts++;
 			LOGGING_QUICK_WARNING("kraken.host_manager", "aliases have been lost due to a failed malloc")
+			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 			return 1;
 		} else {
 			memset(block, '\0', (DNS_MAX_FQDN_LENGTH + 1) * (c_host->n_aliases));
@@ -145,12 +154,14 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *c_host
 		}
 	}
 	c_host_manager->known_hosts++;
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return 0;
 }
 
 void host_manager_delete_host(host_manager *c_host_manager, const char *hostname, struct in_addr *target_ip) {
 	unsigned int current_host_i = 0;
 	
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	while (current_host_i < c_host_manager->known_hosts) {
 		if (strncasecmp(c_host_manager->hosts[current_host_i].hostname, hostname, strlen(hostname)) != 0) {
 			current_host_i++;
@@ -162,6 +173,7 @@ void host_manager_delete_host(host_manager *c_host_manager, const char *hostname
 		c_host_manager->known_hosts--;
 		memmove(&c_host_manager->hosts[current_host_i], &c_host_manager->hosts[(current_host_i + 1)], (sizeof(struct single_host_info) * (c_host_manager->known_hosts - current_host_i)));
 	}
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return;
 }
 
@@ -204,7 +216,7 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hos
 				single_host_add_alias(check_host, hostname);
 				continue;
 			}
-			init_single_host(&new_host);
+			single_host_init(&new_host);
 			memcpy(&new_host.ipv4_addr, &sin->sin_addr, sizeof(struct in_addr));
 			strncpy(new_host.hostname, hostname, DNS_MAX_FQDN_LENGTH);
 			
@@ -222,7 +234,7 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hos
 				}
 			}
 			host_manager_add_host(c_host_manager, &new_host);
-			destroy_single_host(&new_host);
+			single_host_destroy(&new_host);
 		}
 	}
 	return 0;
@@ -230,33 +242,42 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hos
 
 void host_manager_add_alias_to_host_by_name(host_manager *c_host_manager, char *hostname, char *alias) {
 	unsigned int current_host_i;
+	
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if (strncmp(hostname, c_host_manager->hosts[current_host_i].hostname, DNS_MAX_FQDN_LENGTH) == 0) {
 			single_host_add_alias(&c_host_manager->hosts[current_host_i], alias);
 		}
 	}
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return;
 }
 
 void host_manager_set_host_status(host_manager *c_host_manager, struct in_addr *target_ip, const char status) {
 	unsigned int current_host_i;
+	
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if (memcmp(target_ip, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0) {
 			c_host_manager->hosts[current_host_i].is_up = status;
 		}
 	}
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return;
 }
 
 int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *target_ip, single_host_info **desired_host) {
 	unsigned int current_host_i;
 	*desired_host = NULL;
+	
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		if (memcmp(target_ip, &c_host_manager->hosts[current_host_i].ipv4_addr, sizeof(struct in_addr)) == 0) {
 			*desired_host = &c_host_manager->hosts[current_host_i];
 			break;
 		}
 	}
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return 0;
 }
 
@@ -266,19 +287,23 @@ void host_manager_get_host_by_name(host_manager *c_host_manager, const char *hos
 	int c_alias;
 	
 	*desired_host = NULL;
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		c_host = &c_host_manager->hosts[current_host_i];
 		if (strncasecmp(hostname, c_host->hostname, strlen(hostname)) == 0) {
 			*desired_host = c_host;
+			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 			return;
 		}
 		for (c_alias = 0; c_alias < c_host->n_aliases; c_alias++) {
 			if (strncasecmp(hostname, c_host->aliases[c_alias], strlen(hostname)) == 0) {
 				*desired_host = c_host;
+				kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 				return;
 			}
 		}
 	}
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return;
 }
 
@@ -286,16 +311,19 @@ int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_recor
 	unsigned int current_who_i;
 	whois_record *cur_who_rec;
 	
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_who_i = 0; current_who_i < c_host_manager->known_whois_records; current_who_i ++) {
 		cur_who_rec = &c_host_manager->whois_records[current_who_i];
 		if (strncmp(cur_who_rec->cidr_s, new_record->cidr_s, strlen(cur_who_rec->cidr_s)) == 0) {
 			logging_log("kraken.host_manager", LOGGING_DEBUG, "skipping dupplicate whois record for network: %s", cur_who_rec->cidr_s);
+			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 			return 0;
 		}
 	}
 	if (c_host_manager->known_whois_records >= c_host_manager->current_whois_record_capacity) {
 		void *tmpbuffer = malloc(sizeof(struct whois_record) * (c_host_manager->current_whois_record_capacity + WHOIS_CAPACITY_INCREMENT_SIZE));
 		if (tmpbuffer == NULL) {
+			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 			return 1;
 		}
 		c_host_manager->current_whois_record_capacity += WHOIS_CAPACITY_INCREMENT_SIZE;
@@ -303,12 +331,14 @@ int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_recor
 		memcpy(tmpbuffer, c_host_manager->whois_records, (sizeof(struct whois_record) * c_host_manager->known_whois_records));
 		free(c_host_manager->whois_records);
 		c_host_manager->whois_records = tmpbuffer;
+		kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 		host_manager_sync_whois_data(c_host_manager);
+		kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	}
 	
 	memcpy(&c_host_manager->whois_records[c_host_manager->known_whois_records], new_record, sizeof(whois_record));
 	c_host_manager->known_whois_records++;
-	
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return 0;
 }
 
@@ -323,6 +353,7 @@ int host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_
 	int ret_val = 0;
 	
 	*desired_record = NULL;
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_who_i = 0; current_who_i < c_host_manager->known_whois_records; current_who_i ++) {
 		cur_who_resp = &c_host_manager->whois_records[current_who_i];
 		ret_val = netaddr_cidr_str_to_nwk(cur_who_resp->cidr_s, &network);
@@ -335,6 +366,7 @@ int host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_
 			logging_log("kraken.host_manager", LOGGING_ERROR, "could not parse cidr address: %s", (char *)&cur_who_resp->cidr_s);
 		}
 	}
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return 0;
 }
 
@@ -343,6 +375,7 @@ void host_manager_sync_whois_data(host_manager *c_host_manager) {
 	single_host_info *current_host;
 	whois_record *cur_who_resp = NULL;
 	
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
 		current_host = &c_host_manager->hosts[current_host_i];
 		host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
@@ -350,5 +383,6 @@ void host_manager_sync_whois_data(host_manager *c_host_manager) {
 			current_host->whois_data = cur_who_resp;
 		}
 	}
+	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return;
 }

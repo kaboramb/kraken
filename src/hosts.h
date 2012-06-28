@@ -9,6 +9,8 @@
 #undef _KRAKEN_WHOIS_LOOKUP_H_SKIP_FUNCDEFS		/* don't skip the function definitions next time */
 #undef _KRAKEN_WHOIS_LOOKUP_H 					/* next time do include it again because we'll need the function definitions */
 
+#include "kraken_thread.h"
+
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in dns_enum.h */
 #define KRAKEN_HOST_UP 1
 #define KRAKEN_HOST_UNKNOWN 0
@@ -25,6 +27,7 @@ typedef struct single_host_info {
 } single_host_info;
 
 typedef struct host_manager {
+	kraken_thread_mutex k_mutex;
 	char lw_domain[DNS_MAX_FQDN_LENGTH + 1];	/* last working domain, so we can keep track in the GUI if we want */
 	char *save_file_path;
 	unsigned int known_hosts;
