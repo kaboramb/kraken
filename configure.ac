@@ -37,7 +37,7 @@ AC_CHECK_LIB([xml2], [xmlDocGetRootElement], [], [
 AC_CHECK_LIB([cares], [ares_set_servers], [], [
 	AC_MSG_NOTICE([old ares library detected])
 	AC_MSG_NOTICE([switching DNS servers has been disabled])
-	AC_DEFINE([NO_ARES_SET_SERVERS], [1])
+	AC_DEFINE([WITHOUT_ARES_SET_SERVERS], [1])
 ])
 
 # Checks for optional libraries.

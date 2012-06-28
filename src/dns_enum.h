@@ -28,10 +28,10 @@ typedef struct domain_ns_list { /* hold information for up to DNS_MAX_NS_HOSTS n
 } domain_ns_list;
 
 typedef struct dns_enum_opts {
-	int max_sim_queries;
-	char *wordlist;
 	void (*progress_update)(unsigned int current, unsigned int last, void *userdata);
 	void *progress_update_data;
+	int max_sim_queries;
+	char *wordlist;
 } dns_enum_opts;
 
 char *dns_get_domain(char *originalname);

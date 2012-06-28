@@ -20,11 +20,11 @@ typedef struct http_link {
 } http_link;
 
 typedef struct http_enum_opts {
+	void (*progress_update)(unsigned int current, unsigned int last, void *userdata);
+	void *progress_update_data;
 	long timeout;
 	long timeout_ms;
 	char *bing_api_key;
-	void (*progress_update)(unsigned int current, unsigned int last, void *userdata);
-	void *progress_update_data;
 } http_enum_opts;
 
 void http_enum_opts_init(http_enum_opts *h_opts);

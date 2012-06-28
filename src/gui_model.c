@@ -214,7 +214,7 @@ void gui_model_update_marquee(main_gui_data *m_data, const char *status) {
 	if (status != NULL) {
 		snprintf(msg, GUI_MODEL_MAX_MARQUEE_MSG_SIZE, "Status: %s", status);
 	} else {
-		snprintf(msg, GUI_MODEL_MAX_MARQUEE_MSG_SIZE, "Status: Waiting");
+		strcpy(msg, "Status: Waiting");
 	}
 	label = gtk_label_new(msg);
 	gtk_box_pack_start(GTK_BOX(m_data->main_marquee), label, FALSE, TRUE, 5);

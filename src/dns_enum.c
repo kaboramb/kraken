@@ -55,7 +55,7 @@ static void callback_nameserver_hosts(void *args, int status, int timeouts, stru
 
 static void callback_host(void *c_host_manager, int status, int timeouts, struct hostent *host) {
 	if(!host || status != ARES_SUCCESS){
-		logging_log("kraken.dns_enum", LOGGING_TRACE, "lookup of IP address failed with error: %s", ares_strerror(status));
+		//logging_log("kraken.dns_enum", LOGGING_TRACE, "lookup of IP address failed with error: %s", ares_strerror(status));
 		return;
 	}
 	int i = 0;
@@ -225,7 +225,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		return 1;
 	}
 	
-#ifndef NO_ARES_SET_SERVERS
+#ifndef WITHOUT_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
 		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")
@@ -306,7 +306,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 		return 1;
 	}
 	
-#ifndef NO_ARES_SET_SERVERS
+#ifndef WITHOUT_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
 		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")

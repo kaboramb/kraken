@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include <glib.h>
 #include <arpa/inet.h>
 #include "gui_menu_functions.h"
 #include "gui_model.h"
@@ -14,6 +15,9 @@ int gui_show_main_window(kraken_opts *k_opts, host_manager *c_host_manager) {
 	GtkWidget *view;
 	main_gui_data m_data;
 	
+	g_thread_init(NULL);
+	gdk_threads_init();
+	gdk_threads_enter();
 	gtk_init(NULL, NULL);
 	
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);	
@@ -49,6 +53,8 @@ int gui_show_main_window(kraken_opts *k_opts, host_manager *c_host_manager) {
 	
 	gtk_widget_show_all(window);
 	gui_model_update_tree_and_marquee(&m_data, NULL);
+	
 	gtk_main();
+	gdk_threads_leave();
 	return 0;
 }
