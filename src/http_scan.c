@@ -6,10 +6,10 @@
 #include <libxml/tree.h>
 #include <libxml/parser.h>
 #include <uriparser/Uri.h>
-#include "hosts.h"
+
+#include "kraken.h"
 #include "host_manager.h"
 #include "http_scan.h"
-#include "logging.h"
 
 void http_enum_opts_init(http_enum_opts *h_opts) {
 	memset(h_opts, '\0', sizeof(struct http_enum_opts));
@@ -18,6 +18,7 @@ void http_enum_opts_init(http_enum_opts *h_opts) {
 	h_opts->bing_api_key = NULL;
 	h_opts->progress_update = NULL;
 	h_opts->progress_update_data = NULL;
+	h_opts->cancel_action = NULL;
 	return;
 }
 
@@ -626,6 +627,8 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 	long http_code;
 	int num_queries = 0;
 	int num_entries = 0;
+	int num_entries_total = 0;
+	int num_timeouts = 0;
 	
 	if (h_opts->bing_api_key == NULL) {
 		logging_log("kraken.http_scan", LOGGING_WARNING, "bing app id was not set");
@@ -636,6 +639,7 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		return -1;
 	}
 	
+	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	logging_log("kraken.http_scan", LOGGING_INFO, "enumerating domain: %s", target_domain);
 	
 	do {
@@ -662,11 +666,25 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		fclose(webpage_f);
 		assert(webpage_b != NULL);
 		if (curl_res != 0) {
-			LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
-			free(webpage_b);
-			curl_easy_cleanup(curl);
-			return -2;
+			if (curl_res == CURLE_OPERATION_TIMEDOUT) {
+				LOGGING_QUICK_WARNING("kraken.http_scan", "the HTTP request timedout")
+				num_timeouts++;
+				if (num_timeouts == HTTP_MAX_TIMEOUTS) {
+					LOGGING_QUICK_ERROR("kraken.http_scan", "the maximum number of permissable timeouts has occured")
+					free(webpage_b);
+					curl_easy_cleanup(curl);
+					return -4;
+				}
+				num_entries = HTTP_BING_NUM_RESULTS;
+				continue;
+			} else {
+				LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
+				free(webpage_b);
+				curl_easy_cleanup(curl);
+				return -2;
+			}
 		}
+		num_timeouts = 0;
 		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 		if (http_code != 200) {
 			free(webpage_b);
@@ -681,17 +699,18 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		}
 		num_queries++;
 		num_entries = http_add_hosts_from_bing_xml(c_host_manager, target_domain, webpage_b);
+		num_entries_total += num_entries;
 		
 		free(webpage_b);
 		curl_easy_cleanup(curl);
 		if (h_opts->progress_update != NULL) {
 			h_opts->progress_update((((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries), HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);
 		}
-	} while ((num_entries == HTTP_BING_NUM_RESULTS) && ((((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries) < HTTP_BING_MAX_RESULTS));
+	} while ((num_entries == HTTP_BING_NUM_RESULTS) && (num_entries_total < HTTP_BING_MAX_RESULTS));
 	
 	if (h_opts->progress_update != NULL) {
 		h_opts->progress_update(HTTP_BING_MAX_RESULTS, HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);
 	}
-	logging_log("kraken.http_scan", LOGGING_INFO, "bing enumeration complete, used %i queries and received %i results", num_queries, (((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries));
+	logging_log("kraken.http_scan", LOGGING_INFO, "bing enumeration complete, used %i queries and received %i results", num_queries, num_entries_total);
 	return (((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries);
 }

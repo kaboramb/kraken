@@ -6,7 +6,7 @@
 #include "gui_menu_functions.h"
 #include "gui_model.h"
 #include "gui_popups.h"
-#include "hosts.h"
+#include "kraken.h"
 #include "host_manager.h"
 
 static GtkItemFactoryEntry main_menu_entries[] = {

@@ -1,7 +1,7 @@
 #ifndef _KRAKEN_EXPORT_H
 #define _KRAKEN_EXPORT_H
 
-#include "hosts.h"
+#include "kraken.h"
 
 #define KRAKEN_XML_ENCODING "ISO-8859-1"
 #define KRAKEN_XML_TIMESTAMP_LENGTH 255

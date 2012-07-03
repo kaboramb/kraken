@@ -3,9 +3,10 @@
 
 #include "dns_enum.h"
 
-#define HTTP_DEFAULT_TIMEOUT 2
+#define HTTP_DEFAULT_TIMEOUT 5
 #define HTTP_DEFAULT_TIMEOUT_MS 0
 #define HTTP_MAX_REDIRECTS 3
+#define HTTP_MAX_TIMEOUTS 3
 #define HTTP_SCHEME_SZ 5
 #define HTTP_RESOURCE_SZ 1023
 #define HTTP_BING_API_KEY_SZ 63
@@ -22,6 +23,7 @@ typedef struct http_link {
 typedef struct http_enum_opts {
 	void (*progress_update)(unsigned int current, unsigned int last, void *userdata);
 	void *progress_update_data;
+	int *cancel_action;
 	long timeout;
 	long timeout_ms;
 	char *bing_api_key;

@@ -1,8 +1,7 @@
 #ifndef _KRAKEN_GUI_POPUPS_H
 #define _KRAKEN_GUI_POPUPS_H
 
-#include "hosts.h"
-#include "kraken_options.h"
+#include "kraken.h"
 #include "http_scan.h"
 #include "gui_model.h"
 
@@ -20,12 +19,15 @@ typedef struct popup_data {
 	GtkWidget *main_marquee;
 	kraken_opts *k_opts;
 	host_manager *c_host_manager;
+	
 	GtkWidget *popup_window;
 	GtkWidget *text_entry0;
 	GtkWidget *text_entry1;
 	GtkWidget *misc_widget;
+	int cancel_action;
 } popup_data;
 
+void callback_update_progress(unsigned int current, unsigned int high, popup_data *p_data);
 void gui_popup_error_dialog(gpointer window, const char *message, const char *title);
 void gui_popup_info_dialog(gpointer window, const char *message, const char *title);
 gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title);

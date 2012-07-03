@@ -2,16 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gtk/gtk.h>
-#include "hosts.h"
-#include "kraken_options.h"
-#include "kraken_thread.h"
+#include "kraken.h"
 #include "dns_enum.h"
 #include "gui_popups.h"
 #include "gui_popups_threads.h"
 #include "gui_model.h"
 #include "host_manager.h"
 #include "http_scan.h"
-#include "logging.h"
 #include "network_addr.h"
 #include "whois_lookup.h"
 
@@ -186,57 +183,9 @@ gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_st
 }
 
 void callback_http_search_bing(GtkWidget *widget, popup_data *p_data) {
-	int response;
 	kraken_thread k_thread;
-	http_enum_opts h_opts;
-	const gchar *text_entry;
-	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
-	gpt_http_enum gpt_data;
 	
-	memset(target_domain, '\0', sizeof(target_domain));
-	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
-	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
-		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
-		gtk_widget_destroy(p_data->popup_window);
-		return;
-	}
-	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
-	
-	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Searching Bing");
-	gui_model_update_marquee((main_gui_data *)p_data, "Searching Bing");
-	
-	http_enum_opts_init(&h_opts);
-	h_opts.progress_update = (void *)&callback_update_progress;
-	h_opts.progress_update_data = p_data;
-	if (p_data->k_opts->bing_api_key == NULL) {
-		gui_popup_error_dialog(p_data->popup_window, "Bing API Key Not Set", "Error: Invalid API Key");
-		gui_model_update_marquee((main_gui_data *)p_data, NULL);
-	} else {
-		http_enum_opts_set_bing_api_key(&h_opts, p_data->k_opts->bing_api_key);
-		gpt_data.c_host_manager = p_data->c_host_manager;
-		gpt_data.target_domain = target_domain;
-		gpt_data.h_opts = &h_opts;
-		gpt_data.response = 0;
-		
-		kraken_thread_create(&k_thread, gui_popup_thread_http_search_engine_bing, &gpt_data);
-		while (kraken_thread_is_alive(&k_thread)) {
-			while (gtk_events_pending()) {
-				gtk_main_iteration();
-			}
-		}
-		kraken_thread_join(&k_thread);
-		
-		if (gpt_data.response < 0) {
-			if (response == -3) {
-				gui_popup_error_dialog(p_data->popup_window, "Invalid Bing API Key", "Error: Invalid API Key");
-			} else {
-				GUI_POPUP_ERROR_GENERIC_ERROR(p_data->popup_window);
-			}
-		}
-		gui_model_update_tree_and_marquee((main_gui_data *)p_data, NULL);
-	}
-	gtk_widget_destroy(p_data->popup_window);
-	http_enum_opts_destroy(&h_opts);
+	kraken_thread_create(&k_thread, gui_popup_thread_http_search_engine_bing, p_data);
 	return;
 }
 
@@ -334,54 +283,9 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 }
 
 void callback_dns_bf_domain(GtkWidget *widget, popup_data *p_data) {
-	const gchar *text_entry;
-	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
 	kraken_thread k_thread;
-	dns_enum_opts d_opts;
-	gpt_dns_enum gpt_data;
 	
-	memset(target_domain, '\0', sizeof(target_domain));
-	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
-	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
-		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
-		gtk_widget_destroy(p_data->popup_window);
-		return;
-	}
-	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
-	
-	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Enumerating Domain");
-	gui_model_update_marquee((main_gui_data *)p_data, "Enumerating Domain");
-	
-	dns_enum_opts_init(&d_opts);
-	dns_enum_opts_set_wordlist(&d_opts, p_data->k_opts->dns_wordlist);
-	d_opts.progress_update = (void *)&callback_update_progress;
-	d_opts.progress_update_data = p_data;
-	
-	gpt_data.c_host_manager = p_data->c_host_manager;
-	gpt_data.target_domain = target_domain;
-	gpt_data.d_opts = &d_opts;
-	gpt_data.response = 0;
-	
-	kraken_thread_create(&k_thread, gui_popup_thread_dns_enumerate_domain, &gpt_data);
-	
-	while (kraken_thread_is_alive(&k_thread)) {
-		while (gtk_events_pending()) {
-			gtk_main_iteration();
-		}
-	}
-	kraken_thread_join(&k_thread);
-	
-	if (gpt_data.response == -1) {
-		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
-		gui_model_update_marquee((main_gui_data *)p_data, NULL);
-	} else {
-		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Requesting WHOIS Records");
-		gui_model_update_marquee((main_gui_data *)p_data, "Requesting WHOIS Records");
-		whois_fill_host_manager(p_data->c_host_manager);
-		gui_model_update_tree_and_marquee((main_gui_data *)p_data, NULL);
-	}
-	gtk_widget_destroy(p_data->popup_window);
-	dns_enum_opts_destroy(&d_opts);
+	kraken_thread_create(&k_thread, gui_popup_thread_dns_enumerate_domain, p_data);
 	return;
 }
 
@@ -480,59 +384,9 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 }
 
 void callback_dns_bf_network(GtkWidget *widget, popup_data *p_data) {
-	const gchar *text_entry;
-	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
 	kraken_thread k_thread;
-	network_info target_network;
-	dns_enum_opts d_opts;
-	gpt_dns_enum gpt_data;
 	
-	memset(target_domain, '\0', sizeof(target_domain));
-	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
-	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
-		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
-		gtk_widget_destroy(p_data->popup_window);
-		return;
-	}
-	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
-	
-	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry1));
-	if (netaddr_cidr_str_to_nwk((char *)text_entry, &target_network) != 0) {
-		GUI_POPUP_ERROR_INVALID_CIDR_NETWORK(p_data->popup_window);
-		gtk_widget_destroy(p_data->popup_window);
-		return;
-	}
-	
-	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Enumerating Network");
-	gui_model_update_marquee((main_gui_data *)p_data, "Enumerating Network");
-	
-	dns_enum_opts_init(&d_opts);
-	d_opts.progress_update = (void *)&callback_update_progress;
-	d_opts.progress_update_data = p_data;
-	
-	gpt_data.c_host_manager = p_data->c_host_manager;
-	gpt_data.target_domain = target_domain;
-	gpt_data.target_net = &target_network;
-	gpt_data.d_opts = &d_opts;
-	gpt_data.response = 0;
-	
-	kraken_thread_create(&k_thread, gui_popup_thread_dns_enumerate_network, &gpt_data);
-	
-	while (kraken_thread_is_alive(&k_thread)) {
-		while (gtk_events_pending()) {
-			gtk_main_iteration();
-		}
-	}
-	kraken_thread_join(&k_thread);
-	
-	if (gpt_data.response == 0) {
-		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Requesting WHOIS Records");
-		gui_model_update_marquee((main_gui_data *)p_data, "Requesting WHOIS Records");
-		whois_fill_host_manager(p_data->c_host_manager);
-		gui_model_update_tree_and_marquee((main_gui_data*)p_data, NULL);
-	}
-	gtk_widget_destroy(p_data->popup_window);
-	dns_enum_opts_destroy(&d_opts);
+	kraken_thread_create(&k_thread, gui_popup_thread_dns_enumerate_network, p_data);
 	return;
 }
 
@@ -646,35 +500,9 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 }
 
 void callback_http_scan_all_links(GtkWidget *widget, popup_data *p_data) {
-	http_link *link_anchor = NULL;
 	kraken_thread k_thread;
-	http_enum_opts h_opts;
-	gpt_http_enum gpt_data;
 	
-	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Scanning For Links");
-	gui_model_update_marquee((main_gui_data *)p_data, "Scanning For Links");
-	
-	http_enum_opts_init(&h_opts);
-	h_opts.progress_update = (void *)&callback_update_progress;
-	h_opts.progress_update_data = p_data;
-	
-	gpt_data.c_host_manager = p_data->c_host_manager;
-	gpt_data.link_anchor = &link_anchor;
-	gpt_data.h_opts = &h_opts;
-	gpt_data.response = 0;
-	
-	kraken_thread_create(&k_thread, gui_popup_thread_http_enumerate_hosts, &gpt_data);
-	
-	while (kraken_thread_is_alive(&k_thread)) {
-		while (gtk_events_pending()) {
-			gtk_main_iteration();
-		}
-	}
-	kraken_thread_join(&k_thread);
-	
-	gui_popup_select_hosts_from_http_links((main_gui_data *)p_data, link_anchor);
-	gtk_widget_destroy(p_data->popup_window);
-	http_enum_opts_destroy(&h_opts);
+	kraken_thread_create(&k_thread, gui_popup_thread_http_enumerate_hosts, p_data);
 	return;
 }
 
@@ -953,7 +781,6 @@ gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link
 
 void callback_manage_settings_select_dns_wordlist(GtkWidget *widget, popup_data *p_data) {
 	GtkWidget *dialog;
-	gint response;
 	
 	dialog = gtk_file_chooser_dialog_new("Select File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {

@@ -29,12 +29,10 @@
 #ifndef WITHOUT_LOG4C
 #include <log4c.h>
 #endif
-#include "hosts.h"
+#include "kraken.h"
 #include "host_manager.h"
 #include "export.h"
 #include "gui_main.h"
-#include "kraken_options.h"
-#include "logging.h"
 #include "whois_lookup.h"
 
 const char *argp_program_version = "kraken 0.1";
@@ -155,9 +153,9 @@ int main(int argc, char **argv) {
 			if (import_host_manager_from_xml(&c_host_manager, arguments.restore_file) != 0) {
 				logging_log("kraken", LOGGING_ERROR, "could not import file: %s", arguments.restore_file);
 			} else if (access(arguments.restore_file, W_OK) == 0) {
-				c_host_manager.save_file_path = malloc(strlen(arguments.restore_file));
+				c_host_manager.save_file_path = malloc(strlen(arguments.restore_file) + 1);
 				if (c_host_manager.save_file_path != NULL) {
-					strncpy(c_host_manager.save_file_path, arguments.restore_file, strlen(arguments.restore_file));
+					strncpy(c_host_manager.save_file_path, arguments.restore_file, sizeof(c_host_manager.save_file_path));
 				}
 			}
 		}

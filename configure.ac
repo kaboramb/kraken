@@ -43,7 +43,11 @@ AC_CHECK_LIB([cares], [ares_set_servers], [], [
 # Checks for optional libraries.
 AS_IF([test "x$with_log4c" != "xno"], [
 	AC_MSG_NOTICE([log4c support has been enabled])
-	AC_CHECK_LIB([log4c], [log4c_init])
+	AC_CHECK_LIB([log4c], [log4c_init], [], [
+		AC_MSG_NOTICE([could not find the log4c library])
+		AC_MSG_NOTICE([please install log4c or use the --without-log4c option])
+		exit 1
+	])
 ], [
 	AC_MSG_NOTICE([log4c support has been disabled])
 	AC_DEFINE([WITHOUT_LOG4C], [1])
@@ -58,14 +62,14 @@ PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.20.0, [], [
 ])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h pthread.h signal.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 
 # Checks for library functions.
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([gethostbyname memmove memset select socket strchr strncasecmp strstr])
+AC_CHECK_FUNCS([gethostbyname select socket strchr strncasecmp strstr])
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT

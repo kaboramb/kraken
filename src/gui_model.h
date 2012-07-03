@@ -1,8 +1,7 @@
 #ifndef _KRAKEN_GUI_MODEL_H
 #define _KRAKEN_GUI_MODEL_H
 
-#include "hosts.h"
-#include "kraken_options.h"
+#include "kraken.h"
 
 #define GUI_MODEL_MAX_MARQUEE_MSG_SIZE 32
 

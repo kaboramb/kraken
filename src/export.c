@@ -7,10 +7,9 @@
 #include <libxml/tree.h>
 #include <libxml/parser.h>
 #include <libxml/xmlwriter.h>
-#include "hosts.h"
+#include "kraken.h"
 #include "host_manager.h"
 #include "export.h"
-#include "logging.h"
 #include "whois_lookup.h"
 
 int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_file) {

@@ -5,9 +5,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-#include "hosts.h"
+#include "kraken.h"
 #include "host_manager.h"
-#include "logging.h"
 #include "whois_lookup.h"
 #include "network_addr.h"
 

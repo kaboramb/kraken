@@ -7,6 +7,7 @@
  */
 
 #include <pthread.h>
+#include <signal.h>
 typedef pthread_t kraken_thread;
 typedef pthread_mutex_t kraken_thread_mutex;
 

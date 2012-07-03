@@ -1,5 +1,5 @@
 AM_CFLAGS = -Wall -O0 -ggdb
-AM_LDFLAGS = -lcares -lcurl -llog4c -luriparser -lxml2
+AM_LDFLAGS = 
 
 bin_PROGRAMS = kraken
 kraken_SOURCES = dns_enum.c export.c gui_main.c gui_menu_functions.c \

@@ -11,10 +11,9 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include "hosts.h"
+#include "kraken.h"
 #include "host_manager.h"
 #include "dns_enum.h"
-#include "logging.h"
 #include "network_addr.h"
 
 static void callback_nameserver_servers(void *args, int status, int timeouts, unsigned char *abuf, int alen) {
@@ -24,14 +23,12 @@ static void callback_nameserver_servers(void *args, int status, int timeouts, un
 	struct hostent *host;
 	struct domain_ns_list *nameservers;
 	ares_parse_ns_reply(abuf, alen, &host);
-    int i = 0;
-
+	int i = 0;
 	nameservers = args;
-    for (i = 0; (host->h_aliases[i] && (i < DNS_MAX_NS_HOSTS)); ++i) {
+	for (i = 0; (host->h_aliases[i] && (i < DNS_MAX_NS_HOSTS)); ++i) {
 		strncpy((char *)&nameservers->servers[i], host->h_aliases[i], DNS_MAX_FQDN_LENGTH);
-    }
-    
-    ares_free_hostent(host);
+	}
+	ares_free_hostent(host);
 	return;
 }
 
@@ -42,7 +39,6 @@ static void callback_nameserver_hosts(void *args, int status, int timeouts, stru
 	}
 	struct domain_ns_list *nameservers;
 	int i = 0;
-	
 	nameservers = args;
 	for (i = 0; i < DNS_MAX_NS_HOSTS; ++i) {
 		if (strncmp(host->h_name, nameservers->servers[i], strlen(nameservers->servers[i])) == 0) {
@@ -100,6 +96,7 @@ void dns_enum_opts_init(dns_enum_opts *d_opts) {
 	d_opts->wordlist = NULL;
 	d_opts->progress_update = NULL;
 	d_opts->progress_update_data = NULL;
+	d_opts->cancel_action = NULL;
 	return;
 }
 
@@ -400,6 +397,9 @@ int dns_enumerate_domain_ex(host_manager *c_host_manager, char *target_domain, d
 		strncpy(c_host.hostname, nameservers.servers[i], DNS_MAX_FQDN_LENGTH);
 		host_manager_add_host(c_host_manager, &c_host);
 		single_host_destroy(&c_host);
+	}
+	if (DNS_SHOULD_STOP(d_opts)) {
+		return -100;
 	}
 	dns_bruteforce_names_for_domain(target_domain, c_host_manager, &nameservers, d_opts);
 	LOGGING_QUICK_INFO("kraken.dns_enum", "dns enumerate domain finished")
