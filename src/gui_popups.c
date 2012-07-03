@@ -44,14 +44,6 @@ gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, cons
 	return response;
 }
 
-void callback_update_progress(unsigned int current, unsigned int high, popup_data *p_data) {
-	gdouble percent = (gdouble)current / high;
-	gdk_threads_enter();
-	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(p_data->misc_widget), percent);
-	gdk_threads_leave();
-	return;
-}
-
 void callback_destroy(GtkWidget *widget, popup_data *p_data) {
 	if (p_data != NULL) {
 		free(p_data);
@@ -182,10 +174,10 @@ gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_st
 	return TRUE;
 }
 
-void callback_http_search_bing(GtkWidget *widget, popup_data *p_data) {
+void callback_start_thread(GtkWidget *widget, popup_data *p_data) {
 	kraken_thread k_thread;
 	
-	kraken_thread_create(&k_thread, gui_popup_thread_http_search_engine_bing, p_data);
+	kraken_thread_create(&k_thread, p_data->thread_function, p_data);
 	return;
 }
 
@@ -232,6 +224,7 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
 	}
 	
+	p_data->thread_function = (void *)&gui_popup_thread_http_search_engine_bing;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
 	p_data->tree_view = m_data->tree_view;
@@ -240,7 +233,7 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 	p_data->c_host_manager = m_data->c_host_manager;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
-	g_signal_connect(entry, "activate", G_CALLBACK(callback_http_search_bing), p_data);
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
 	
@@ -253,7 +246,7 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_http_search_bing), p_data);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);
@@ -280,13 +273,6 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 		gtk_widget_destroy(window);
 	}
 	return TRUE;
-}
-
-void callback_dns_bf_domain(GtkWidget *widget, popup_data *p_data) {
-	kraken_thread k_thread;
-	
-	kraken_thread_create(&k_thread, gui_popup_thread_dns_enumerate_domain, p_data);
-	return;
 }
 
 gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
@@ -333,6 +319,7 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
 	}
 	
+	p_data->thread_function = (void *)&gui_popup_thread_dns_enumerate_domain;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
 	p_data->tree_view = m_data->tree_view;
@@ -341,7 +328,7 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 	p_data->c_host_manager = m_data->c_host_manager;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
-	g_signal_connect(entry, "activate", G_CALLBACK(callback_dns_bf_domain), p_data);
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
 	
@@ -354,7 +341,7 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_dns_bf_domain), p_data);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);
@@ -381,13 +368,6 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 		gtk_widget_destroy(window);
 	}
 	return TRUE;
-}
-
-void callback_dns_bf_network(GtkWidget *widget, popup_data *p_data) {
-	kraken_thread k_thread;
-	
-	kraken_thread_create(&k_thread, gui_popup_thread_dns_enumerate_network, p_data);
-	return;
 }
 
 gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
@@ -434,7 +414,7 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	if (strlen(m_data->c_host_manager->lw_domain) > 0) {
 		gtk_entry_set_text(GTK_ENTRY(entry0), m_data->c_host_manager->lw_domain);
 	}
-	g_signal_connect(entry0, "activate", G_CALLBACK(callback_dns_bf_domain), p_data);
+	g_signal_connect(entry0, "activate", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry0, TRUE, TRUE, 0);
 	gtk_widget_show(entry0);
 	
@@ -453,10 +433,11 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	if (cidr_str != NULL) {
 		gtk_entry_set_text(GTK_ENTRY(entry1), cidr_str);
 	}
-	g_signal_connect(entry1, "activate", G_CALLBACK(callback_dns_bf_domain), p_data);
+	g_signal_connect(entry1, "activate", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry1, TRUE, TRUE, 0);
 	gtk_widget_show(entry1);
 	
+	p_data->thread_function = (void *)&gui_popup_thread_dns_enumerate_network;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry0;
 	p_data->text_entry1 = entry1;
@@ -475,7 +456,7 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_dns_bf_network), p_data);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);
@@ -497,13 +478,6 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	
 	gtk_widget_show(window);
 	return TRUE;
-}
-
-void callback_http_scan_all_links(GtkWidget *widget, popup_data *p_data) {
-	kraken_thread k_thread;
-	
-	kraken_thread_create(&k_thread, gui_popup_thread_http_enumerate_hosts, p_data);
-	return;
 }
 
 gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
@@ -533,6 +507,7 @@ gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
 	gtk_container_add(GTK_CONTAINER(window), vbox);
 	gtk_widget_show(vbox);
 	
+	p_data->thread_function = (void *)&gui_popup_thread_http_enumerate_hosts;
 	p_data->popup_window = window;
 	p_data->tree_view = m_data->tree_view;
 	p_data->main_marquee = m_data->main_marquee;
@@ -548,7 +523,7 @@ gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_http_scan_all_links), p_data);
+	g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
 	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);

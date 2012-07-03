@@ -180,28 +180,21 @@ void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data
 }
 
 gboolean view_onButtonPressed(GtkWidget *treeview, GdkEventButton *event, gpointer userdata) {
+	GtkTreeSelection *selection;
 	if (event->type == GDK_BUTTON_PRESS && event->button == 3) {
-		if (1) {
-			GtkTreeSelection *selection;
-			selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
-			if (gtk_tree_selection_count_selected_rows(selection) <= 1) {
-				GtkTreePath *path;
-				if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), (gint)event->x, (gint)event->y, &path, NULL, NULL, NULL)) {
-					gtk_tree_selection_unselect_all(selection);
-					gtk_tree_selection_select_path(selection, path);
-					gtk_tree_path_free(path);
-				}
+		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
+		if (gtk_tree_selection_count_selected_rows(selection) != 0) {
+			GtkTreePath *path;
+			if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), (gint)event->x, (gint)event->y, &path, NULL, NULL, NULL)) {
+				gtk_tree_selection_unselect_all(selection);
+				gtk_tree_selection_select_path(selection, path);
+				gtk_tree_path_free(path);
 			}
+			view_popup_menu(treeview, event, userdata);
 		}
-		view_popup_menu(treeview, event, userdata);
 		return TRUE;
 	}
 	return FALSE;
-}
-
-gboolean view_onPopupMenu(GtkWidget *treeview, gpointer userdata) {
-	view_popup_menu(treeview, NULL, userdata);
-	return TRUE;
 }
 
 void gui_model_update_marquee(main_gui_data *m_data, const char *status) {
@@ -283,7 +276,6 @@ GtkWidget *create_view_and_model(host_manager *c_host_manager, main_gui_data *m_
 	
 	view = gtk_tree_view_new();
 	g_signal_connect(view, "button-press-event", (GCallback)view_onButtonPressed, m_data);
-	g_signal_connect(view, "popup-menu", (GCallback)view_onPopupMenu, m_data);
 	
 	renderer = gtk_cell_renderer_text_new();
 	col = gtk_tree_view_column_new();

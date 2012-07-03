@@ -20,6 +20,7 @@ typedef struct popup_data {
 	kraken_opts *k_opts;
 	host_manager *c_host_manager;
 	
+	void (*thread_function)(void *data);
 	GtkWidget *popup_window;
 	GtkWidget *text_entry0;
 	GtkWidget *text_entry1;
@@ -27,7 +28,6 @@ typedef struct popup_data {
 	int cancel_action;
 } popup_data;
 
-void callback_update_progress(unsigned int current, unsigned int high, popup_data *p_data);
 void gui_popup_error_dialog(gpointer window, const char *message, const char *title);
 void gui_popup_info_dialog(gpointer window, const char *message, const char *title);
 gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title);

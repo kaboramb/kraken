@@ -12,6 +12,14 @@
 #include "network_addr.h"
 #include "whois_lookup.h"
 
+void callback_threaded_update_progress(unsigned int current, unsigned int high, popup_data *p_data) {
+	gdouble percent = (gdouble)current / high;
+	gdk_threads_enter();
+	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(p_data->misc_widget), percent);
+	gdk_threads_leave();
+	return;
+}
+
 void gui_popup_thread_dns_enumerate_domain(popup_data *p_data) {
 	dns_enum_opts d_opts;
 	const gchar *text_entry;
@@ -34,7 +42,7 @@ void gui_popup_thread_dns_enumerate_domain(popup_data *p_data) {
 	
 	dns_enum_opts_init(&d_opts);
 	dns_enum_opts_set_wordlist(&d_opts, p_data->k_opts->dns_wordlist);
-	d_opts.progress_update = (void *)&callback_update_progress;
+	d_opts.progress_update = (void *)&callback_threaded_update_progress;
 	d_opts.progress_update_data = p_data;
 	
 	response = dns_enumerate_domain_ex(p_data->c_host_manager, target_domain, &d_opts);
@@ -88,7 +96,7 @@ void gui_popup_thread_dns_enumerate_network(popup_data *p_data) {
 	gdk_threads_leave();
 	
 	dns_enum_opts_init(&d_opts);
-	d_opts.progress_update = (void *)&callback_update_progress;
+	d_opts.progress_update = (void *)&callback_threaded_update_progress;
 	d_opts.progress_update_data = p_data;
 	
 	response = dns_enumerate_network_ex(p_data->c_host_manager, target_domain, &target_network, &d_opts);
@@ -119,7 +127,7 @@ void gui_popup_thread_http_enumerate_hosts(popup_data *p_data) {
 	gdk_threads_leave();
 	
 	http_enum_opts_init(&h_opts);
-	h_opts.progress_update = (void *)&callback_update_progress;
+	h_opts.progress_update = (void *)&callback_threaded_update_progress;
 	h_opts.progress_update_data = p_data;
 	
 	http_enumerate_hosts_ex(p_data->c_host_manager, &link_anchor, &h_opts);
@@ -157,7 +165,7 @@ void gui_popup_thread_http_search_engine_bing(popup_data *p_data) {
 	gdk_threads_leave();
 	
 	http_enum_opts_init(&h_opts);
-	h_opts.progress_update = (void *)&callback_update_progress;
+	h_opts.progress_update = (void *)&callback_threaded_update_progress;
 	h_opts.progress_update_data = p_data;
 	if (p_data->k_opts->bing_api_key == NULL) {
 		gdk_threads_enter();
