@@ -21,8 +21,6 @@
 
 #define DNS_SHOULD_STOP(d_opts) (d_opts->cancel_action != NULL) && (*d_opts->cancel_action == KRAKEN_ACTION_STOP)
 
-#define MAX_LINE 512
-
 typedef struct domain_ns_list { /* hold information for up to DNS_MAX_NS_HOSTS name servers */
 	char domain[DNS_MAX_FQDN_LENGTH + 1];
 	char servers[DNS_MAX_NS_HOSTS][DNS_MAX_FQDN_LENGTH + 1];

@@ -145,7 +145,12 @@ int main(int argc, char **argv) {
 		LOGGING_QUICK_FATAL("kraken", "could not initialize the host manager, it is likely that there is not enough memory")
 		return 0;
 	}
-	LOGGING_QUICK_WARNING("kraken", "releasing the kraken")
+	
+	if (kraken_opts_init_from_config(&k_opts) != 0) {
+		LOGGING_QUICK_WARNING("kraken", "an error occured while loading the config file, using default options")
+		kraken_opts_init(&k_opts);
+	}
+	
 	if (arguments.restore_file != NULL) {
 		if (access(arguments.restore_file, R_OK) == -1) {
 			logging_log("kraken", LOGGING_ERROR, "could not read file: %s", arguments.restore_file);
@@ -161,7 +166,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	
-	kraken_opts_init(&k_opts);
+	LOGGING_QUICK_WARNING("kraken", "releasing the kraken")
 	gui_show_main_window(&k_opts, &c_host_manager);
 	
 	if (c_host_manager.known_hosts) {

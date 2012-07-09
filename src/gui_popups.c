@@ -771,6 +771,8 @@ void callback_manage_settings_select_dns_wordlist(GtkWidget *widget, popup_data 
 
 void callback_manage_settings(GtkWidget *widget, popup_data *p_data) {
 	const gchar *option_text;
+	int response;
+	char conf_path[MAX_LINE];
 	
 	option_text = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
 	if ((option_text != NULL) && strlen(option_text)) {
@@ -782,6 +784,13 @@ void callback_manage_settings(GtkWidget *widget, popup_data *p_data) {
 		kraken_opts_set(p_data->k_opts, KRAKEN_OPT_DNS_WORDLIST, (char *)option_text);
 	}
 	
+	response = kraken_conf_get_config_file_path(conf_path, MAX_LINE);
+	if (response == 0) {
+		response = kraken_conf_save_config(conf_path, p_data->k_opts);
+	}
+	if (response != 0) {
+		gui_popup_error_dialog(p_data->popup_window, "Could Not Save Options", "Error: Could Not Save Options");
+	}
 	gtk_widget_destroy(p_data->popup_window);
 	return;
 }

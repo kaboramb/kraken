@@ -8,6 +8,7 @@ kraken_SOURCES = dns_enum.c export.c gui_main.c gui_menu_functions.c \
 	export.h gui_main.h gui_menu_functions.h gui_model.h gui_popups.h \
 	http_scan.h host_manager.h kraken.h kraken_options.h logging.h \
 	network_addr.h whois_lookup.h kraken_thread.c kraken_thread.h \
-	gui_popups_threads.h gui_popups_threads.c
+	gui_popups_threads.c gui_popups_threads.h utilities.c utilities.h \
+	xml_utilities.c xml_utilities.h
 kraken_CFLAGS = $(GTK_CFLAGS) $(LIBXML_CFLAGS)
 kraken_LDADD = $(GTK_LIBS) $(LIBXML_LIBS)

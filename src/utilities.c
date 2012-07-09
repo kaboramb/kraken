@@ -1,0 +1,21 @@
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <unistd.h>
+#include "utilities.h"
+
+int util_dir_exists(const char *dir_path) {
+	struct stat st;
+	
+	if (stat(dir_path, &st) == 0) {
+		return 1;
+	}
+	return 0;
+}
+
+int util_dir_create_if_not_exists(const char *dir_path) {
+	if (util_dir_exists(dir_path) == 0) {
+		return mkdir(dir_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	}
+	return 0;
+}

@@ -3,14 +3,12 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <time.h>
-#include <libxml/encoding.h>
-#include <libxml/tree.h>
-#include <libxml/parser.h>
-#include <libxml/xmlwriter.h>
+
 #include "kraken.h"
 #include "host_manager.h"
 #include "export.h"
 #include "whois_lookup.h"
+#include "xml_utilities.h"
 
 int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_file) {
 	FILE *csv_f;
@@ -42,32 +40,6 @@ int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_fi
 	logging_log("kraken.export", LOGGING_INFO, "exported %u hosts and %u whois records", c_host_manager->known_hosts, c_host_manager->known_whois_records);
 	fclose(csv_f);
 	return 0;
-}
-
-xmlChar *xml_convert_input(const char *in, const char *encoding) {
-	xmlChar *out;
-	int ret;
-	int size;
-	int out_size;
-	int temp;
-	xmlCharEncodingHandlerPtr handler;
-	handler = xmlFindCharEncodingHandler(encoding);
-	assert(handler != NULL);
-	size = (int)strlen(in) + 1;
-	out_size = size * 2 - 1;
-	out = (unsigned char *)xmlMalloc((size_t) out_size);
-	if (out != NULL) {
-		temp = size - 1;
-		ret = handler->input(out, &out_size, (const xmlChar *)in, &temp);
-		if ((ret < 0) || (temp - size + 1)) {
-			xmlFree(out);
-			out = 0;
-		} else {
-			out = (unsigned char *)xmlRealloc(out, out_size + 1);
-			out[out_size] = 0;  /*null terminating out */
-		}
-	}
-	return out;
 }
 
 int export_host_manager_to_xml(host_manager *c_host_manager, const char *dest_file) {
@@ -223,7 +195,7 @@ int import_host_record_from_xml(xmlNode *host_xml, single_host_info *tmp_host) {
 		if (cur_node->type != XML_ELEMENT_NODE) {
 			continue;
 		}
-		if (xmlStrncmp(cur_node->name, (xmlChar *)"aliases", 7) == 0) {
+		if (xmlStrcmp(cur_node->name, (xmlChar *)"aliases") == 0) {
 			for (alias_node = cur_node->children; alias_node; alias_node = alias_node->next) {
 				if (alias_node->type != XML_ELEMENT_NODE) {
 					continue;
@@ -236,7 +208,7 @@ int import_host_record_from_xml(xmlNode *host_xml, single_host_info *tmp_host) {
 					xmlFree(value);
 					continue;
 				}
-				if (xmlStrncmp(alias_node->name, (xmlChar *)"alias", 5) == 0) {
+				if (xmlStrcmp(alias_node->name, (xmlChar *)"alias") == 0) {
 					single_host_add_alias(tmp_host, (const char *)value);
 				}
 				xmlFree(value);
@@ -251,9 +223,9 @@ int import_host_record_from_xml(xmlNode *host_xml, single_host_info *tmp_host) {
 			xmlFree(value);
 			continue;
 		}
-		if (xmlStrncmp(cur_node->name, (xmlChar *)"ip", 2) == 0) {
+		if (xmlStrcmp(cur_node->name, (xmlChar *)"ip") == 0) {
 			for (attribute = cur_node->properties; attribute; attribute = attribute->next) {
-				if (xmlStrncmp(attribute->name, (xmlChar *)"version", 7) == 0) {
+				if (xmlStrcmp(attribute->name, (xmlChar *)"version") == 0) {
 					attr_value = xmlNodeListGetString(cur_node->doc, attribute->children, 1);
 					if (attr_value == NULL) {
 						continue;
@@ -262,23 +234,23 @@ int import_host_record_from_xml(xmlNode *host_xml, single_host_info *tmp_host) {
 						xmlFree(attr_value);
 						continue;
 					}
-					if (xmlStrncmp(attr_value, (xmlChar *)"4", 1) == 0) {
+					if (xmlStrcmp(attr_value, (xmlChar *)"4") == 0) {
 						inet_pton(AF_INET, (const char *)value, &tmp_host->ipv4_addr);
 					}
 					xmlFree(attr_value);
 				}
 			}
-		} else if (xmlStrncmp(cur_node->name, (xmlChar *)"hostname", 8) == 0) {
+		} else if (xmlStrcmp(cur_node->name, (xmlChar *)"hostname") == 0) {
 			strncpy(tmp_host->hostname, (const char *)value, DNS_MAX_FQDN_LENGTH);
-		} else if (xmlStrncmp(cur_node->name, (xmlChar *)"alive", 5) == 0) {
-			if (xmlStrncmp(value, (xmlChar *)"true", 4) == 0) {
+		} else if (xmlStrcmp(cur_node->name, (xmlChar *)"alive") == 0) {
+			if (xmlStrcmp(value, (xmlChar *)"true") == 0) {
 				tmp_host->is_up = KRAKEN_HOST_UP;
-			} else if (xmlStrncmp(value, (xmlChar *)"false", 5) == 0) {
+			} else if (xmlStrcmp(value, (xmlChar *)"false") == 0) {
 				tmp_host->is_up = KRAKEN_HOST_DOWN;
 			} else {
 				tmp_host->is_up = KRAKEN_HOST_UNKNOWN;
 			}
-		} else if (xmlStrncmp(cur_node->name, (xmlChar *)"os", 2) == 0) {
+		} else if (xmlStrcmp(cur_node->name, (xmlChar *)"os") == 0) {
 			tmp_host->os = (unsigned char)atoi((const char *)value);
 		}
 		xmlFree(value);
@@ -302,17 +274,17 @@ int import_whois_record_from_xml(xmlNode *whois_xml, whois_record *tmp_who) {
 				xmlFree(value);
 				continue;
 			}
-			if (xmlStrncmp(cur_node->name, (xmlChar *)"cidr", 4) == 0) {
+			if (xmlStrcmp(cur_node->name, (xmlChar *)"cidr") == 0) {
 				strncpy(tmp_who->cidr_s, (const char *)value, WHOIS_SZ_DATA_S);
-			} else if (xmlStrncmp(cur_node->name, (xmlChar *)"netname", 7) == 0) {
+			} else if (xmlStrcmp(cur_node->name, (xmlChar *)"netname") == 0) {
 				strncpy(tmp_who->netname, (const char *)value, WHOIS_SZ_DATA);
-			} else if (xmlStrncmp(cur_node->name, (xmlChar *)"description", 11) == 0) {
+			} else if (xmlStrcmp(cur_node->name, (xmlChar *)"description") == 0) {
 				strncpy(tmp_who->description, (const char *)value, WHOIS_SZ_DATA);
-			} else if (xmlStrncmp(cur_node->name, (xmlChar *)"orgname", 7) == 0) {
+			} else if (xmlStrcmp(cur_node->name, (xmlChar *)"orgname") == 0) {
 				strncpy(tmp_who->orgname, (const char *)value, WHOIS_SZ_DATA);
-			} else if (xmlStrncmp(cur_node->name, (xmlChar *)"regdate", 7) == 0) {
+			} else if (xmlStrcmp(cur_node->name, (xmlChar *)"regdate") == 0) {
 				strncpy(tmp_who->regdate_s, (const char *)value, WHOIS_SZ_DATA_S);
-			} else if (xmlStrncmp(cur_node->name, (xmlChar *)"updated", 7) == 0) {
+			} else if (xmlStrcmp(cur_node->name, (xmlChar *)"updated") == 0) {
 				strncpy(tmp_who->updated_s, (const char *)value, WHOIS_SZ_DATA_S);
 			}
 			xmlFree(value);
@@ -331,6 +303,7 @@ int import_host_manager_from_xml(host_manager *c_host_manager, const char *sourc
 	xmlNode *cur_node = NULL;
 	whois_record current_who;
 	single_host_info current_host;
+	
 	/* xpath example http://xmlsoft.org/examples/xpath1.c */
 	doc = xmlParseFile(source_file);
 	if (doc == NULL) {
@@ -343,7 +316,7 @@ int import_host_manager_from_xml(host_manager *c_host_manager, const char *sourc
 		xmlFreeDoc(doc);
 		return 2;
 	}
-	if (xmlStrncmp(root_element->name, (xmlChar *)"kraken", 6) != 0) {
+	if (xmlStrcmp(root_element->name, (xmlChar *)"kraken") != 0) {
 		LOGGING_QUICK_ERROR("kraken.export", "the root XML node is not \"kraken\"")
 		xmlFreeDoc(doc);
 		return 3;
@@ -354,9 +327,9 @@ int import_host_manager_from_xml(host_manager *c_host_manager, const char *sourc
 	
 	for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
-			if (xmlStrncmp(cur_node->name, (xmlChar *)"whois_records", 13) == 0) {
+			if (xmlStrcmp(cur_node->name, (xmlChar *)"whois_records") == 0) {
 				who_records = cur_node;
-			} else if(xmlStrncmp(cur_node->name, (xmlChar *)"hosts", 5) == 0) {
+			} else if(xmlStrcmp(cur_node->name, (xmlChar *)"hosts") == 0) {
 				host_records = cur_node;
 			}
 		}
@@ -367,7 +340,7 @@ int import_host_manager_from_xml(host_manager *c_host_manager, const char *sourc
 	if (who_records != NULL) {
 		for (cur_node = who_records->children; cur_node; cur_node = cur_node->next) {
 			if (cur_node->type == XML_ELEMENT_NODE) {
-				if (xmlStrncmp(cur_node->name, (xmlChar *)"whois_record", 12) == 0) {
+				if (xmlStrcmp(cur_node->name, (xmlChar *)"whois_record") == 0) {
 					if (import_whois_record_from_xml(cur_node, &current_who) == 0) {
 						host_manager_add_whois(c_host_manager, &current_who);
 					}
@@ -378,7 +351,7 @@ int import_host_manager_from_xml(host_manager *c_host_manager, const char *sourc
 	if (host_records != NULL) {
 		for (cur_node = host_records->children; cur_node; cur_node = cur_node->next) {
 			if (cur_node->type == XML_ELEMENT_NODE) {
-				if (xmlStrncmp(cur_node->name, (xmlChar *)"host", 4) == 0) {
+				if (xmlStrcmp(cur_node->name, (xmlChar *)"host") == 0) {
 					if (import_host_record_from_xml(cur_node, &current_host) == 0) {
 						host_manager_add_host(c_host_manager, &current_host);
 						single_host_destroy(&current_host);

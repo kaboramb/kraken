@@ -13,6 +13,8 @@
 #include "kraken_options.h"
 #include "logging.h"
 
+#define MAX_LINE 512
+
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in dns_enum.h */
 #define KRAKEN_HOST_UP 1
 #define KRAKEN_HOST_UNKNOWN 0
