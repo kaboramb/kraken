@@ -13,6 +13,8 @@
 #define HTTP_BING_NUM_RESULTS 50
 #define HTTP_BING_MAX_RESULTS 500
 
+#define HTTP_SHOULD_STOP(h_opts) (h_opts->action_status != NULL) && (*h_opts->action_status != KRAKEN_ACTION_RUN)
+
 typedef struct http_link {
 	char scheme[HTTP_SCHEME_SZ + 1];
 	char hostname[DNS_MAX_FQDN_LENGTH + 1];
@@ -23,7 +25,7 @@ typedef struct http_link {
 typedef struct http_enum_opts {
 	void (*progress_update)(unsigned int current, unsigned int last, void *userdata);
 	void *progress_update_data;
-	int *cancel_action;
+	int *action_status;
 	long timeout;
 	long timeout_ms;
 	char *bing_api_key;

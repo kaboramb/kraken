@@ -18,6 +18,20 @@ enum {
 	NUM_COLS
 };
 
+void gui_popup_data_init(popup_data *p_data, main_gui_data *m_data) {
+	memset(p_data, '\0', sizeof(popup_data));
+	
+	p_data->tree_view = m_data->tree_view;
+	p_data->main_marquee = m_data->main_marquee;
+	p_data->k_opts = m_data->k_opts;
+	p_data->c_host_manager = m_data->c_host_manager;
+	
+	p_data->thread_function = NULL;
+	p_data->action_status = KRAKEN_ACTION_PAUSE;
+	p_data->cancel_dialog = NULL;
+	return;
+}
+
 void gui_popup_error_dialog(gpointer window, const char *message, const char *title) {
 	GtkWidget *dialog;
 	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message);
@@ -52,50 +66,95 @@ void callback_destroy(GtkWidget *widget, popup_data *p_data) {
 }
 
 void callback_cancel(GtkWidget *widget, popup_data *p_data) {
-	gtk_container_foreach(GTK_CONTAINER(p_data->popup_window), (GtkCallback)gtk_widget_destroy, NULL);
 	if (p_data != NULL) {
+		gtk_container_foreach(GTK_CONTAINER(p_data->popup_window), (GtkCallback)gtk_widget_destroy, NULL);
 		gtk_widget_destroy(p_data->popup_window);
 	}
 	return;
 }
 
-void callback_http_scan_links(GtkWidget *widget, popup_data *p_data) {
-	const gchar *text_entry;
-	http_link *link_anchor = NULL;
-	int tmp_val = 0;
-	char target_host[DNS_MAX_FQDN_LENGTH];
-	char target_url[DNS_MAX_FQDN_LENGTH + 9];
+void callback_cancel_action(GtkWidget *widget, popup_data *p_data) {
+	GtkWidget *dialog;
 	
-	memset(target_host, '\0', sizeof(target_host));
-	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
-	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
-		GUI_POPUP_ERROR_INVALID_HOST_NAME(p_data->popup_window);
-		gtk_widget_destroy(p_data->popup_window);
+	if (p_data->action_status != KRAKEN_ACTION_RUN) {
 		return;
 	}
-	strncat(target_host, text_entry, DNS_MAX_FQDN_LENGTH);
-	for (tmp_val = 0; tmp_val < strlen(target_host); tmp_val++) {
-		if (*(char *)&target_host[tmp_val] == '/') {
-			target_host[tmp_val] = '\0';
-			break;
-		}
-	}
-	snprintf(target_url, DNS_MAX_FQDN_LENGTH + 9, "http://%s/", target_host);
-	tmp_val = http_scrape_for_links(target_url, &link_anchor);
-	if (tmp_val) {
-		LOGGING_QUICK_ERROR("kraken.gui.popup", "there was an error requesting the page")
-	}
-	gui_popup_select_hosts_from_http_links((main_gui_data *)p_data, link_anchor);
-	http_free_link(link_anchor);
-	gtk_widget_destroy(p_data->popup_window);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(p_data->popup_window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, 0, "Please Wait");
+	gtk_window_set_title(GTK_WINDOW(dialog), "Please Wait");
+	p_data->cancel_dialog = dialog;
+	p_data->action_status = KRAKEN_ACTION_STOP;
+	gtk_dialog_run(GTK_DIALOG(dialog));
 	return;
+}
+
+void callback_start_thread(GtkWidget *widget, popup_data *p_data) {
+	kraken_thread k_thread;
+	
+	kraken_thread_create(&k_thread, p_data->thread_function, p_data);
+	return;
+}
+
+GtkWidget *gui_popup_get_button(int type, popup_data *p_data, const char* text) {
+	GtkWidget *button;
+	GtkWidget *hbox;
+	GtkWidget *image = NULL;
+	GtkWidget *label = NULL;
+	
+	button = gtk_button_new();
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
+	switch (type) {
+		case GUI_POPUP_BUTTON_TYPE_START:
+			gtk_widget_set_can_default(button, TRUE);
+			g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
+			image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
+			label = gtk_label_new("Start");
+			break;
+		case GUI_POPUP_BUTTON_TYPE_CANCEL:
+			g_signal_connect(button, "clicked", G_CALLBACK(callback_cancel), p_data);
+			image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
+			label = gtk_label_new("Cancel");
+			break;
+		case GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION:
+			gtk_widget_set_sensitive(button, FALSE);
+			g_signal_connect(button, "clicked", G_CALLBACK(callback_cancel_action), p_data);
+			image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
+			label = gtk_label_new("Cancel");
+			break;
+		case GUI_POPUP_BUTTON_TYPE_BASIC_APPLY:
+			gtk_widget_set_can_default(button, TRUE);
+			image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
+			if (text == NULL) {
+				label = gtk_label_new("Apply");
+			} else {
+				label = gtk_label_new(text);
+			}
+			break;
+		case GUI_POPUP_BUTTON_TYPE_BASIC_CANCEL:
+			image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
+			if (text == NULL) {
+				label = gtk_label_new("Cancel");
+			} else {
+				label = gtk_label_new(text);
+			}
+	}
+	if (image != NULL) {
+		gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
+		gtk_widget_show(image);
+	}
+	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+	gtk_widget_show(label);
+	gtk_widget_show(hbox);
+	gtk_container_add(GTK_CONTAINER(button), hbox);
+	gtk_widget_show(button);
+	return button;
 }
 
 gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_str) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
-	GtkWidget *button;
+	GtkWidget *sbutton;
 	GtkWidget *label;
 	GtkWidget *image;
 	popup_data *p_data;
@@ -134,60 +193,35 @@ gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_st
 		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
 	}
 	
+	gui_popup_data_init(p_data, m_data);
+	p_data->thread_function = (void *)&gui_popup_thread_http_enumerate_host_for_links;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
-	p_data->tree_view = m_data->tree_view;
-	p_data->main_marquee = m_data->main_marquee;
-	p_data->c_host_manager = m_data->c_host_manager;
 	
-	g_signal_connect(entry, "activate", G_CALLBACK(callback_http_scan_links), p_data);
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_start_thread), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
 	
 	/* get the button */
-	button = gtk_button_new();
+	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_http_scan_links), p_data);
-	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-	gtk_widget_set_can_default(button, TRUE);
-	gtk_widget_grab_default(button);
+	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
+	gtk_widget_grab_default(sbutton);
 	gtk_widget_show(hbox);
-	gtk_widget_show(button);
-	
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
-	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
-	label = gtk_label_new("Start");
-	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-	gtk_widget_show(image);
-	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_widget_show(hbox);
-	gtk_container_add(GTK_CONTAINER(button), hbox);
-	
+	gtk_widget_show(sbutton);
+	p_data->start_button = sbutton;
 	gtk_widget_show(window);
-	
 	return TRUE;
-}
-
-void callback_start_thread(GtkWidget *widget, popup_data *p_data) {
-	kraken_thread k_thread;
-	
-	kraken_thread_create(&k_thread, p_data->thread_function, p_data);
-	return;
 }
 
 gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
-	GtkWidget *button;
+	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	GtkWidget *image;
 	popup_data *p_data;
 	p_data = malloc(sizeof(popup_data));
 	if (p_data == NULL) {
@@ -224,13 +258,10 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
 	}
 	
+	gui_popup_data_init(p_data, m_data);
 	p_data->thread_function = (void *)&gui_popup_thread_http_search_engine_bing;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
-	p_data->tree_view = m_data->tree_view;
-	p_data->main_marquee = m_data->main_marquee;
-	p_data->k_opts = m_data->k_opts;
-	p_data->c_host_manager = m_data->c_host_manager;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
 	g_signal_connect(entry, "activate", G_CALLBACK(callback_start_thread), p_data);
@@ -241,33 +272,21 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
 	gtk_widget_show(p_data->misc_widget);
 	
-	/* get the button */
-	button = gtk_button_new();
+	/* get the buttons */
+	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
+	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
-	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-	gtk_widget_set_can_default(button, TRUE);
-	gtk_widget_grab_default(button);
+	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
 	gtk_widget_show(hbox);
-	gtk_widget_show(button);
+	gtk_widget_grab_default(sbutton);
 	
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
-	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
-	label = gtk_label_new("Start");
-	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-	gtk_widget_show(image);
-	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_widget_show(hbox);
-	gtk_container_add(GTK_CONTAINER(button), hbox);
+	p_data->start_button = sbutton;
+	p_data->cancel_button = cbutton;
 	
 	gtk_widget_show(window);
-	
 	if (m_data->k_opts->bing_api_key == NULL) {
 		gui_popup_error_dialog(window, "Bing API Key Not Set", "Error: Invalid API Key");
 		gtk_widget_destroy(window);
@@ -279,9 +298,8 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
-	GtkWidget *button;
+	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	GtkWidget *image;
 	popup_data *p_data;
 	
 	p_data = malloc(sizeof(popup_data));
@@ -319,13 +337,10 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
 	}
 	
+	gui_popup_data_init(p_data, m_data);
 	p_data->thread_function = (void *)&gui_popup_thread_dns_enumerate_domain;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
-	p_data->tree_view = m_data->tree_view;
-	p_data->main_marquee = m_data->main_marquee;
-	p_data->k_opts = m_data->k_opts;
-	p_data->c_host_manager = m_data->c_host_manager;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
 	g_signal_connect(entry, "activate", G_CALLBACK(callback_start_thread), p_data);
@@ -336,30 +351,19 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
 	gtk_widget_show(p_data->misc_widget);
 	
-	/* get the button */
-	button = gtk_button_new();
+	/* get the buttons */
+	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
+	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
-	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-	gtk_widget_set_can_default(button, TRUE);
-	gtk_widget_grab_default(button);
+	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
 	gtk_widget_show(hbox);
-	gtk_widget_show(button);
+	gtk_widget_grab_default(sbutton);
 	
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
-	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
-	label = gtk_label_new("Start");
-	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-	gtk_widget_show(image);
-	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_widget_show(hbox);
-	gtk_container_add(GTK_CONTAINER(button), hbox);
+	p_data->start_button = sbutton;
+	p_data->cancel_button = cbutton;
 	
 	gtk_widget_show(window);
 	
@@ -375,9 +379,8 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry0;
 	GtkWidget *entry1;
-	GtkWidget *button;
+	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	GtkWidget *image;
 	popup_data *p_data;
 	
 	p_data = malloc(sizeof(popup_data));
@@ -437,44 +440,31 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	gtk_box_pack_start(GTK_BOX(hbox), entry1, TRUE, TRUE, 0);
 	gtk_widget_show(entry1);
 	
+	
+	gui_popup_data_init(p_data, m_data);
 	p_data->thread_function = (void *)&gui_popup_thread_dns_enumerate_network;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry0;
 	p_data->text_entry1 = entry1;
-	p_data->tree_view = m_data->tree_view;
-	p_data->main_marquee = m_data->main_marquee;
-	p_data->k_opts = m_data->k_opts;
-	p_data->c_host_manager = m_data->c_host_manager;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
 	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
 	gtk_widget_show(p_data->misc_widget);
 	
-	/* get the button */
-	button = gtk_button_new();
+	/* get the buttons */
+	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
+	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
-	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-	gtk_widget_set_can_default(button, TRUE);
-	gtk_widget_grab_default(button);
+	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
 	gtk_widget_show(hbox);
-	gtk_widget_show(button);
+	gtk_widget_grab_default(sbutton);
 	
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
-	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
-	label = gtk_label_new("Start");
-	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-	gtk_widget_show(image);
-	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_widget_show(hbox);
-	gtk_container_add(GTK_CONTAINER(button), hbox);
+	p_data->start_button = sbutton;
+	p_data->cancel_button = cbutton;
 	
 	gtk_widget_show(window);
 	return TRUE;
@@ -483,9 +473,8 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
-	GtkWidget *button;
+	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	GtkWidget *image;
 	popup_data *p_data;
 	
 	p_data = malloc(sizeof(popup_data));
@@ -507,41 +496,28 @@ gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
 	gtk_container_add(GTK_CONTAINER(window), vbox);
 	gtk_widget_show(vbox);
 	
+	gui_popup_data_init(p_data, m_data);
 	p_data->thread_function = (void *)&gui_popup_thread_http_enumerate_hosts;
 	p_data->popup_window = window;
-	p_data->tree_view = m_data->tree_view;
-	p_data->main_marquee = m_data->main_marquee;
-	p_data->c_host_manager = m_data->c_host_manager;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
 	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
 	gtk_widget_show(p_data->misc_widget);
 	
-	/* get the button */
-	button = gtk_button_new();
+	/* get the buttons */
+	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
+	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
-	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-	gtk_widget_set_can_default(button, TRUE);
-	gtk_widget_grab_default(button);
+	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
 	gtk_widget_show(hbox);
-	gtk_widget_show(button);
+	gtk_widget_grab_default(sbutton);
 	
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
-	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
-	label = gtk_label_new("Start");
-	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-	gtk_widget_show(image);
-	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_widget_show(hbox);
-	gtk_container_add(GTK_CONTAINER(button), hbox);
+	p_data->start_button = sbutton;
+	p_data->cancel_button = cbutton;
 	
 	gtk_widget_show(window);
 	return TRUE;
@@ -642,8 +618,8 @@ void callback_add_selected_hosts(GtkWidget *widget, popup_data *userdata) {
 		}
 	} while (gtk_tree_model_iter_next(treemodel, &piter));
 	
-	gtk_widget_destroy(userdata->popup_window);
 	gui_model_update_tree_and_marquee((main_gui_data*)userdata, NULL);
+	gtk_widget_destroy(userdata->popup_window);
 	free(userdata);
 	return;
 }
@@ -685,8 +661,6 @@ gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link
 	GtkWidget *main_vbox, *hbox;
 	GtkWidget *view;
 	GtkWidget *button;
-	GtkWidget *label;
-	GtkWidget *image;
 	popup_data *p_data;
 	p_data = malloc(sizeof(popup_data));
 	if (p_data == NULL) {
@@ -698,7 +672,6 @@ gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_widget_set_size_request(window, 350, 400);
 	gtk_window_set_title(GTK_WINDOW(window), "Select Domains");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
 	gtk_container_set_border_width(GTK_CONTAINER(window), 0);
 	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
 	
@@ -713,36 +686,19 @@ gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link
 	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll_window), view);
 	gtk_box_pack_start(GTK_BOX(main_vbox), scroll_window, TRUE, TRUE, 0);
 	
+	gui_popup_data_init(p_data, m_data);
 	p_data->popup_window = window;
-	p_data->tree_view = m_data->tree_view;
-	p_data->main_marquee = m_data->main_marquee;
-	p_data->c_host_manager = m_data->c_host_manager;
 	p_data->misc_widget = view;
 	
-	/* get the buttons */
-	button = gtk_button_new();
+	/* get the button */
+	button = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_BASIC_APPLY, p_data, "Add Selected");
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
-	gtk_container_add(GTK_CONTAINER(main_vbox), hbox);
+	gtk_box_pack_end(GTK_BOX(main_vbox), hbox, FALSE, FALSE, 0);
 	g_signal_connect(button, "clicked", G_CALLBACK(callback_add_selected_hosts), p_data);
 	gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);
 	gtk_widget_show(hbox);
-	gtk_widget_show(button);
-	
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
-	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
-	label = gtk_label_new("Add Selected");
-	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-	gtk_widget_show(image);
-	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_widget_show(hbox);
-	gtk_container_add(GTK_CONTAINER(button), hbox);
 	
 	gtk_widget_show_all(window);
 	
@@ -803,7 +759,6 @@ gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
 	GtkWidget *bing_entry, *dns_wordlist_entry;
 	GtkWidget *button;
 	GtkWidget *label;
-	GtkWidget *image;
 	popup_data *p_data;
 	p_data = malloc(sizeof(popup_data));
 	if (p_data == NULL) {
@@ -914,48 +869,14 @@ gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
 	gtk_container_add(GTK_CONTAINER(main_vbox), main_hbox);
 	
 	/* get the Apply button */
-	button = gtk_button_new();
+	button = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_BASIC_APPLY, p_data, NULL);
 	g_signal_connect(button, "clicked", G_CALLBACK(callback_manage_settings), p_data);
 	gtk_box_pack_end(GTK_BOX(main_hbox), button, FALSE, FALSE, 0);
-	gtk_widget_set_can_default(button, TRUE);
 	gtk_widget_grab_default(button);
-	gtk_widget_show(hbox);
-	gtk_widget_show(button);
-	
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
-	
-	image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
-	label = gtk_label_new("Apply");
-	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-	gtk_widget_show(image);
-	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_widget_show(hbox);
-	gtk_container_add(GTK_CONTAINER(button), hbox);
 	
 	/* get the Cancel button */
-	button = gtk_button_new();
-	g_signal_connect(button, "clicked", G_CALLBACK(callback_cancel), p_data);
+	button = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL, p_data, NULL);
 	gtk_box_pack_end(GTK_BOX(main_hbox), button, FALSE, FALSE, 0);
-	gtk_widget_set_can_default(button, TRUE);
-	gtk_widget_grab_default(button);
-	gtk_widget_show(hbox);
-	gtk_widget_show(button);
-	
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
-	
-	image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
-	label = gtk_label_new("Cancel");
-	
-	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
-	gtk_widget_show(image);
-	gtk_box_pack_end(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-	gtk_widget_show(label);
-	gtk_widget_show(hbox);
-	gtk_container_add(GTK_CONTAINER(button), hbox);
 	
 	gtk_widget_show_all(window);
 	return TRUE;

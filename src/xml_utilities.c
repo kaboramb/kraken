@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <string.h>
+
 #include "xml_utilities.h"
 
 xmlChar *xml_convert_input(const char *in, const char *encoding) {

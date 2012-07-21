@@ -20,8 +20,9 @@
 #define KRAKEN_HOST_UNKNOWN 0
 #define KRAKEN_HOST_DOWN -1
 
-#define KRAKEN_ACTION_RUN 0
-#define KRAKEN_ACTION_STOP 1
+#define KRAKEN_ACTION_PAUSE -1
+#define KRAKEN_ACTION_STOP 0
+#define KRAKEN_ACTION_RUN 1
 
 typedef struct single_host_info {
 	struct in_addr ipv4_addr;

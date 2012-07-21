@@ -14,9 +14,11 @@
 
 void callback_threaded_update_progress(unsigned int current, unsigned int high, popup_data *p_data) {
 	gdouble percent = (gdouble)current / high;
-	gdk_threads_enter();
-	gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(p_data->misc_widget), percent);
-	gdk_threads_leave();
+	if (GTK_IS_PROGRESS_BAR(p_data->misc_widget)) {
+		gdk_threads_enter();
+		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(p_data->misc_widget), percent);
+		gdk_threads_leave();
+	}
 	return;
 }
 
@@ -28,6 +30,8 @@ void gui_popup_thread_dns_enumerate_domain(popup_data *p_data) {
 	
 	memset(target_domain, '\0', sizeof(target_domain));
 	gdk_threads_enter();
+	gtk_widget_set_sensitive(p_data->cancel_button, TRUE);
+	gtk_widget_set_sensitive(p_data->start_button, FALSE);
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
 	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
 		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
@@ -44,10 +48,18 @@ void gui_popup_thread_dns_enumerate_domain(popup_data *p_data) {
 	dns_enum_opts_set_wordlist(&d_opts, p_data->k_opts->dns_wordlist);
 	d_opts.progress_update = (void *)&callback_threaded_update_progress;
 	d_opts.progress_update_data = p_data;
+	d_opts.action_status = &p_data->action_status;
+	p_data->action_status = KRAKEN_ACTION_RUN;
 	
 	response = dns_enumerate_domain_ex(p_data->c_host_manager, target_domain, &d_opts);
 	
 	gdk_threads_enter();
+	if (p_data->action_status == KRAKEN_ACTION_STOP) {
+		if (p_data->cancel_dialog != NULL) {
+			gtk_widget_destroy(p_data->cancel_dialog);
+		}
+		p_data->action_status = KRAKEN_ACTION_RUN;
+	}
 	if (response == -1) {
 		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
 		gui_model_update_marquee((main_gui_data *)p_data, NULL);
@@ -74,6 +86,8 @@ void gui_popup_thread_dns_enumerate_network(popup_data *p_data) {
 	
 	memset(target_domain, '\0', sizeof(target_domain));
 	gdk_threads_enter();
+	gtk_widget_set_sensitive(p_data->cancel_button, TRUE);
+	gtk_widget_set_sensitive(p_data->start_button, FALSE);
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
 	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
 		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
@@ -98,6 +112,8 @@ void gui_popup_thread_dns_enumerate_network(popup_data *p_data) {
 	dns_enum_opts_init(&d_opts);
 	d_opts.progress_update = (void *)&callback_threaded_update_progress;
 	d_opts.progress_update_data = p_data;
+	d_opts.action_status = &p_data->action_status;
+	p_data->action_status = KRAKEN_ACTION_RUN;
 	
 	response = dns_enumerate_network_ex(p_data->c_host_manager, target_domain, &target_network, &d_opts);
 	
@@ -116,12 +132,52 @@ void gui_popup_thread_dns_enumerate_network(popup_data *p_data) {
 	return;
 }
 
+void gui_popup_thread_http_enumerate_host_for_links(popup_data *p_data) {
+	const gchar *text_entry;
+	http_link *link_anchor = NULL;
+	int tmp_val = 0;
+	char target_host[DNS_MAX_FQDN_LENGTH + 1];
+	char target_url[DNS_MAX_FQDN_LENGTH + 10];
+	
+	memset(target_host, '\0', sizeof(target_host));
+	gdk_threads_enter();
+	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
+	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
+		GUI_POPUP_ERROR_INVALID_HOST_NAME(p_data->popup_window);
+		gtk_widget_destroy(p_data->popup_window);
+		gdk_threads_leave();
+		return;
+	}
+	gdk_threads_leave();
+	
+	strncpy(target_host, text_entry, DNS_MAX_FQDN_LENGTH);
+	for (tmp_val = 0; tmp_val < strlen(target_host); tmp_val++) {
+		if (*(char *)&target_host[tmp_val] == '/') {
+			target_host[tmp_val] = '\0';
+			break;
+		}
+	}
+	snprintf(target_url, DNS_MAX_FQDN_LENGTH + 10, "http://%s/", target_host);
+	tmp_val = http_scrape_for_links(target_url, &link_anchor);
+	if (tmp_val) {
+		LOGGING_QUICK_ERROR("kraken.gui.popup", "there was an error requesting the page")
+	}
+	gdk_threads_enter();
+	gui_popup_select_hosts_from_http_links((main_gui_data *)p_data, link_anchor);
+	gtk_widget_destroy(p_data->popup_window);
+	gdk_threads_leave();
+	http_free_link(link_anchor);
+	return;
+}
+
 void gui_popup_thread_http_enumerate_hosts(popup_data *p_data) {
 	http_link *link_anchor = NULL;
 	kraken_thread k_thread;
 	http_enum_opts h_opts;
 	
 	gdk_threads_enter();
+	gtk_widget_set_sensitive(p_data->cancel_button, TRUE);
+	gtk_widget_set_sensitive(p_data->start_button, FALSE);
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Scanning For Links");
 	gui_model_update_marquee((main_gui_data *)p_data, "Scanning For Links");
 	gdk_threads_leave();
@@ -129,6 +185,8 @@ void gui_popup_thread_http_enumerate_hosts(popup_data *p_data) {
 	http_enum_opts_init(&h_opts);
 	h_opts.progress_update = (void *)&callback_threaded_update_progress;
 	h_opts.progress_update_data = p_data;
+	h_opts.action_status = &p_data->action_status;
+	p_data->action_status = KRAKEN_ACTION_RUN;
 	
 	http_enumerate_hosts_ex(p_data->c_host_manager, &link_anchor, &h_opts);
 	
@@ -160,6 +218,8 @@ void gui_popup_thread_http_search_engine_bing(popup_data *p_data) {
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 	
 	gdk_threads_enter();
+	gtk_widget_set_sensitive(p_data->cancel_button, TRUE);
+	gtk_widget_set_sensitive(p_data->start_button, FALSE);
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Searching Bing");
 	gui_model_update_marquee((main_gui_data *)p_data, "Searching Bing");
 	gdk_threads_leave();
@@ -174,6 +234,8 @@ void gui_popup_thread_http_search_engine_bing(popup_data *p_data) {
 		gdk_threads_leave();
 	} else {
 		http_enum_opts_set_bing_api_key(&h_opts, p_data->k_opts->bing_api_key);
+		h_opts.action_status = &p_data->action_status;
+		p_data->action_status = KRAKEN_ACTION_RUN;
 		response = http_search_engine_bing_ex(p_data->c_host_manager, target_domain, &h_opts);
 		gdk_threads_enter();
 		if (response < 0) {

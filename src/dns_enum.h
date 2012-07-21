@@ -19,7 +19,7 @@
 #define DNS_QRY_IXFR 251
 #define DNS_QRY_AXFR 252
 
-#define DNS_SHOULD_STOP(d_opts) (d_opts->cancel_action != NULL) && (*d_opts->cancel_action == KRAKEN_ACTION_STOP)
+#define DNS_SHOULD_STOP(d_opts) (d_opts->action_status != NULL) && (*d_opts->action_status != KRAKEN_ACTION_RUN)
 
 typedef struct domain_ns_list { /* hold information for up to DNS_MAX_NS_HOSTS name servers */
 	char domain[DNS_MAX_FQDN_LENGTH + 1];
@@ -30,7 +30,7 @@ typedef struct domain_ns_list { /* hold information for up to DNS_MAX_NS_HOSTS n
 typedef struct dns_enum_opts {
 	void (*progress_update)(unsigned int current, unsigned int last, void *userdata);
 	void *progress_update_data;
-	int *cancel_action;
+	int *action_status;
 	int max_sim_queries;
 	char *wordlist;
 } dns_enum_opts;

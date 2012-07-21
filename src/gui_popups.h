@@ -14,6 +14,15 @@
 #define GUI_POPUP_ERROR_INVALID_NO_HOSTS_FOUND_IN_LINKS(window) gui_popup_error_dialog(window, "No Links Were Found", "Error: No Links")
 #define GUI_POPUP_QUESTION_SURE(window) gui_popup_question_yes_no_dialog(window, "Are You Sure?", "Confirm Action")
 
+#define GUI_POPUP_BUTTON_TYPE_GENERIC 0
+#define GUI_POPUP_BUTTON_TYPE_START 1
+#define GUI_POPUP_BUTTON_TYPE_CANCEL 2
+#define GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION 3
+/* "BASIC" buttons have no call back assigned to them */
+#define GUI_POPUP_BUTTON_TYPE_BASIC_APPLY 4
+#define GUI_POPUP_BUTTON_TYPE_BASIC_START 5
+#define GUI_POPUP_BUTTON_TYPE_BASIC_CANCEL 6
+
 typedef struct popup_data {
 	GtkWidget *tree_view;
 	GtkWidget *main_marquee;
@@ -25,7 +34,10 @@ typedef struct popup_data {
 	GtkWidget *text_entry0;
 	GtkWidget *text_entry1;
 	GtkWidget *misc_widget;
-	int cancel_action;
+	GtkWidget *start_button;
+	GtkWidget *cancel_button;
+	GtkWidget *cancel_dialog;
+	int action_status;
 } popup_data;
 
 void gui_popup_error_dialog(gpointer window, const char *message, const char *title);

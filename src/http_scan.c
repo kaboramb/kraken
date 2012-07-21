@@ -18,7 +18,7 @@ void http_enum_opts_init(http_enum_opts *h_opts) {
 	h_opts->bing_api_key = NULL;
 	h_opts->progress_update = NULL;
 	h_opts->progress_update_data = NULL;
-	h_opts->cancel_action = NULL;
+	h_opts->action_status = NULL;
 	return;
 }
 
@@ -446,6 +446,10 @@ int http_scrape_for_links_ip_ex(const char *hostname, const struct in_addr *addr
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
 	headers = curl_slist_append(headers, hoststr);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, h_opts->timeout);
+	if (h_opts->timeout_ms != 0) {
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
+	}
 	
 	curl_res = curl_easy_perform(curl);
 	
@@ -491,8 +495,11 @@ int http_enumerate_hosts_ex(host_manager *c_host_manager, http_link **link_ancho
 	}
 	
 	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+		if (HTTP_SHOULD_STOP(h_opts)) {
+			break;
+		}
 		c_host = &c_host_manager->hosts[current_host_i];
-		response = http_scrape_for_links_ip(c_host->hostname, &c_host->ipv4_addr, "/", link_anchor);
+		response = http_scrape_for_links_ip_ex(c_host->hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts);
 		done++;
 		if (h_opts->progress_update != NULL) {
 			h_opts->progress_update(done, total, h_opts->progress_update_data);
@@ -500,6 +507,9 @@ int http_enumerate_hosts_ex(host_manager *c_host_manager, http_link **link_ancho
 			
 		if (c_host->aliases != NULL) {
 			for (current_name_i = 0; current_name_i < c_host->n_aliases; current_name_i++) {
+				if (HTTP_SHOULD_STOP(h_opts)) {
+					break;
+				}
 				if (response == 0) {
 					response = http_scrape_for_links_ip_ex(c_host->aliases[current_name_i], &c_host->ipv4_addr, "/", link_anchor, h_opts);
 				} else {
@@ -706,7 +716,7 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		if (h_opts->progress_update != NULL) {
 			h_opts->progress_update((((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries), HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);
 		}
-	} while ((num_entries == HTTP_BING_NUM_RESULTS) && (num_entries_total < HTTP_BING_MAX_RESULTS));
+	} while ((num_entries == HTTP_BING_NUM_RESULTS) && (num_entries_total < HTTP_BING_MAX_RESULTS) && !(HTTP_SHOULD_STOP(h_opts)));
 	
 	if (h_opts->progress_update != NULL) {
 		h_opts->progress_update(HTTP_BING_MAX_RESULTS, HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);

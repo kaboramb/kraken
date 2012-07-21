@@ -19,3 +19,15 @@ int util_dir_create_if_not_exists(const char *dir_path) {
 	}
 	return 0;
 }
+
+void util_str_replace(char *string, char *old, char *new) {
+	char *pos = string;
+	
+	while (*pos != '\0') {
+		if (*pos == *old) {
+			*pos = *new;
+		}
+		pos++;
+	}
+	return;
+}

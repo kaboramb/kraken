@@ -9,6 +9,7 @@
 
 #include "kraken.h"
 #include "logging.h"
+#include "utilities.h"
 #include "xml_utilities.h"
 
 void kraken_opts_init(kraken_opts *k_opts) {
