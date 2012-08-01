@@ -82,24 +82,6 @@ void gui_menu_file_open(main_gui_data *userdata, guint action, GtkWidget *widget
 	return;
 }
 
-void gui_menu_file_save(main_gui_data *userdata, guint action, GtkWidget *widget) {
-	gint response;
-	if ((userdata->c_host_manager->known_hosts == 0) && (userdata->c_host_manager->known_whois_records == 0)) {
-		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
-		return;
-	}
-	if (userdata->c_host_manager->save_file_path == NULL) {
-		gui_menu_file_save_as(userdata, action, widget);
-		return;
-	}
-	
-	response = export_host_manager_to_xml(userdata->c_host_manager, userdata->c_host_manager->save_file_path);
-	if (response != 0) {
-		GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
-	}
-	return;
-}
-
 void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *widget) {
 	GtkWidget *dialog;
 	guint log_handler;
@@ -139,6 +121,24 @@ void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *wid
 		g_free(filename);
 	}
 	gtk_widget_destroy(dialog);
+	return;
+}
+
+void gui_menu_file_save(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	gint response;
+	if ((userdata->c_host_manager->known_hosts == 0) && (userdata->c_host_manager->known_whois_records == 0)) {
+		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
+		return;
+	}
+	if (userdata->c_host_manager->save_file_path == NULL) {
+		gui_menu_file_save_as(userdata, action, widget);
+		return;
+	}
+	
+	response = export_host_manager_to_xml(userdata->c_host_manager, userdata->c_host_manager->save_file_path);
+	if (response != 0) {
+		GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
+	}
 	return;
 }
 

@@ -21,7 +21,7 @@ int gui_show_main_window(kraken_opts *k_opts, host_manager *c_host_manager) {
 	gtk_init(NULL, NULL);
 	
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);	
-	g_signal_connect(window, "delete_event", gtk_main_quit, NULL); /* dirty */
+	g_signal_connect(window, "delete-event", gtk_main_quit, NULL); /* dirty */
 	gtk_window_set_title(GTK_WINDOW(window), "Kraken");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 0);
 	gtk_widget_set_size_request(window, 550, 600);

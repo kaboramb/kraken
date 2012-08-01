@@ -180,7 +180,7 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	if (netaddr_cidr_str_to_nwk(pTargetNetwork, &network) != 0) {
+	if (netaddr_cidr_str_to_nwk(&network, pTargetNetwork) != 0) {
 		PyErr_SetString(PyExc_ValueError, "invalid CIDR network");
 		Py_DECREF(pyHostList);
 		return NULL;

@@ -73,27 +73,6 @@ void callback_cancel(GtkWidget *widget, popup_data *p_data) {
 	return;
 }
 
-void callback_cancel_action(GtkWidget *widget, popup_data *p_data) {
-	GtkWidget *dialog;
-	
-	if (p_data->action_status != KRAKEN_ACTION_RUN) {
-		return;
-	}
-	dialog = gtk_message_dialog_new(GTK_WINDOW(p_data->popup_window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, 0, "Please Wait");
-	gtk_window_set_title(GTK_WINDOW(dialog), "Please Wait");
-	p_data->cancel_dialog = dialog;
-	p_data->action_status = KRAKEN_ACTION_STOP;
-	gtk_dialog_run(GTK_DIALOG(dialog));
-	return;
-}
-
-void callback_start_thread(GtkWidget *widget, popup_data *p_data) {
-	kraken_thread k_thread;
-	
-	kraken_thread_create(&k_thread, p_data->thread_function, p_data);
-	return;
-}
-
 GtkWidget *gui_popup_get_button(int type, popup_data *p_data, const char* text) {
 	GtkWidget *button;
 	GtkWidget *hbox;
@@ -106,7 +85,7 @@ GtkWidget *gui_popup_get_button(int type, popup_data *p_data, const char* text) 
 	switch (type) {
 		case GUI_POPUP_BUTTON_TYPE_START:
 			gtk_widget_set_can_default(button, TRUE);
-			g_signal_connect(button, "clicked", G_CALLBACK(callback_start_thread), p_data);
+			g_signal_connect(button, "clicked", G_CALLBACK(callback_thread_start), p_data);
 			image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
 			label = gtk_label_new("Start");
 			break;
@@ -117,7 +96,7 @@ GtkWidget *gui_popup_get_button(int type, popup_data *p_data, const char* text) 
 			break;
 		case GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION:
 			gtk_widget_set_sensitive(button, FALSE);
-			g_signal_connect(button, "clicked", G_CALLBACK(callback_cancel_action), p_data);
+			g_signal_connect(button, "clicked", G_CALLBACK(callback_thread_cancel_action), p_data);
 			image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
 			label = gtk_label_new("Cancel");
 			break;
@@ -198,7 +177,7 @@ gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_s
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
 	
-	g_signal_connect(entry, "activate", G_CALLBACK(callback_start_thread), p_data);
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_thread_start), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
 	
@@ -264,7 +243,7 @@ gboolean gui_popup_http_search_engine_bing(main_gui_data *m_data) {
 	p_data->text_entry0 = entry;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
-	g_signal_connect(entry, "activate", G_CALLBACK(callback_start_thread), p_data);
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_thread_start), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
 	
@@ -314,7 +293,7 @@ gboolean gui_popup_dns_enum_domain(main_gui_data *m_data) {
 	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 130);
 	gtk_window_set_title(GTK_WINDOW(window), "DNS Forward Bruteforce");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
-	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
 	
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -343,7 +322,7 @@ gboolean gui_popup_dns_enum_domain(main_gui_data *m_data) {
 	p_data->text_entry0 = entry;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
-	g_signal_connect(entry, "activate", G_CALLBACK(callback_start_thread), p_data);
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_thread_start), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
 	gtk_widget_show(entry);
 	
@@ -395,7 +374,7 @@ gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str) {
 	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 180);
 	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
 	gtk_window_set_title(GTK_WINDOW(window), "DNS Reverse Bruteforce");
-	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
 	
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -417,7 +396,7 @@ gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str) {
 	if (strlen(m_data->c_host_manager->lw_domain) > 0) {
 		gtk_entry_set_text(GTK_ENTRY(entry0), m_data->c_host_manager->lw_domain);
 	}
-	g_signal_connect(entry0, "activate", G_CALLBACK(callback_start_thread), p_data);
+	g_signal_connect(entry0, "activate", G_CALLBACK(callback_thread_start), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry0, TRUE, TRUE, 0);
 	gtk_widget_show(entry0);
 	
@@ -436,7 +415,7 @@ gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str) {
 	if (cidr_str != NULL) {
 		gtk_entry_set_text(GTK_ENTRY(entry1), cidr_str);
 	}
-	g_signal_connect(entry1, "activate", G_CALLBACK(callback_start_thread), p_data);
+	g_signal_connect(entry1, "activate", G_CALLBACK(callback_thread_start), p_data);
 	gtk_box_pack_start(GTK_BOX(hbox), entry1, TRUE, TRUE, 0);
 	gtk_widget_show(entry1);
 	
@@ -489,7 +468,7 @@ gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data) {
 	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 90);
 	gtk_window_set_title(GTK_WINDOW(window), "HTTP Enumerate Hosts");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 5);
-	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
 	
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -672,7 +651,7 @@ gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link
 	gtk_widget_set_size_request(window, 350, 400);
 	gtk_window_set_title(GTK_WINDOW(window), "Select Domains");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 0);
-	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
 	
 	main_vbox = gtk_vbox_new(FALSE, 3);
 	gtk_container_add(GTK_CONTAINER(window), main_vbox);
@@ -770,7 +749,7 @@ gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
 	gtk_widget_set_size_request(window, 350, 295);
 	gtk_window_set_title(GTK_WINDOW(window), "Settings");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
-	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
 	
 	main_vbox = gtk_vbox_new(FALSE, 3);
 	gtk_container_add(GTK_CONTAINER(window), main_vbox);
