@@ -367,18 +367,18 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 	return 0;
 }
 
-int dns_enumerate_domain(host_manager *c_host_manager, char *target_domain, const char *hostfile) {
+int dns_enum_domain(host_manager *c_host_manager, char *target_domain, const char *hostfile) {
 	int response;
 	dns_enum_opts d_opts;
 	
 	dns_enum_opts_init(&d_opts);
 	dns_enum_opts_set_wordlist(&d_opts, hostfile);
-	response = dns_enumerate_domain_ex(c_host_manager, target_domain, &d_opts);
+	response = dns_enum_domain_ex(c_host_manager, target_domain, &d_opts);
 	dns_enum_opts_destroy(&d_opts);	
 	return response;
 }
 
-int dns_enumerate_domain_ex(host_manager *c_host_manager, char *target_domain, dns_enum_opts *d_opts) {
+int dns_enum_domain_ex(host_manager *c_host_manager, char *target_domain, dns_enum_opts *d_opts) {
 	domain_ns_list nameservers;
 	single_host_info c_host;
 	char ipstr[INET_ADDRSTRLEN];
@@ -412,7 +412,7 @@ int dns_enumerate_domain_ex(host_manager *c_host_manager, char *target_domain, d
 	return 0;
 }
 
-int dns_enumerate_network_ex(host_manager *c_host_manager, char *target_domain, network_info *target_net, dns_enum_opts *d_opts) {
+int dns_enum_network_ex(host_manager *c_host_manager, char *target_domain, network_info *target_net, dns_enum_opts *d_opts) {
 	domain_ns_list nameservers;
 	single_host_info c_host;
 	dns_enum_opts new_opts;

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 
-#include "hosts.h"
+#include "kraken.h"
 #include "host_manager.h"
 #include "dns_enum.h"
 #include "http_scan.h"
@@ -134,12 +134,12 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	if (init_host_manager(&c_host_manager) != 0) {
+	if (host_manager_init(&c_host_manager) != 0) {
 		PyErr_SetString(PyExc_MemoryError, "could not initialize the host manager, it is likely that there is not enough memory");
 		return NULL;
 	}
 	
-	dns_enumerate_domain(&c_host_manager, pTargetDomain, pHostFileList);
+	dns_enum_domain(&c_host_manager, pTargetDomain, pHostFileList);
 	
 	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
 		current_host = c_host_manager.hosts[current_host_i];
@@ -149,13 +149,13 @@ static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 			PyDict_SetItemString(pyHostList, current_host.hostname, pyTmpStr);
 			Py_DECREF(pyTmpStr);
 		} else {
-			destroy_host_manager(&c_host_manager);
+			host_manager_destroy(&c_host_manager);
 			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
 			Py_DECREF(pyHostList);
 			return NULL;
 		}
 	}
-	destroy_host_manager(&c_host_manager);
+	host_manager_destroy(&c_host_manager);
 	return pyHostList;
 }
 
@@ -186,12 +186,12 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	if (init_host_manager(&c_host_manager) != 0) {
+	if (host_manager_init(&c_host_manager) != 0) {
 		PyErr_SetString(PyExc_MemoryError, "could not initialize the host manager, it is likely that there is not enough memory");
 		return NULL;
 	}
 	
-	dns_enumerate_network_ex(&c_host_manager, pTargetDomain, &network, NULL);
+	dns_enum_network_ex(&c_host_manager, pTargetDomain, &network, NULL);
 	
 	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
 		current_host = c_host_manager.hosts[current_host_i];
@@ -201,13 +201,13 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 			PyDict_SetItemString(pyHostList, current_host.hostname, pyTmpStr);
 			Py_DECREF(pyTmpStr);
 		} else {
-			destroy_host_manager(&c_host_manager);
+			host_manager_destroy(&c_host_manager);
 			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
 			Py_DECREF(pyHostList);
 			return NULL;
 		}
 	}
-	destroy_host_manager(&c_host_manager);
+	host_manager_destroy(&c_host_manager);
 	return pyHostList;
 }
 
@@ -251,7 +251,7 @@ static PyObject *pykraken_scrape_for_links(PyObject *self, PyObject *args) {
 	if (!PyArg_ParseTuple(args, "s", &pServer)) {
 		return NULL;
 	}
-	ret_val = http_scrape_for_links(pServer, &link_anchor);
+	ret_val = http_scrape_url_for_links(pServer, &link_anchor);
 	if (ret_val != 0) {
 		switch (ret_val) {
 			case 1: PyErr_SetString(PyExc_MemoryError, "could not allocate memory to process the request");
@@ -335,7 +335,7 @@ static PyObject *pykraken_enumerate_bing(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	init_host_manager(&c_host_manager);
+	host_manager_init(&c_host_manager);
 	http_enum_opts_init(&h_opts);
 	http_enum_opts_set_bing_api_key(&h_opts, bing_api_key);
 	
@@ -349,14 +349,14 @@ static PyObject *pykraken_enumerate_bing(PyObject *self, PyObject *args) {
 			PyDict_SetItemString(pyHostList, current_host.hostname, pyTmpStr);
 			Py_DECREF(pyTmpStr);
 		} else {
-			destroy_host_manager(&c_host_manager);
+			host_manager_destroy(&c_host_manager);
 			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
 			Py_DECREF(pyHostList);
 			return NULL;
 		}
 	}
 	http_enum_opts_destroy(&h_opts);
-	destroy_host_manager(&c_host_manager);
+	host_manager_destroy(&c_host_manager);
 	return pyHostList;
 }
 

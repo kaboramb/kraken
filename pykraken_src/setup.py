@@ -8,12 +8,16 @@ if os.path.basename(os.getcwd()) != 'pykraken_src':
 
 pykraken = Extension('pykraken',
 			sources = [	'pykraken.c',
+						'../src/kraken_thread.c',
+						'../src/kraken_options.c',
 						'../src/dns_enum.c',
 						'../src/host_manager.c',
 						'../src/network_addr.c',
 						'../src/whois_lookup.c',
 						'../src/http_scan.c',
 						'../src/logging.c',
+						'../src/utilities.c',
+						'../src/xml_utilities.c'
 			],
 			libraries = ['cares', 'curl', 'uriparser', 'xml2'],
 			include_dirs = ['/usr/local/include', '/usr/include', '/usr/include/libxml2', '../src'],

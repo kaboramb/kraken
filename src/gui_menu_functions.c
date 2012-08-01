@@ -9,46 +9,9 @@
 #include "kraken.h"
 #include "host_manager.h"
 
-static GtkItemFactoryEntry main_menu_entries[] = {
-	{ "/File",									NULL,		NULL,							0, 	"<Branch>" },
-	{ "/File/Export",							NULL,		NULL,							0,	"<Branch>" },
-	{ "/File/Export/CSV",						NULL,		gui_menu_file_export_csv,		0,	NULL		},
-	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/File/Open",								NULL,		gui_menu_file_open,				0,	NULL	},
-	{ "/File/Save",								"<CTRL>S",	gui_menu_file_save,				0,	NULL	},
-	{ "/File/Save As",							NULL,		gui_menu_file_save_as,			0,	NULL	},
-	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/File/Quit",								"<CTRL>Q",	gtk_main_quit,					0, 	"<StockItem>",	GTK_STOCK_QUIT },
-	{ "/Edit",									NULL,		NULL,							0,	"<Branch>" },
-	{ "/Edit/Add Hosts",						NULL,		NULL,							0,	"<Branch>" },
-	{ "/Edit/Add Hosts/DNS Forward Bruteforce",	NULL,		gui_menu_edit_dns_forward_bf, 	0,	NULL	},
-	{ "/Edit/Add Hosts/DNS Reverse Bruteforce",	NULL,		gui_menu_edit_dns_reverse_bf, 	0,	NULL	},
-	{ "/Edit/Add Hosts/HTTP Scan Host For Links",	NULL,	gui_menu_edit_http_scan_host_for_links,	0,	NULL	},
-	{ "/Edit/Add Hosts/HTTP Scan All For Links",	NULL,	gui_menu_edit_http_scan_all_for_links,	0,	NULL	},
-	{ "/Edit/Add Hosts/HTTP Search Bing",		NULL,		gui_menu_edit_http_search_bing,		0,	NULL	},
-	{ "/Edit/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/Edit/Preferences",						NULL,		gui_menu_edit_preferences,		0,	NULL	},
-};
-
-static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);
-
 static void suppress_log_function(G_GNUC_UNUSED const gchar *log_domain, G_GNUC_UNUSED GLogLevelFlags log_level, G_GNUC_UNUSED const gchar *message, G_GNUC_UNUSED gpointer user_data) {
 	/* suppress the message */
 	/* https://bugzilla.gnome.org/show_bug.cgi?id=662814 */
-}
-
-GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata) {
-	GtkItemFactory *item_factory;
-	GtkAccelGroup *accel_group;
-
-	/* Make an accelerator group (shortcut keys) */
-	accel_group = gtk_accel_group_new();
-
-	item_factory = gtk_item_factory_new(GTK_TYPE_MENU_BAR, "<main>", accel_group);
-	gtk_item_factory_create_items(item_factory, nmain_menu_entries, main_menu_entries, userdata);
-	gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
-
-	return gtk_item_factory_get_widget(item_factory, "<main>");
 }
 
 void gui_menu_file_export_csv(main_gui_data *userdata, guint action, GtkWidget *widget) {
@@ -179,30 +142,67 @@ void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *wid
 	return;
 }
 
-void gui_menu_edit_dns_forward_bf(main_gui_data *m_data, guint action, GtkWidget *widget) {
-	gui_popup_dns_bf_domain(m_data);
+void gui_menu_edit_dns_enum_domain(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_dns_enum_domain(m_data);
 	return;
 }
 
-void gui_menu_edit_dns_reverse_bf(main_gui_data *m_data, guint action, GtkWidget *widget) {
-	gui_popup_dns_bf_network(m_data, NULL);
+void gui_menu_edit_dns_enum_network(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_dns_enum_network(m_data, NULL);
 	return;
 }
 
 void gui_menu_edit_http_scan_all_for_links(main_gui_data *m_data, guint action, GtkWidget *widget) {
-	gui_popup_http_scan_all_for_links(m_data);
+	gui_popup_http_scrape_hosts_for_links(m_data);
 	return;
 }
 
 void gui_menu_edit_http_scan_host_for_links(main_gui_data *m_data, guint action, GtkWidget *widget) {
-	gui_popup_http_scan_host_for_links(m_data, NULL);
+	gui_popup_http_scrape_url_for_links(m_data, NULL);
 	return;
 }
 
 void gui_menu_edit_http_search_bing(main_gui_data *m_data, guint action, GtkWidget *widget) {
-	gui_popup_http_search_bing(m_data);
+	gui_popup_http_search_engine_bing(m_data);
 }
 
 void gui_menu_edit_preferences(main_gui_data *m_data, guint action, GtkWidget *widget) {
 	gui_popup_manage_kraken_settings(m_data);
+}
+
+static GtkItemFactoryEntry main_menu_entries[] = {
+	{ "/File",									NULL,		NULL,							0, 	"<Branch>" },
+	{ "/File/Export",							NULL,		NULL,							0,	"<Branch>" },
+	{ "/File/Export/CSV",						NULL,		gui_menu_file_export_csv,		0,	NULL		},
+	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
+	{ "/File/Open",								NULL,		gui_menu_file_open,				0,	NULL	},
+	{ "/File/Save",								"<CTRL>S",	gui_menu_file_save,				0,	NULL	},
+	{ "/File/Save As",							NULL,		gui_menu_file_save_as,			0,	NULL	},
+	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
+	{ "/File/Quit",								"<CTRL>Q",	gtk_main_quit,					0, 	"<StockItem>",	GTK_STOCK_QUIT },
+	{ "/Edit",									NULL,		NULL,							0,	"<Branch>" },
+	{ "/Edit/Add Hosts",						NULL,		NULL,							0,	"<Branch>" },
+	{ "/Edit/Add Hosts/DNS Forward Bruteforce",	NULL,		gui_menu_edit_dns_enum_domain, 	0,	NULL	},
+	{ "/Edit/Add Hosts/DNS Reverse Bruteforce",	NULL,		gui_menu_edit_dns_enum_network, 0,	NULL	},
+	{ "/Edit/Add Hosts/HTTP Scan Host For Links",	NULL,	gui_menu_edit_http_scan_host_for_links,	0,	NULL	},
+	{ "/Edit/Add Hosts/HTTP Scan All For Links",	NULL,	gui_menu_edit_http_scan_all_for_links,	0,	NULL	},
+	{ "/Edit/Add Hosts/HTTP Search Bing",		NULL,		gui_menu_edit_http_search_bing,		0,	NULL	},
+	{ "/Edit/",									NULL,		NULL,							0,	"<Separator>"	},
+	{ "/Edit/Preferences",						NULL,		gui_menu_edit_preferences,		0,	NULL	},
+};
+
+static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);
+
+GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata) {
+	GtkItemFactory *item_factory;
+	GtkAccelGroup *accel_group;
+
+	/* Make an accelerator group (shortcut keys) */
+	accel_group = gtk_accel_group_new();
+
+	item_factory = gtk_item_factory_new(GTK_TYPE_MENU_BAR, "<main>", accel_group);
+	gtk_item_factory_create_items(item_factory, nmain_menu_entries, main_menu_entries, userdata);
+	gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
+
+	return gtk_item_factory_get_widget(item_factory, "<main>");
 }

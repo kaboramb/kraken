@@ -45,8 +45,8 @@ int dns_enum_opts_set_wordlist(dns_enum_opts *d_opts, const char *wordlist);
 int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers);
 int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_manager, domain_ns_list *nameservers, dns_enum_opts *d_opts);
 int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host_manager, domain_ns_list *nameservers, dns_enum_opts *d_opts);
-int dns_enumerate_domain(host_manager *c_host_manager, char *target_domain, const char *hostfile);
-int dns_enumerate_domain_ex(host_manager *c_host_manager, char *target_domain, dns_enum_opts *d_opts);
-int dns_enumerate_network_ex(host_manager *c_host_manager, char *target_domain, network_info *target_net, dns_enum_opts *d_opts);
+int dns_enum_domain(host_manager *c_host_manager, char *target_domain, const char *hostfile);
+int dns_enum_domain_ex(host_manager *c_host_manager, char *target_domain, dns_enum_opts *d_opts);
+int dns_enum_network_ex(host_manager *c_host_manager, char *target_domain, network_info *target_net, dns_enum_opts *d_opts);
 
 #endif

@@ -45,7 +45,7 @@ void view_popup_menu_onDoDNSBruteforceDomain(GtkWidget *menuitem, main_gui_data 
 		return;
 	}
 	
-	gui_popup_dns_bf_domain(m_data);
+	gui_popup_dns_enum_domain(m_data);
 	return;
 }
 
@@ -72,7 +72,7 @@ void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, main_gui_data
 		return;
 	}
 	
-	gui_popup_dns_bf_network(m_data, who_r->cidr_s);
+	gui_popup_dns_enum_network(m_data, who_r->cidr_s);
 	return;
 }
 
@@ -100,7 +100,7 @@ void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_dat
 			name = ipstr;
 		}
 		inet_pton(AF_INET, ipstr, &ip);
-		ret_val = http_scrape_for_links_ip(name, &ip, "/", &link_anchor);
+		ret_val = http_scrape_ip_for_links(name, &ip, "/", &link_anchor);
 		if (name != ipstr) {
 			g_free(name);
 		}

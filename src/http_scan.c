@@ -247,7 +247,7 @@ int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 	return 0;
 }
 
-int http_process_request_for_links(CURL *curl, const char *target_url, char *webpage_b, http_link **link_anchor, http_link **pvt_link_anchor, http_enum_opts *h_opts) {
+int http_process_request_for_links(CURL *curl, const char *target_url, char **webpage_b, http_link **link_anchor, http_link **pvt_link_anchor, http_enum_opts *h_opts) {
 	CURLcode curl_res;
 	CURL *curl_redir = NULL;
 	size_t webpage_sz;
@@ -270,8 +270,9 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char *web
 			if (curl_redir != NULL) {
 				curl_easy_cleanup(curl_redir);
 			}
-			free(webpage_b);
-			webpage_f = open_memstream(&webpage_b, &webpage_sz);
+			free(*webpage_b);
+			*webpage_b = NULL;
+			webpage_f = open_memstream(webpage_b, &webpage_sz);
 			if (webpage_f == NULL) {
 				LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
 				return 1;
@@ -319,7 +320,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char *web
 		return 4;
 	}
 	if (strstr(content_type, "text/html")) {
-		http_get_links_from_html(webpage_b, &link_current);
+		http_get_links_from_html(*webpage_b, &link_current);
 		*link_anchor = link_current;
 	} else {
 		logging_log("kraken.http_scan", LOGGING_WARNING, "received invalid content type of: %s", content_type);
@@ -339,7 +340,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char *web
 	return 0;
 }
 
-int http_scrape_for_links(char *target_url, http_link **link_anchor) {
+int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	/* link_anchor should either be NULL or an existing list returned by
 	 * a previous call to this or a similar function */
 	/* this function will follow redirects but only when on the same
@@ -384,25 +385,27 @@ int http_scrape_for_links(char *target_url, http_link **link_anchor) {
 		return 2;
 	}
 
-	http_process_request_for_links(curl, target_url, webpage_b, link_anchor, &pvt_link_anchor, &h_opts);
+	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &pvt_link_anchor, &h_opts);
 	
-	free(webpage_b);
+	if (webpage_b != NULL) {
+		free(webpage_b);
+	}
 	curl_easy_cleanup(curl);
 	http_enum_opts_destroy(&h_opts);
 	return 0;
 }
 
-int http_scrape_for_links_ip(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor) {
+int http_scrape_ip_for_links(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor) {
 	http_enum_opts h_opts;
 	int response;
 	
 	http_enum_opts_init(&h_opts);
-	response = http_scrape_for_links_ip_ex(hostname, addr, resource, link_anchor, &h_opts);
+	response = http_scrape_ip_for_links_ex(hostname, addr, resource, link_anchor, &h_opts);
 	http_enum_opts_destroy(&h_opts);
 	return response;
 }
 
-int http_scrape_for_links_ip_ex(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor, http_enum_opts *h_opts) {
+int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor, http_enum_opts *h_opts) {
 	/* link_anchor should either be NULL or an existing list returned by
 	 * a previous call to this or a similar function */
 	/* this function will follow redirects but only when on the same
@@ -468,15 +471,17 @@ int http_scrape_for_links_ip_ex(const char *hostname, const struct in_addr *addr
 		return 2;
 	}
 	
-	http_process_request_for_links(curl, target_url, webpage_b, link_anchor, &pvt_link_anchor, h_opts);
+	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &pvt_link_anchor, h_opts);
 	
 	free(target_url);
-	free(webpage_b);
+	if (webpage_b != NULL) {
+		free(webpage_b);
+	}
 	curl_easy_cleanup(curl);
 	return 0;
 }
 
-int http_enumerate_hosts_ex(host_manager *c_host_manager, http_link **link_anchor, http_enum_opts *h_opts) {
+int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **link_anchor, http_enum_opts *h_opts) {
 	single_host_info *c_host;
 	unsigned int current_host_i;
 	unsigned int current_name_i = 0;
@@ -499,7 +504,7 @@ int http_enumerate_hosts_ex(host_manager *c_host_manager, http_link **link_ancho
 			break;
 		}
 		c_host = &c_host_manager->hosts[current_host_i];
-		response = http_scrape_for_links_ip_ex(c_host->hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts);
+		response = http_scrape_ip_for_links_ex(c_host->hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts);
 		done++;
 		if (h_opts->progress_update != NULL) {
 			h_opts->progress_update(done, total, h_opts->progress_update_data);
@@ -511,7 +516,7 @@ int http_enumerate_hosts_ex(host_manager *c_host_manager, http_link **link_ancho
 					break;
 				}
 				if (response == 0) {
-					response = http_scrape_for_links_ip_ex(c_host->aliases[current_name_i], &c_host->ipv4_addr, "/", link_anchor, h_opts);
+					response = http_scrape_ip_for_links_ex(c_host->aliases[current_name_i], &c_host->ipv4_addr, "/", link_anchor, h_opts);
 				} else {
 					LOGGING_QUICK_WARNING("kraken.http_scan", "skipping alises due to scan error")
 				}

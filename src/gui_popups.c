@@ -150,7 +150,7 @@ GtkWidget *gui_popup_get_button(int type, popup_data *p_data, const char* text) 
 	return button;
 }
 
-gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_str) {
+gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_str) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
@@ -194,7 +194,7 @@ gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_st
 	}
 	
 	gui_popup_data_init(p_data, m_data);
-	p_data->thread_function = (void *)&gui_popup_thread_http_enumerate_host_for_links;
+	p_data->thread_function = (void *)&gui_popup_thread_http_scrape_url_for_links;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
 	
@@ -216,7 +216,7 @@ gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_st
 	return TRUE;
 }
 
-gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
+gboolean gui_popup_http_search_engine_bing(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
@@ -294,7 +294,7 @@ gboolean gui_popup_http_search_bing(main_gui_data *m_data) {
 	return TRUE;
 }
 
-gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
+gboolean gui_popup_dns_enum_domain(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
@@ -338,7 +338,7 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 	}
 	
 	gui_popup_data_init(p_data, m_data);
-	p_data->thread_function = (void *)&gui_popup_thread_dns_enumerate_domain;
+	p_data->thread_function = (void *)&gui_popup_thread_dns_enum_domain;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
 	p_data->misc_widget = gtk_progress_bar_new();
@@ -374,7 +374,7 @@ gboolean gui_popup_dns_bf_domain(main_gui_data *m_data) {
 	return TRUE;
 }
 
-gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
+gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry0;
@@ -442,7 +442,7 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	
 	
 	gui_popup_data_init(p_data, m_data);
-	p_data->thread_function = (void *)&gui_popup_thread_dns_enumerate_network;
+	p_data->thread_function = (void *)&gui_popup_thread_dns_enum_network;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry0;
 	p_data->text_entry1 = entry1;
@@ -470,7 +470,7 @@ gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str) {
 	return TRUE;
 }
 
-gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
+gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *sbutton, *cbutton;
@@ -497,7 +497,7 @@ gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data) {
 	gtk_widget_show(vbox);
 	
 	gui_popup_data_init(p_data, m_data);
-	p_data->thread_function = (void *)&gui_popup_thread_http_enumerate_hosts;
+	p_data->thread_function = (void *)&gui_popup_thread_http_scrape_hosts_for_links;
 	p_data->popup_window = window;
 	p_data->misc_widget = gtk_progress_bar_new();
 	
@@ -596,12 +596,12 @@ void callback_toggle_cell(GtkCellRendererToggle *cell, gchar *path_string, GtkTr
 	return;
 }
 
-void callback_add_selected_hosts(GtkWidget *widget, popup_data *userdata) {
+void callback_add_selected_hosts(GtkWidget *widget, popup_data *p_data) {
 	GtkTreeModel *treemodel;
 	GtkTreeIter piter, citer;
 	gchar *hostname;
 	gboolean selected;
-	treemodel = gtk_tree_view_get_model((GtkTreeView *)userdata->misc_widget);
+	treemodel = gtk_tree_view_get_model((GtkTreeView *)p_data->misc_widget);
 
 	if (gtk_tree_model_get_iter_first(treemodel, &piter) == FALSE) {
 		return; /* tree is empty, nothing to process */
@@ -611,16 +611,15 @@ void callback_add_selected_hosts(GtkWidget *widget, popup_data *userdata) {
 			do {
 				gtk_tree_model_get(treemodel, &citer, COL_SELECT, &selected, COL_DOMAIN, &hostname, -1);
 				if (selected) {
-					host_manager_quick_add_by_name(userdata->c_host_manager, hostname);
+					host_manager_quick_add_by_name(p_data->c_host_manager, hostname);
 				}
 				g_free(hostname);
 			} while (gtk_tree_model_iter_next(treemodel, &citer));
 		}
 	} while (gtk_tree_model_iter_next(treemodel, &piter));
 	
-	gui_model_update_tree_and_marquee((main_gui_data*)userdata, NULL);
-	gtk_widget_destroy(userdata->popup_window);
-	free(userdata);
+	gui_model_update_tree_and_marquee((main_gui_data*)p_data, NULL);
+	gtk_widget_destroy(p_data->popup_window);
 	return;
 }
 

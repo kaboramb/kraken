@@ -43,11 +43,11 @@ typedef struct popup_data {
 void gui_popup_error_dialog(gpointer window, const char *message, const char *title);
 void gui_popup_info_dialog(gpointer window, const char *message, const char *title);
 gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title);
-gboolean gui_popup_http_scan_all_for_links(main_gui_data *m_data);
-gboolean gui_popup_http_scan_host_for_links(main_gui_data *m_data, char *host_str);
-gboolean gui_popup_http_search_bing(main_gui_data *m_data);
-gboolean gui_popup_dns_bf_domain(main_gui_data *m_data);
-gboolean gui_popup_dns_bf_network(main_gui_data *m_data, char *cidr_str);
+gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data);
+gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_str);
+gboolean gui_popup_http_search_engine_bing(main_gui_data *m_data);
+gboolean gui_popup_dns_enum_domain(main_gui_data *m_data);
+gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str);
 gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link *link_anchor);
 gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data);
 

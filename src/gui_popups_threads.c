@@ -22,7 +22,7 @@ void callback_threaded_update_progress(unsigned int current, unsigned int high, 
 	return;
 }
 
-void gui_popup_thread_dns_enumerate_domain(popup_data *p_data) {
+void gui_popup_thread_dns_enum_domain(popup_data *p_data) {
 	dns_enum_opts d_opts;
 	const gchar *text_entry;
 	int response;
@@ -51,7 +51,7 @@ void gui_popup_thread_dns_enumerate_domain(popup_data *p_data) {
 	d_opts.action_status = &p_data->action_status;
 	p_data->action_status = KRAKEN_ACTION_RUN;
 	
-	response = dns_enumerate_domain_ex(p_data->c_host_manager, target_domain, &d_opts);
+	response = dns_enum_domain_ex(p_data->c_host_manager, target_domain, &d_opts);
 	
 	gdk_threads_enter();
 	if (p_data->action_status == KRAKEN_ACTION_STOP) {
@@ -77,7 +77,7 @@ void gui_popup_thread_dns_enumerate_domain(popup_data *p_data) {
 	return;
 }
 
-void gui_popup_thread_dns_enumerate_network(popup_data *p_data) {
+void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 	dns_enum_opts d_opts;
 	const gchar *text_entry;
 	int response;
@@ -115,7 +115,7 @@ void gui_popup_thread_dns_enumerate_network(popup_data *p_data) {
 	d_opts.action_status = &p_data->action_status;
 	p_data->action_status = KRAKEN_ACTION_RUN;
 	
-	response = dns_enumerate_network_ex(p_data->c_host_manager, target_domain, &target_network, &d_opts);
+	response = dns_enum_network_ex(p_data->c_host_manager, target_domain, &target_network, &d_opts);
 	
 	gdk_threads_enter();
 	if (response == 0) {
@@ -132,7 +132,7 @@ void gui_popup_thread_dns_enumerate_network(popup_data *p_data) {
 	return;
 }
 
-void gui_popup_thread_http_enumerate_host_for_links(popup_data *p_data) {
+void gui_popup_thread_http_scrape_url_for_links(popup_data *p_data) {
 	const gchar *text_entry;
 	http_link *link_anchor = NULL;
 	int tmp_val = 0;
@@ -158,7 +158,7 @@ void gui_popup_thread_http_enumerate_host_for_links(popup_data *p_data) {
 		}
 	}
 	snprintf(target_url, DNS_MAX_FQDN_LENGTH + 10, "http://%s/", target_host);
-	tmp_val = http_scrape_for_links(target_url, &link_anchor);
+	tmp_val = http_scrape_url_for_links(target_url, &link_anchor);
 	if (tmp_val) {
 		LOGGING_QUICK_ERROR("kraken.gui.popup", "there was an error requesting the page")
 	}
@@ -170,7 +170,7 @@ void gui_popup_thread_http_enumerate_host_for_links(popup_data *p_data) {
 	return;
 }
 
-void gui_popup_thread_http_enumerate_hosts(popup_data *p_data) {
+void gui_popup_thread_http_scrape_hosts_for_links(popup_data *p_data) {
 	http_link *link_anchor = NULL;
 	kraken_thread k_thread;
 	http_enum_opts h_opts;
@@ -188,7 +188,7 @@ void gui_popup_thread_http_enumerate_hosts(popup_data *p_data) {
 	h_opts.action_status = &p_data->action_status;
 	p_data->action_status = KRAKEN_ACTION_RUN;
 	
-	http_enumerate_hosts_ex(p_data->c_host_manager, &link_anchor, &h_opts);
+	http_scrape_hosts_for_links_ex(p_data->c_host_manager, &link_anchor, &h_opts);
 	
 	gdk_threads_enter();
 	gui_popup_select_hosts_from_http_links((main_gui_data *)p_data, link_anchor);
