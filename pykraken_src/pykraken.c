@@ -163,7 +163,7 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 	host_manager c_host_manager;
 	single_host_info current_host;
 	unsigned int current_host_i = 0;
-	network_info network;
+	network_addr network;
 	char *pTargetDomain;
 	char *pTargetNetwork;
 	char ipstr[INET_ADDRSTRLEN];
@@ -214,7 +214,7 @@ static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
 	char *pIpAddr;
 	char *pCidrNetwork;
-	network_info network;
+	network_addr network;
 	struct in_addr packedIp;
 	
 	if (!PyArg_ParseTuple(args, "ss", &pIpAddr, &pCidrNetwork)) {

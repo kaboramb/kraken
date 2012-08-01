@@ -348,16 +348,16 @@ int host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_
 	 */
 	unsigned int current_who_i;
 	whois_record *cur_who_resp;
-	network_info network;
+	network_addr network;
 	int ret_val = 0;
 	
 	*desired_record = NULL;
 	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	for (current_who_i = 0; current_who_i < c_host_manager->known_whois_records; current_who_i ++) {
 		cur_who_resp = &c_host_manager->whois_records[current_who_i];
-		ret_val = netaddr_cidr_str_to_nwk(cur_who_resp->cidr_s, &network);
+		ret_val = netaddr_cidr_str_to_nwk(&network, cur_who_resp->cidr_s);
 		if (ret_val == 0) {
-			if (netaddr_ip_in_nwk(target_ip, &network) == 1) {
+			if (netaddr_ip_in_nwk(&network, target_ip) == 1) {
 				*desired_record = cur_who_resp;
 				break;
 			}

@@ -111,6 +111,9 @@ int whois_parse_response_ripe(char *raw_resp, whois_response *who_resp) {
 	int szResp = 0;
 	int szData = 0;
 	char *pCur = NULL;
+	char *iplow = NULL;
+	char *iphigh = NULL;
+	struct network_addr cidrn;
 	
 	szResp = strlen(raw_resp);
 	pCur = raw_resp;
@@ -120,22 +123,37 @@ int whois_parse_response_ripe(char *raw_resp, whois_response *who_resp) {
 		if ((*pCur == '#') || (*pCur == '\n')) {
 			continue;	/* skip comments */
 		}
-		if (strncasecmp(pCur, "route: ", 7) == 0) { /* copied to cidr */
-			pCur += 7;
+		if (strncasecmp(pCur, "inetnum: ", 9) == 0) {
+			pCur += 9;
 			while ((*pCur == ' ') && (pCur < (raw_resp + szResp))) {
 				pCur += 1;
 			}
-			while ((((*(pCur + szData) > 47) && (*(pCur + szData) < 58)) || (*(pCur + szData) == '.') || (*(pCur + szData) == '/')) && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA_S)) {
-				szData += 1;
+			iplow = pCur;
+			while ((((*pCur > 47) && (*pCur < 58)) || (*pCur == '.')) && (pCur < (raw_resp + szResp))) {
+				pCur += 1;
 			}
-			if (strlen(who_resp->cidr_s) == 0) {
-				if (szData < WHOIS_SZ_DATA_S) {
-					strncpy(who_resp->cidr_s, pCur, szData);
-				} else {
-					strncpy(who_resp->cidr_s, pCur, WHOIS_SZ_DATA_S);
+			*pCur = '\0';
+			pCur += 1;
+			while ((*pCur == ' ') || (*pCur == '-')) {
+				pCur += 1;
+			}
+			if ((*pCur != '\n') && (*pCur != '\0')) {
+				iphigh = pCur;
+				while ((*pCur != '\n') && (*pCur != '\0') && (pCur < (raw_resp + szResp))) {
+					pCur += 1;
+				}
+				*pCur = '\0';
+				pCur += 1;
+			}
+			if ((iplow != NULL) && (iphigh != NULL)) {
+				if (netaddr_range_str_to_nwk(&cidrn, iplow, iphigh) == 0) {
+					netaddr_nwk_to_cidr_str(&cidrn, who_resp->cidr_s, WHOIS_SZ_DATA_S);
 				}
 			}
-			pCur += szData;
+			iplow[strlen(iplow)] = ' ';
+			iplow = NULL;
+			iphigh[strlen(iphigh)] = '\n';
+			iphigh = NULL;
 		} else if (strncasecmp(pCur, "netname: ", 9) == 0) {
 			pCur += 9;
 			while ((*pCur == ' ') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA)) {

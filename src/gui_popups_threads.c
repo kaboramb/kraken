@@ -82,7 +82,7 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 	const gchar *text_entry;
 	int response;
 	char target_domain[DNS_MAX_FQDN_LENGTH + 1];
-	network_info target_network;
+	network_addr target_network;
 	
 	memset(target_domain, '\0', sizeof(target_domain));
 	gdk_threads_enter();
@@ -98,7 +98,7 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 	
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry1));
-	if (netaddr_cidr_str_to_nwk((char *)text_entry, &target_network) != 0) {
+	if (netaddr_cidr_str_to_nwk(&target_network, (char *)text_entry) != 0) {
 		GUI_POPUP_ERROR_INVALID_CIDR_NETWORK(p_data->popup_window);
 		gtk_widget_destroy(p_data->popup_window);
 		gdk_threads_leave();

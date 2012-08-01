@@ -283,7 +283,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	return 0;
 }
 
-int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host_manager, domain_ns_list *nameservers, dns_enum_opts *d_opts) {
+int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host_manager, domain_ns_list *nameservers, dns_enum_opts *d_opts) {
 	ares_channel channel;
 	single_host_info *h_info_chk = NULL;
 	int status;
@@ -328,7 +328,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 #endif
 	
 	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
-	while (netaddr_ip_in_nwk(&c_ip, target_net) == 1) {
+	while (netaddr_ip_in_nwk(target_net, &c_ip) == 1) {
 		num_of_hosts += 1;
 		c_ip.s_addr = htonl(ntohl(c_ip.s_addr) + 1);
 	}
@@ -338,7 +338,7 @@ int dns_bruteforce_names_in_range(network_info *target_net, host_manager *c_host
 	logging_log("kraken.dns_enum", LOGGING_INFO, "bruteforcing a total of %u names in network: %s %s", num_of_hosts, ipstr, netstr);
 	
 	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
-	while (netaddr_ip_in_nwk(&c_ip, target_net) == 1) {
+	while (netaddr_ip_in_nwk(target_net, &c_ip) == 1) {
 		if (DNS_SHOULD_STOP(d_opts)) {
 			break;
 		}
@@ -412,7 +412,7 @@ int dns_enum_domain_ex(host_manager *c_host_manager, char *target_domain, dns_en
 	return 0;
 }
 
-int dns_enum_network_ex(host_manager *c_host_manager, char *target_domain, network_info *target_net, dns_enum_opts *d_opts) {
+int dns_enum_network_ex(host_manager *c_host_manager, char *target_domain, network_addr *target_net, dns_enum_opts *d_opts) {
 	domain_ns_list nameservers;
 	single_host_info c_host;
 	dns_enum_opts new_opts;

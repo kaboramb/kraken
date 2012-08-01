@@ -3,7 +3,7 @@
 #include <string.h>
 #include "network_addr.h"
 
-int netaddr_ip_in_nwk(struct in_addr *ip, struct network_info *network) {
+int netaddr_ip_in_nwk(struct network_addr *network, struct in_addr *ip) {
 	/*
 	 * Returns 0 on "No the network described by in_addr is not in network"
 	 * Returns 1 on "Yes the network described by in_addr is in network"
@@ -14,14 +14,14 @@ int netaddr_ip_in_nwk(struct in_addr *ip, struct network_info *network) {
 	return 0;
 }
 
-int netaddr_cidr_str_to_nwk(char *o_netstr, struct network_info *network) {
+int netaddr_cidr_str_to_nwk(struct network_addr *network, char *o_netstr) {
 	/*
 	 * Returns 0 on success
 	 * Returns 1 on failure (due to unparseable address)
 	 * 
-	 * netstr is a cidr range such as "192.168.1.1/25" network is a pointer to a network_info structure
+	 * netstr is a cidr range such as "192.168.1.1/25" network is a pointer to a network_addr structure
 	 * In the event that the IP is not a member of the network such as above, the network (in this case 192.168.1.0)
-	 * is placed into the network member of the network_info structure
+	 * is placed into the network member of the network_addr structure
 	 */
 	char *pCur = NULL;
 	int bits = 0;
@@ -32,7 +32,7 @@ int netaddr_cidr_str_to_nwk(char *o_netstr, struct network_info *network) {
 		return 1;
 	}
 	strncpy(netstr, o_netstr, (NETADDR_CIDR_ADDRSTRLEN - 1));
-	memset(network, '\0', sizeof(struct network_info));
+	memset(network, '\0', sizeof(struct network_addr));
 	
 	pCur = strchr(netstr, '/');
 	if (pCur == NULL) {
@@ -44,7 +44,9 @@ int netaddr_cidr_str_to_nwk(char *o_netstr, struct network_info *network) {
 		return 1;
 	}
 	
-	inet_pton(AF_INET, netstr, &network->network);
+	if (inet_pton(AF_INET, netstr, &network->network) != 1) {
+		return 1;
+	}
 	bits = atoi(pCur);
 	if (bits > 32) {
 		return 1;
@@ -86,5 +88,78 @@ int netaddr_cidr_str_to_nwk(char *o_netstr, struct network_info *network) {
 		case 32: { network->subnetmask.s_addr = 0xffffffff; break; }
 	}
 	network->network.s_addr = (network->network.s_addr & network->subnetmask.s_addr);
+	return 0;
+}
+
+int netaddr_range_str_to_nwk(struct network_addr *network, char *iplow, char *iphigh) {
+	/*
+	 * Returns 0 on success
+	 * Returns 1 on failure (due to unparseable address)
+	 */
+	struct in_addr iplow_s;
+	struct in_addr iphigh_s;
+	
+	memset(network, '\0', sizeof(struct network_addr));
+	
+	if (inet_pton(AF_INET, iplow, &iplow_s) != 1) {
+		return 1;
+	}
+	if (inet_pton(AF_INET, iphigh, &iphigh_s) != 1) {
+		return 1;
+	}
+	
+	network->network.s_addr = (iplow_s.s_addr & iphigh_s.s_addr);
+	network->subnetmask.s_addr = (0xffffffff ^ (iphigh_s.s_addr ^ (network->network.s_addr)));
+	return 0;
+}
+
+int netaddr_nwk_to_cidr_str(struct network_addr *network, char *netstr, size_t sz_netstr) {
+	char mask[4];
+	
+	memset(mask, '\0', sizeof(mask));
+	memset(netstr, '\0', sz_netstr);
+	inet_ntop(AF_INET, &network->network, netstr, sz_netstr);
+	
+	switch (network->subnetmask.s_addr) {
+		case 0x00000000: { strcpy(mask, "0" ); break; }
+		case 0x00000080: { strcpy(mask, "1" ); break; }
+		case 0x000000c0: { strcpy(mask, "2" ); break; }
+		case 0x000000e0: { strcpy(mask, "3" ); break; }
+		case 0x000000f0: { strcpy(mask, "4" ); break; }
+		case 0x000000f8: { strcpy(mask, "5" ); break; }
+		case 0x000000fc: { strcpy(mask, "6" ); break; }
+		case 0x000000fe: { strcpy(mask, "7" ); break; }
+		case 0x000000ff: { strcpy(mask, "8" ); break; }
+		case 0x000080ff: { strcpy(mask, "9" ); break; }
+		case 0x0000c0ff: { strcpy(mask, "10"); break; }
+		case 0x0000e0ff: { strcpy(mask, "11"); break; }
+		case 0x0000f0ff: { strcpy(mask, "12"); break; }
+		case 0x0000f8ff: { strcpy(mask, "13"); break; }
+		case 0x0000fcff: { strcpy(mask, "14"); break; }
+		case 0x0000feff: { strcpy(mask, "15"); break; }
+		case 0x0000ffff: { strcpy(mask, "16"); break; }
+		case 0x0080ffff: { strcpy(mask, "17"); break; }
+		case 0x00c0ffff: { strcpy(mask, "18"); break; }
+		case 0x00e0ffff: { strcpy(mask, "19"); break; }
+		case 0x00f0ffff: { strcpy(mask, "20"); break; }
+		case 0x00f8ffff: { strcpy(mask, "21"); break; }
+		case 0x00fcffff: { strcpy(mask, "22"); break; }
+		case 0x00feffff: { strcpy(mask, "23"); break; }
+		case 0x00ffffff: { strcpy(mask, "24"); break; }
+		case 0x80ffffff: { strcpy(mask, "25"); break; }
+		case 0xc0ffffff: { strcpy(mask, "26"); break; }
+		case 0xe0ffffff: { strcpy(mask, "27"); break; }
+		case 0xf0ffffff: { strcpy(mask, "28"); break; }
+		case 0xf8ffffff: { strcpy(mask, "29"); break; }
+		case 0xfcffffff: { strcpy(mask, "30"); break; }
+		case 0xfeffffff: { strcpy(mask, "31"); break; }
+		case 0xffffffff: { strcpy(mask, "32"); break; }
+	}
+	if ((strlen(netstr) + 2 + strlen(mask)) > sz_netstr) {
+		memset(netstr, '\0', sz_netstr);
+		return 1;
+	}
+	strcat(netstr, "/");
+	strcat(netstr, mask);
 	return 0;
 }
