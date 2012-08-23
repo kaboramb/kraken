@@ -1,5 +1,5 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = src
+SUBDIRS = src data
 
 dist-hook:
 	cp -r ./pykraken_src $(distdir)

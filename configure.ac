@@ -11,6 +11,22 @@ AC_ARG_WITH([log4c], AS_HELP_STRING([--without-log4c], [Build without logging ca
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+AM_PATH_PYTHON
+AC_ARG_VAR([PYTHON_INCLUDE], [Include flags for python, bypassing python-config])
+AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
+AS_IF([test -z "$PYTHON_INCLUDE"], [
+	AS_IF([test -z "$PYTHON_CONFIG"], [
+		AC_PATH_PROGS([PYTHON_CONFIG],
+			[python$PYTHON_VERSION-config python-config],
+			[no],
+			[`dirname $PYTHON`])
+		AS_IF([test "$PYTHON_CONFIG" = no], [AC_MSG_ERROR([cannot find python-config for $PYTHON.])])
+	])
+	AC_MSG_CHECKING([python include flags])
+	PYTHON_INCLUDE=`$PYTHON_CONFIG --includes`
+	AC_MSG_RESULT([$PYTHON_INCLUDE])
+])
+
 # Checks for required libraries.
 AC_CHECK_LIB([cares], [ares_library_init], [], [
 	AC_MSG_NOTICE([could not find the ares library])
@@ -20,6 +36,11 @@ AC_CHECK_LIB([cares], [ares_library_init], [], [
 AC_CHECK_LIB([curl], [curl_easy_init], [], [
 	AC_MSG_NOTICE([could not find the curl library])
 	AC_MSG_NOTICE([please install libcurl >= 7.19.1])
+	exit 1
+])
+AC_CHECK_LIB([python2.7], [Py_Initialize], [], [
+	AC_MSG_NOTICE([could not find the python development headers])
+	AC_MSG_NOTICE([please install libpython])
 	exit 1
 ])
 AC_CHECK_LIB([uriparser], [uriParseUriA], [], [
@@ -71,5 +92,5 @@ AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([gethostbyname select socket strchr strncasecmp strstr])
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile data/Makefile])
 AC_OUTPUT

@@ -19,6 +19,9 @@
 //
 //
 
+#include "plugins.h"
+#include "kraken.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -29,7 +32,7 @@
 #ifndef WITHOUT_LOG4C
 #include <log4c.h>
 #endif
-#include "kraken.h"
+
 #include "host_manager.h"
 #include "export.h"
 #include "gui_main.h"
@@ -167,6 +170,8 @@ int main(int argc, char **argv) {
 	}
 
 	LOGGING_QUICK_WARNING("kraken", "releasing the kraken")
+	plugins_init(argv[0]);
+
 	gui_show_main_window(&k_opts, &c_host_manager);
 
 	if (c_host_manager.known_hosts) {
@@ -187,6 +192,7 @@ int main(int argc, char **argv) {
 	}
 
 	LOGGING_QUICK_WARNING("kraken", "good luck and good hunting")
+	plugins_destroy();
 	kraken_opts_destroy(&k_opts);
 	host_manager_destroy(&c_host_manager);
 #ifndef WITHOUT_LOG4C
