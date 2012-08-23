@@ -26,9 +26,30 @@ int single_host_destroy(single_host_info *c_host) {
 	return 0;
 }
 
+void single_host_iter_hostname_init(single_host_info *c_host, hostname_iter *iter) {
+	iter->status = KRAKEN_ITER_STATUS_NEW;
+	iter->position = 0;
+	return;
+}
+
+int single_host_iter_hostname_next(single_host_info *c_host, hostname_iter *iter, char **hostname) {
+	if (iter->status == KRAKEN_ITER_STATUS_NEW) {
+		iter->status = KRAKEN_ITER_STATUS_USED;
+	} else {
+		iter->position += 1;
+	}
+	if (iter->position >= c_host->n_names) {
+		*hostname = NULL;
+		return 0;
+	}
+	*hostname = &c_host->names[iter->position];
+	return 1;
+}
+
 int single_host_add_hostname(single_host_info *c_host, const char *name) {
 	char (*block)[DNS_MAX_FQDN_LENGTH + 1];
 	unsigned int current_name_i;
+
 	if (c_host->names == NULL) {
 		/* adding the first name */
 		c_host->names = malloc(DNS_MAX_FQDN_LENGTH + 1);
@@ -60,8 +81,10 @@ int single_host_add_hostname(single_host_info *c_host, const char *name) {
 }
 
 int single_host_merge(single_host_info *dst, single_host_info *src) {
-	unsigned int name_s;
-	unsigned int name_d;
+	hostname_iter src_hostname_i;
+	char *src_hostname;
+	hostname_iter dst_hostname_i;
+	char *dst_hostname;
 	int found;
 
 	if (memcmp(&dst->ipv4_addr, &src->ipv4_addr, sizeof(struct in_addr)) != 0) {
@@ -70,16 +93,18 @@ int single_host_merge(single_host_info *dst, single_host_info *src) {
 	if (dst->whois_data == NULL) {
 		dst->whois_data = src->whois_data;
 	}
-	for (name_s = 0; name_s < src->n_names; name_s++) {
+	single_host_iter_hostname_init(src, &src_hostname_i);
+	while (single_host_iter_hostname_next(src, &src_hostname_i, &src_hostname)) {
 		found = 0;
-		for (name_d = 0; name_d < dst->n_names; name_d++) {
-			if (strncasecmp(src->names[name_s], dst->names[name_d], DNS_MAX_FQDN_LENGTH) == 0) {
+		single_host_iter_hostname_init(dst, &dst_hostname_i);
+		while (single_host_iter_hostname_next(dst, &dst_hostname_i, &dst_hostname)) {
+			if (strncasecmp(dst_hostname, src_hostname, DNS_MAX_FQDN_LENGTH) == 0) {
 				found = 1;
 				break;
 			}
 		}
 		if (found == 0) {
-			single_host_add_hostname(dst, src->names[name_s]); // this is not the fastest way to do this
+			single_host_add_hostname(dst, src_hostname); // this is not the fastest way to do this
 		}
 	}
 	return 0;
@@ -129,6 +154,7 @@ int host_manager_destroy(host_manager *c_host_manager) {
 void host_manager_iter_host_init(host_manager *c_host_manager, host_iter *iter) {
 	iter->status = KRAKEN_ITER_STATUS_NEW;
 	iter->position = 0;
+	return;
 }
 
 int host_manager_iter_host_next(host_manager *c_host_manager, host_iter *iter, single_host_info **c_host) {
@@ -148,6 +174,7 @@ int host_manager_iter_host_next(host_manager *c_host_manager, host_iter *iter, s
 void host_manager_iter_whois_init(host_manager *c_host_manager, whois_iter *iter) {
 	iter->status = KRAKEN_ITER_STATUS_NEW;
 	iter->position = 0;
+	return;
 }
 
 int host_manager_iter_whois_next(host_manager *c_host_manager, whois_iter *iter, whois_record **c_who_rcd) {
@@ -333,17 +360,22 @@ int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *
 	return 0;
 }
 
-void host_manager_get_host_by_name(host_manager *c_host_manager, const char *hostname, single_host_info **desired_host) {
+void host_manager_get_host_by_name(host_manager *c_host_manager, const char *target_hostname, single_host_info **desired_host) {
 	host_iter host_i;
 	single_host_info *c_host;
-	int c_names;
+	hostname_iter hostname_i;
+	char *hostname;
 
 	*desired_host = NULL;
-	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	host_manager_iter_host_init(c_host_manager, &host_i);
+	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
-		for (c_names = 0; c_names < c_host->n_names; c_names++) {
-			if (strncasecmp(hostname, c_host->names[c_names], strlen(hostname)) == 0) {
+		single_host_iter_hostname_init(c_host, &hostname_i);
+		while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
+			if (strlen(target_hostname) != strlen(hostname)) {
+				continue;
+			}
+			if (strcasecmp(hostname, target_hostname) == 0) {
 				*desired_host = c_host;
 				kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 				return;

@@ -6,11 +6,14 @@
 
 typedef kraken_basic_iter host_iter;
 typedef kraken_basic_iter whois_iter;
+typedef kraken_basic_iter hostname_iter;
 
-int single_host_init(single_host_info *c_host);
-int single_host_destroy(single_host_info *c_host);
-int single_host_add_hostname(single_host_info *c_host, const char *name);
-int single_host_merge(single_host_info *dst, single_host_info *src);
+int  single_host_init(single_host_info *c_host);
+int  single_host_destroy(single_host_info *c_host);
+void single_host_iter_hostname_init(single_host_info *c_host, hostname_iter *iter);
+int  single_host_iter_hostname_next(single_host_info *c_host, hostname_iter *iter, char **hostname);
+int  single_host_add_hostname(single_host_info *c_host, const char *name);
+int  single_host_merge(single_host_info *dst, single_host_info *src);
 
 int  host_manager_init(host_manager *c_host_manager);
 int  host_manager_destroy(host_manager *c_host_manager);

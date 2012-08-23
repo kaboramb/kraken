@@ -17,7 +17,8 @@ int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_fi
 	single_host_info *c_host;
 	whois_iter whois_i;
 	whois_record *current_who;
-	unsigned char c_name;
+	hostname_iter hostname_i;
+	char *hostname;
 	char ipstr[INET6_ADDRSTRLEN];
 
 	csv_f = fopen(dest_file, "w");
@@ -32,8 +33,9 @@ int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_fi
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
 		inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
 		fprintf(csv_f, "%s,", ipstr);
-		for (c_name = 0; c_name < c_host->n_names; c_name++) {
-			fprintf(csv_f, "%s ", c_host->names[c_name]);
+		single_host_iter_hostname_init(c_host, &hostname_i);
+		while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
+			fprintf(csv_f, "%s ", hostname);
 		}
 		fseek(csv_f, -1, SEEK_CUR);
 		fprintf(csv_f, "\n");

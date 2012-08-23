@@ -256,7 +256,8 @@ GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, host_manager *c_host_m
 	host_iter host_i;
 	single_host_info *c_host;
 	char ipstr[INET_ADDRSTRLEN];
-	unsigned char c_name;
+	hostname_iter hostname_i;
+	char *hostname;
 	char n_names_str[18];
 
 	if (store == NULL) {
@@ -275,9 +276,10 @@ GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, host_manager *c_host_m
 		} else if (c_host->n_names > 1) {
 			sprintf(n_names_str, "[ %u Hostnames ]", c_host->n_names);
 			gtk_tree_store_set(store, &ipiter, COL_HOSTNAME, n_names_str, -1);
-			for (c_name = 0; c_name < c_host->n_names; c_name++) {
+			single_host_iter_hostname_init(c_host, &hostname_i);
+			while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
 				gtk_tree_store_append(store, &nameiter, &ipiter);
-				gtk_tree_store_set(store, &nameiter, COL_HOSTNAME, c_host->names[c_name], -1);
+				gtk_tree_store_set(store, &nameiter, COL_HOSTNAME, hostname, -1);
 			}
 		}
 		if (c_host->whois_data != NULL) {

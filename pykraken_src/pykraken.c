@@ -18,12 +18,12 @@ static PyObject *pykraken_whois_lookup_ip(PyObject *self, PyObject *args) {
 	whois_response who_resp;
 	PyObject *pyWhoResp = PyDict_New();
 	PyObject *pyTmpStr = NULL;
-	
+
 	if (pyWhoResp == NULL) {
 		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
-	
+
 	if (!PyArg_ParseTuple(args, "s", &ipstr)) {
 		Py_DECREF(pyWhoResp);
 		return NULL;
@@ -90,18 +90,18 @@ static PyObject *pykraken_get_nameservers(PyObject *self, PyObject *args) {
 	char *pTargetDomain;
 	PyObject *nsList = PyDict_New();
 	PyObject *nsIpaddr;
-	
+
 	if (nsList == NULL) {
 		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
-	
+
 	if (!PyArg_ParseTuple(args, "s", &pTargetDomain)) {
 		Py_DECREF(nsList);
 		return NULL;
 	}
 	memset(&nameservers, '\0', sizeof(nameservers));
-	
+
 	dns_get_nameservers_for_domain(pTargetDomain, &nameservers);
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
 		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
@@ -116,99 +116,113 @@ static PyObject *pykraken_get_nameservers(PyObject *self, PyObject *args) {
 
 static PyObject *pykraken_enumerate_domain(PyObject *self, PyObject *args) {
 	host_manager c_host_manager;
-	single_host_info current_host;
-	unsigned int current_host_i = 0;
+	host_iter host_i;
+	single_host_info *c_host;
+	hostname_iter hostname_i;
+	char *hostname;
 	char *pTargetDomain;
 	char *pHostFileList;
 	char ipstr[INET_ADDRSTRLEN];
 	PyObject *pyTmpStr = NULL;
-	PyObject *pyHostList = PyDict_New();
-	
-	if (pyHostList == NULL) {
+	PyObject *pyHostDict = PyDict_New();
+	PyObject *pyAddrList = NULL;
+
+	if (pyHostDict == NULL) {
 		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
-	
+
 	if (!PyArg_ParseTuple(args, "ss", &pTargetDomain, &pHostFileList)) {
-		Py_DECREF(pyHostList);
+		Py_DECREF(pyHostDict);
 		return NULL;
 	}
-	
+
 	if (host_manager_init(&c_host_manager) != 0) {
 		PyErr_SetString(PyExc_MemoryError, "could not initialize the host manager, it is likely that there is not enough memory");
 		return NULL;
 	}
-	
+
 	dns_enum_domain(&c_host_manager, pTargetDomain, pHostFileList);
-	
-	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
-		current_host = c_host_manager.hosts[current_host_i];
-		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
-		pyTmpStr = PyString_FromString(ipstr);
-		if (pyTmpStr) {
-			PyDict_SetItemString(pyHostList, current_host.hostname, pyTmpStr);
-			Py_DECREF(pyTmpStr);
-		} else {
-			host_manager_destroy(&c_host_manager);
-			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
-			Py_DECREF(pyHostList);
-			return NULL;
+
+	host_manager_iter_host_init(&c_host_manager, &host_i);
+	while (host_manager_iter_host_next(&c_host_manager, &host_i, &c_host)) {
+		single_host_iter_hostname_init(c_host, &hostname_i);
+		while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
+			pyTmpStr = PyString_FromString(hostname);
+			pyAddrList = PyDict_GetItem(pyHostDict, pyTmpStr);
+			if (pyAddrList == NULL) {
+				pyAddrList = PyList_New(0);
+				if (pyAddrList == NULL) {
+					PyErr_SetString(PyExc_MemoryError, "could not create a list to store the results");
+					return NULL;
+				}
+			}
+			inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
+			PyList_Append(pyAddrList, PyString_FromString(ipstr));
+			PyDict_SetItem(pyHostDict, pyTmpStr, pyAddrList);
 		}
 	}
 	host_manager_destroy(&c_host_manager);
-	return pyHostList;
+	return pyHostDict;
 }
 
 static PyObject *pykraken_enumerate_network(PyObject *self, PyObject *args) {
 	host_manager c_host_manager;
-	single_host_info current_host;
-	unsigned int current_host_i = 0;
+	host_iter host_i;
+	single_host_info *c_host;
 	network_addr network;
+	hostname_iter hostname_i;
+	char *hostname;
 	char *pTargetDomain;
 	char *pTargetNetwork;
 	char ipstr[INET_ADDRSTRLEN];
 	PyObject *pyTmpStr = NULL;
-	PyObject *pyHostList = PyDict_New();
-	
-	if (pyHostList == NULL) {
+	PyObject *pyHostDict = PyDict_New();
+	PyObject *pyAddrList = NULL;
+
+	if (pyHostDict == NULL) {
 		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
-	
+
 	if (!PyArg_ParseTuple(args, "ss", &pTargetDomain, &pTargetNetwork)) {
-		Py_DECREF(pyHostList);
+		Py_DECREF(pyHostDict);
 		return NULL;
 	}
-	
+
 	if (netaddr_cidr_str_to_nwk(&network, pTargetNetwork) != 0) {
 		PyErr_SetString(PyExc_ValueError, "invalid CIDR network");
-		Py_DECREF(pyHostList);
+		Py_DECREF(pyHostDict);
 		return NULL;
 	}
-	
+
 	if (host_manager_init(&c_host_manager) != 0) {
 		PyErr_SetString(PyExc_MemoryError, "could not initialize the host manager, it is likely that there is not enough memory");
 		return NULL;
 	}
-	
+
 	dns_enum_network_ex(&c_host_manager, pTargetDomain, &network, NULL);
-	
-	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
-		current_host = c_host_manager.hosts[current_host_i];
-		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
-		pyTmpStr = PyString_FromString(ipstr);
-		if (pyTmpStr) {
-			PyDict_SetItemString(pyHostList, current_host.hostname, pyTmpStr);
-			Py_DECREF(pyTmpStr);
-		} else {
-			host_manager_destroy(&c_host_manager);
-			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
-			Py_DECREF(pyHostList);
-			return NULL;
+
+	host_manager_iter_host_init(&c_host_manager, &host_i);
+	while (host_manager_iter_host_next(&c_host_manager, &host_i, &c_host)) {
+		single_host_iter_hostname_init(c_host, &hostname_i);
+		while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
+			pyTmpStr = PyString_FromString(hostname);
+			pyAddrList = PyDict_GetItem(pyHostDict, pyTmpStr);
+			if (pyAddrList == NULL) {
+				pyAddrList = PyList_New(0);
+				if (pyAddrList == NULL) {
+					PyErr_SetString(PyExc_MemoryError, "could not create a list to store the results");
+					return NULL;
+				}
+			}
+			inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
+			PyList_Append(pyAddrList, PyString_FromString(ipstr));
+			PyDict_SetItem(pyHostDict, pyTmpStr, pyAddrList);
 		}
 	}
 	host_manager_destroy(&c_host_manager);
-	return pyHostList;
+	return pyHostDict;
 }
 
 static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
@@ -216,22 +230,22 @@ static PyObject *pykraken_ip_in_cidr(PyObject *self, PyObject *args) {
 	char *pCidrNetwork;
 	network_addr network;
 	struct in_addr packedIp;
-	
+
 	if (!PyArg_ParseTuple(args, "ss", &pIpAddr, &pCidrNetwork)) {
 		return NULL;
 	}
-	
-	if (netaddr_cidr_str_to_nwk(pCidrNetwork, &network) != 0) {
+
+	if (netaddr_cidr_str_to_nwk(&network, pCidrNetwork) != 0) {
 		PyErr_SetString(PyExc_ValueError, "invalid CIDR network");
 		return NULL;
 	}
-	
+
 	if (inet_pton(AF_INET, pIpAddr, &packedIp) == 0) {
 		PyErr_SetString(PyExc_ValueError, "invalid IP address");
 		return NULL;
 	}
-	
-	if (netaddr_ip_in_nwk(&packedIp, &network) == 1) {
+
+	if (netaddr_ip_in_nwk(&network, &packedIp) == 1) {
 		Py_RETURN_TRUE;
 	}
 	Py_RETURN_FALSE;
@@ -247,7 +261,7 @@ static PyObject *pykraken_scrape_for_links(PyObject *self, PyObject *args) {
 	int ret_val = 0;
 	PyObject *pyTmpStr = NULL;
 	PyObject *pyLinkList = NULL;
-	
+
 	if (!PyArg_ParseTuple(args, "s", &pServer)) {
 		return NULL;
 	}
@@ -300,7 +314,7 @@ static PyObject *pykraken_redirect_on_same_server(PyObject *self, PyObject *args
 	char *original_url;
 	char *redirect_url;
 	int ret_val = 0;
-	
+
 	if (!PyArg_ParseTuple(args, "ss", &original_url, &redirect_url)) {
 		return NULL;
 	}
@@ -319,45 +333,52 @@ static PyObject *pykraken_enumerate_bing(PyObject *self, PyObject *args) {
 	char *target_domain;
 	char *bing_api_key;
 	host_manager c_host_manager;
-	single_host_info current_host;
-	unsigned int current_host_i = 0;
+	host_iter host_i;
+	single_host_info *c_host;
+	hostname_iter hostname_i;
+	char *hostname;
 	char ipstr[INET_ADDRSTRLEN];
 	http_enum_opts h_opts;
 	PyObject *pyTmpStr = NULL;
-	PyObject *pyHostList = PyDict_New();
-	
-	if (pyHostList == NULL) {
+	PyObject *pyHostDict = PyDict_New();
+	PyObject *pyAddrList = NULL;
+
+	if (pyHostDict== NULL) {
 		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
 		return NULL;
 	}
-	
+
 	if (!PyArg_ParseTuple(args, "ss", &target_domain, &bing_api_key)) {
 		return NULL;
 	}
-	
+
 	host_manager_init(&c_host_manager);
 	http_enum_opts_init(&h_opts);
 	http_enum_opts_set_bing_api_key(&h_opts, bing_api_key);
-	
+
 	http_search_engine_bing_ex(&c_host_manager, target_domain, &h_opts);
-	
-	for (current_host_i = 0; current_host_i < c_host_manager.known_hosts; current_host_i++) {
-		current_host = c_host_manager.hosts[current_host_i];
-		inet_ntop(AF_INET, &current_host.ipv4_addr, ipstr, sizeof(ipstr));
-		pyTmpStr = PyString_FromString(ipstr);
-		if (pyTmpStr) {
-			PyDict_SetItemString(pyHostList, current_host.hostname, pyTmpStr);
-			Py_DECREF(pyTmpStr);
-		} else {
-			host_manager_destroy(&c_host_manager);
-			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
-			Py_DECREF(pyHostList);
-			return NULL;
+
+	host_manager_iter_host_init(&c_host_manager, &host_i);
+	while (host_manager_iter_host_next(&c_host_manager, &host_i, &c_host)) {
+		single_host_iter_hostname_init(c_host, &hostname_i);
+		while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
+			pyTmpStr = PyString_FromString(hostname);
+			pyAddrList = PyDict_GetItem(pyHostDict, pyTmpStr);
+			if (pyAddrList == NULL) {
+				pyAddrList = PyList_New(0);
+				if (pyAddrList == NULL) {
+					PyErr_SetString(PyExc_MemoryError, "could not create a list to store the results");
+					return NULL;
+				}
+			}
+			inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
+			PyList_Append(pyAddrList, PyString_FromString(ipstr));
+			PyDict_SetItem(pyHostDict, pyTmpStr, pyAddrList);
 		}
 	}
 	http_enum_opts_destroy(&h_opts);
 	host_manager_destroy(&c_host_manager);
-	return pyHostList;
+	return pyHostDict;
 }
 
 static PyMethodDef PyKrakenMethods[] = {

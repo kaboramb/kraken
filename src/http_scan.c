@@ -484,7 +484,8 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **link_anchor, http_enum_opts *h_opts) {
 	host_iter host_i;
 	single_host_info *c_host;
-	unsigned int current_name_i = 0;
+	hostname_iter hostname_i;
+	char *hostname;
 	unsigned int done = 0;
 	unsigned int total = 0;
 	int response = 0;
@@ -493,7 +494,8 @@ int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **lin
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
 		total++;
 		if (c_host->names != NULL) {
-			for (current_name_i = 0; current_name_i < c_host->n_names; current_name_i++) {
+			single_host_iter_hostname_init(c_host, &hostname_i);
+			while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
 				total++;
 			}
 		}
@@ -505,12 +507,13 @@ int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **lin
 			break;
 		}
 		if (c_host->names != NULL) {
-			for (current_name_i = 0; current_name_i < c_host->n_names; current_name_i++) {
+			single_host_iter_hostname_init(c_host, &hostname_i);
+			while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
 				if (HTTP_SHOULD_STOP(h_opts)) {
 					break;
 				}
 				if (response == 0) {
-					response = http_scrape_ip_for_links_ex(c_host->names[current_name_i], &c_host->ipv4_addr, "/", link_anchor, h_opts);
+					response = http_scrape_ip_for_links_ex(hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts);
 				} else {
 					LOGGING_QUICK_WARNING("kraken.http_scan", "skipping alises due to scan error")
 				}
