@@ -55,7 +55,7 @@ int http_redirect_on_same_server(const char *original_url, const char *redirect_
 	UriParserStateA uri_state;
 	UriUriA orig_uri;
 	UriUriA redir_uri;
-	
+
 	uri_state.uri = &redir_uri;
 	if (uriParseUriA(&uri_state, redirect_url) != URI_SUCCESS) {
 		uriFreeUriMembersA(&redir_uri);
@@ -65,14 +65,14 @@ int http_redirect_on_same_server(const char *original_url, const char *redirect_
 		uriFreeUriMembersA(&redir_uri);
 		return 1;
 	}
-	
+
 	uri_state.uri = &orig_uri;
 	if (uriParseUriA(&uri_state, original_url) != URI_SUCCESS) {
 		uriFreeUriMembersA(&redir_uri);
 		uriFreeUriMembersA(&orig_uri);
 		return -1;
 	}
-	
+
 	if ((orig_uri.hostText.afterLast - orig_uri.hostText.first) != (redir_uri.hostText.afterLast - redir_uri.hostText.first)) {
 		uriFreeUriMembersA(&redir_uri);
 		uriFreeUriMembersA(&orig_uri);
@@ -96,7 +96,7 @@ void http_free_link(http_link *current_link) {
 		current_link = next_link;
 	}
 	return;
-}		
+}
 
 static void process_html_nodes_for_links(xmlNode *a_node, http_link **tmp_link) {
 	xmlNode *cur_node = NULL;
@@ -250,7 +250,7 @@ int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 int http_process_request_for_links(CURL *curl, const char *target_url, char **webpage_b, http_link **link_anchor, http_link **pvt_link_anchor, http_enum_opts *h_opts) {
 	CURLcode curl_res;
 	CURL *curl_redir = NULL;
-	size_t webpage_sz;
+	size_t webpage_sz = 0;
 	http_link *link_current = *link_anchor;
 	FILE *webpage_f = NULL;
 	long http_code = 0;
@@ -258,7 +258,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 	unsigned int link_counter = 0;
 	char *content_type;
 	char *redirected_url = NULL;
-	
+
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 	if (http_code != 200) {
 		logging_log("kraken.http_scan", LOGGING_DEBUG, "web server responded with: %lu", http_code);
@@ -335,7 +335,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 			link_counter++;
 		}
 	}
-	
+
 	logging_log("kraken.http_scan", LOGGING_INFO, "gathered %u new links", link_counter);
 	return 0;
 }
@@ -352,7 +352,7 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	CURLcode curl_res;
 	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
 	http_enum_opts h_opts;
-	
+
 	if (pvt_link_anchor) {
 		while (pvt_link_anchor->next) {
 			pvt_link_anchor = pvt_link_anchor->next;
@@ -364,7 +364,7 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
 		return 1;
 	}
-	
+
 	http_enum_opts_init(&h_opts);
 	curl = curl_easy_init();
 	assert(curl != NULL);
@@ -386,7 +386,7 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	}
 
 	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &pvt_link_anchor, &h_opts);
-	
+
 	if (webpage_b != NULL) {
 		free(webpage_b);
 	}
@@ -398,7 +398,7 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 int http_scrape_ip_for_links(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor) {
 	http_enum_opts h_opts;
 	int response;
-	
+
 	http_enum_opts_init(&h_opts);
 	response = http_scrape_ip_for_links_ex(hostname, addr, resource, link_anchor, &h_opts);
 	http_enum_opts_destroy(&h_opts);
@@ -420,7 +420,7 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 	char hoststr[DNS_MAX_FQDN_LENGTH + 7];
 	char *target_url = NULL;
 	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
-	
+
 	if (pvt_link_anchor) {
 		while (pvt_link_anchor->next) {
 			pvt_link_anchor = pvt_link_anchor->next;
@@ -432,7 +432,7 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 	assert(target_url != NULL);
 	snprintf(target_url, (strlen(ipstr) + strlen(resource) + 9), "http://%s%s", ipstr, resource);
 	snprintf(hoststr, (DNS_MAX_FQDN_LENGTH + 7), "Host: %s", hostname);
-	
+
 	webpage_f = open_memstream(&webpage_b, &webpage_sz);
 	if (webpage_f == NULL) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
@@ -453,14 +453,14 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 	if (h_opts->timeout_ms != 0) {
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
 	}
-	
+
 	curl_res = curl_easy_perform(curl);
-	
+
 	free(target_url);
 	target_url = malloc(strlen(hostname) + strlen(resource) + 9);
 	assert(target_url != NULL);
 	snprintf(target_url, (strlen(hostname) + strlen(resource) + 9), "http://%s%s", hostname, resource);
-	
+
 	curl_slist_free_all(headers);
 	fclose(webpage_f);
 	assert(webpage_b != NULL);
@@ -470,9 +470,9 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 		curl_easy_cleanup(curl);
 		return 2;
 	}
-	
+
 	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &pvt_link_anchor, h_opts);
-	
+
 	free(target_url);
 	if (webpage_b != NULL) {
 		free(webpage_b);
@@ -482,41 +482,35 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 }
 
 int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **link_anchor, http_enum_opts *h_opts) {
+	host_iter host_i;
 	single_host_info *c_host;
-	unsigned int current_host_i;
 	unsigned int current_name_i = 0;
 	unsigned int done = 0;
 	unsigned int total = 0;
 	int response = 0;
-	
-	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
-		c_host = &c_host_manager->hosts[current_host_i];
+
+	host_manager_iter_host_init(c_host_manager, &host_i);
+	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
 		total++;
-		if (c_host->aliases != NULL) {
-			for (current_name_i = 0; current_name_i < c_host->n_aliases; current_name_i++) {
+		if (c_host->names != NULL) {
+			for (current_name_i = 0; current_name_i < c_host->n_names; current_name_i++) {
 				total++;
 			}
 		}
 	}
-	
-	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
+
+	host_manager_iter_host_init(c_host_manager, &host_i);
+	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
 		if (HTTP_SHOULD_STOP(h_opts)) {
 			break;
 		}
-		c_host = &c_host_manager->hosts[current_host_i];
-		response = http_scrape_ip_for_links_ex(c_host->hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts);
-		done++;
-		if (h_opts->progress_update != NULL) {
-			h_opts->progress_update(done, total, h_opts->progress_update_data);
-		}
-			
-		if (c_host->aliases != NULL) {
-			for (current_name_i = 0; current_name_i < c_host->n_aliases; current_name_i++) {
+		if (c_host->names != NULL) {
+			for (current_name_i = 0; current_name_i < c_host->n_names; current_name_i++) {
 				if (HTTP_SHOULD_STOP(h_opts)) {
 					break;
 				}
 				if (response == 0) {
-					response = http_scrape_ip_for_links_ex(c_host->aliases[current_name_i], &c_host->ipv4_addr, "/", link_anchor, h_opts);
+					response = http_scrape_ip_for_links_ex(c_host->names[current_name_i], &c_host->ipv4_addr, "/", link_anchor, h_opts);
 				} else {
 					LOGGING_QUICK_WARNING("kraken.http_scan", "skipping alises due to scan error")
 				}
@@ -555,7 +549,7 @@ int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *targe
 		xmlFreeDoc(page);
 		return -1;
 	}
-	
+
 	for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type != XML_ELEMENT_NODE) {
 			continue;
@@ -644,7 +638,7 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 	int num_entries = 0;
 	int num_entries_total = 0;
 	int num_timeouts = 0;
-	
+
 	if (h_opts->bing_api_key == NULL) {
 		logging_log("kraken.http_scan", LOGGING_WARNING, "bing app id was not set");
 		return -1;
@@ -653,10 +647,10 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		logging_log("kraken.http_scan", LOGGING_ERROR, "bing app id or domain is too large");
 		return -1;
 	}
-	
+
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	logging_log("kraken.http_scan", LOGGING_INFO, "enumerating domain: %s", target_domain);
-	
+
 	do {
 		webpage_f = open_memstream(&webpage_b, &webpage_sz);
 		if (webpage_f == NULL) {
@@ -665,7 +659,7 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		}
 		memset(request_url, '\0', sizeof(request_url));
 		snprintf(request_url, sizeof(request_url), "https://api.datamarket.azure.com/Bing/Search/Web?Query=%%27site:%%20%s%%27&$top=%u&$skip=%u&$format=ATOM&Market=%%27en-US%%27", target_domain, HTTP_BING_NUM_RESULTS, (num_queries * HTTP_BING_NUM_RESULTS));
-		
+
 		curl = curl_easy_init();
 		assert(curl != NULL);
 		curl_easy_setopt(curl, CURLOPT_URL, request_url);
@@ -715,14 +709,14 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		num_queries++;
 		num_entries = http_add_hosts_from_bing_xml(c_host_manager, target_domain, webpage_b);
 		num_entries_total += num_entries;
-		
+
 		free(webpage_b);
 		curl_easy_cleanup(curl);
 		if (h_opts->progress_update != NULL) {
 			h_opts->progress_update((((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries), HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);
 		}
 	} while ((num_entries == HTTP_BING_NUM_RESULTS) && (num_entries_total < HTTP_BING_MAX_RESULTS) && !(HTTP_SHOULD_STOP(h_opts)));
-	
+
 	if (h_opts->progress_update != NULL) {
 		h_opts->progress_update(HTTP_BING_MAX_RESULTS, HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);
 	}

@@ -16,7 +16,7 @@ int whois_parse_response_arin(char *raw_resp, whois_response *who_resp) {
 	int szResp = 0;
 	int szData = 0;
 	char *pCur = NULL;
-	
+
 	szResp = strlen(raw_resp);
 	pCur = raw_resp;
 	while (pCur < (raw_resp + szResp)) {
@@ -114,7 +114,7 @@ int whois_parse_response_ripe(char *raw_resp, whois_response *who_resp) {
 	char *iplow = NULL;
 	char *iphigh = NULL;
 	struct network_addr cidrn;
-	
+
 	szResp = strlen(raw_resp);
 	pCur = raw_resp;
 	while (pCur < (raw_resp + szResp)) {
@@ -198,9 +198,9 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 	char raw_resp[WHOIS_SZ_RESP];
 	char ipstr[INET6_ADDRSTRLEN];
 	int retVal = 0;
-	
+
 	inet_ntop(AF_INET, ip, ipstr, sizeof(ipstr));
-	
+
 	memset(who_resp, '\0', sizeof(whois_response));
 	retVal = whois_raw_lookup(WHOIS_REQ_TYPE_IP, WHOIS_SRV_ARIN, ipstr, raw_resp);
 	if (retVal != 0) {
@@ -213,7 +213,7 @@ int whois_lookup_ip(struct in_addr *ip, whois_response *who_resp) {
 	} else {
 		whois_parse_response_arin(raw_resp, who_resp);
 	}
-	
+
 	if (memcmp(who_resp->orgname, "RIPE", 4) == 0) {
 		retVal = whois_raw_lookup(WHOIS_REQ_TYPE_IP, WHOIS_SRV_RIPE, ipstr, raw_resp);
 		if (retVal == 0) {
@@ -241,7 +241,7 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 	fd_set fdRead;
 	struct timeval timeout;
 	struct hostent *server_info = NULL;
-	
+
 	memset(reqBuffer,  '\0', sizeof(WHOIS_SZ_REQ));
 	memset(response,   '\0', sizeof(WHOIS_SZ_RESP));
 	memset(&dest_addr, '\0', sizeof(dest_addr));
@@ -271,18 +271,18 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 		LOGGING_QUICK_ERROR("kraken.whois", "could not lookup the IP of the whois server")
 		return 3;
 	}
-	
+
 	sock = socket(server_info->h_addrtype, SOCK_STREAM, 0);
 	if (sock == -1) {
 		LOGGING_QUICK_ERROR("kraken.whois", "could not allocate a socket")
 		return 1;
 	}
-	
+
 	dest_addr.sin_family = server_info->h_addrtype;
 	dest_addr.sin_port = htons(WHOIS_PORT);
-	
+
 	szReq = strlen(reqBuffer);
-	
+
 	while (server_info->h_addr_list[addrCtr] != NULL) {
 		memcpy(&dest_addr.sin_addr, server_info->h_addr_list[addrCtr], sizeof(struct in_addr));
 		if (connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) == 0) {
@@ -298,12 +298,12 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 		LOGGING_QUICK_ERROR("kraken.whois", "failed to send the expected amount of data")
 		return 5;
 	}
-	
+
 	FD_ZERO(&fdRead);
 	FD_SET(sock, &fdRead);
 	timeout.tv_sec = WHOIS_TIMEOUT_SEC;
 	timeout.tv_usec = WHOIS_TIMEOUT_USEC;
-	
+
 	while (szResp < WHOIS_SZ_RESP) {
 		select(sock + 1, &fdRead, NULL, NULL, &timeout);
 		if (FD_ISSET(sock, &fdRead) == 0) {
@@ -325,27 +325,27 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 }
 
 int whois_fill_host_manager(host_manager *c_host_manager) {
-	unsigned int current_host_i;
-	single_host_info *current_host;
+	host_iter host_i;
+	single_host_info *c_host;
 	whois_record tmp_who_resp;
 	whois_record *cur_who_resp = NULL;
 	int ret_val = 0;
 	char ipstr[INET6_ADDRSTRLEN];
-	
-	for (current_host_i = 0; current_host_i < c_host_manager->known_hosts; current_host_i++) {
-		current_host = &c_host_manager->hosts[current_host_i];
-		host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
+
+	host_manager_iter_host_init(c_host_manager, &host_i);
+	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
+		host_manager_get_whois(c_host_manager, &c_host->ipv4_addr, &cur_who_resp);
 		if (cur_who_resp != NULL) {
-			current_host->whois_data = cur_who_resp;
+			c_host->whois_data = cur_who_resp;
 			continue;
 		}
-		ret_val = whois_lookup_ip(&current_host->ipv4_addr, &tmp_who_resp);
+		ret_val = whois_lookup_ip(&c_host->ipv4_addr, &tmp_who_resp);
 		if (ret_val == 0) {
-			inet_ntop(AF_INET, &current_host->ipv4_addr, ipstr, sizeof(ipstr));
+			inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
 			logging_log("kraken.whois", LOGGING_INFO, "got whois record for %s, %s", ipstr, tmp_who_resp.cidr_s);
 			host_manager_add_whois(c_host_manager, &tmp_who_resp);
-			host_manager_get_whois(c_host_manager, &current_host->ipv4_addr, &cur_who_resp);
-			current_host->whois_data = cur_who_resp;
+			host_manager_get_whois(c_host_manager, &c_host->ipv4_addr, &cur_who_resp);
+			c_host->whois_data = cur_who_resp;
 		}
 	}
 	return 0;

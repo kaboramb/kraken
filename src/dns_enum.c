@@ -54,18 +54,20 @@ static void callback_host(void *c_host_manager, int status, int timeouts, struct
 		//logging_log("kraken.dns_enum", LOGGING_TRACE, "lookup of IP address failed with error: %s", ares_strerror(status));
 		return;
 	}
+	
+	int a = 0;
 	int i = 0;
-	single_host_info new_host;
-	single_host_init(&new_host);
+	single_host_info c_host;
+	single_host_init(&c_host);
 	for (i = 0; host->h_addr_list[i]; ++i) {
-		memcpy(&new_host.ipv4_addr, host->h_addr_list[i], sizeof(struct in_addr));
-		strncpy(new_host.hostname, host->h_name, DNS_MAX_FQDN_LENGTH);
-		host_manager_add_host(c_host_manager, &new_host);
+		memcpy(&c_host.ipv4_addr, host->h_addr_list[i], sizeof(struct in_addr));
+		single_host_add_hostname(&c_host, host->h_name);
+		for (a=0; host->h_aliases[a] != NULL; a++) {
+			single_host_add_hostname(&c_host, host->h_aliases[a]);
+		}
+		host_manager_add_host(c_host_manager, &c_host);
 	}
-	if (*host->h_aliases) {
-		host_manager_add_alias_to_host_by_name(c_host_manager, host->h_name, *host->h_aliases);
-	}
-	single_host_destroy(&new_host);
+	single_host_destroy(&c_host);
 	return;
 }
 
@@ -400,7 +402,7 @@ int dns_enum_domain_ex(host_manager *c_host_manager, char *target_domain, dns_en
 		logging_log("kraken.dns_enum", LOGGING_INFO, "found name server %s %s", nameservers.servers[i], ipstr);
 		single_host_init(&c_host);
 		memcpy(&c_host.ipv4_addr, &nameservers.ipv4_addrs[i], sizeof(struct in_addr));
-		strncpy(c_host.hostname, nameservers.servers[i], DNS_MAX_FQDN_LENGTH);
+		single_host_add_hostname(&c_host, nameservers.servers[i]);
 		host_manager_add_host(c_host_manager, &c_host);
 		single_host_destroy(&c_host);
 	}
@@ -440,7 +442,7 @@ int dns_enum_network_ex(host_manager *c_host_manager, char *target_domain, netwo
 		logging_log("kraken.dns_enum", LOGGING_INFO, "found name server %s %s", nameservers.servers[i], ipstr);
 		single_host_init(&c_host);
 		memcpy(&c_host.ipv4_addr, &nameservers.ipv4_addrs[i], sizeof(struct in_addr));
-		strncpy(c_host.hostname, nameservers.servers[i], DNS_MAX_FQDN_LENGTH);
+		single_host_add_hostname(&c_host, nameservers.servers[i]);
 		host_manager_add_host(c_host_manager, &c_host);
 		single_host_destroy(&c_host);
 	}

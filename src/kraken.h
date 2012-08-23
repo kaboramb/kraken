@@ -24,14 +24,21 @@
 #define KRAKEN_ACTION_STOP 0
 #define KRAKEN_ACTION_RUN 1
 
+#define KRAKEN_ITER_STATUS_NEW 1
+#define KRAKEN_ITER_STATUS_USED 0
+
+typedef struct kraken_basic_iter {
+	int status;
+	unsigned int position;
+} kraken_basic_iter;
+
 typedef struct single_host_info {
 	struct in_addr ipv4_addr;
-	char hostname[DNS_MAX_FQDN_LENGTH + 1];
 	struct whois_record *whois_data;
-	char (*aliases)[DNS_MAX_FQDN_LENGTH + 1];
-	unsigned char n_aliases;
-	unsigned char os;
+	char (*names)[DNS_MAX_FQDN_LENGTH + 1];
+	unsigned int n_names; /* TODO: convert old unsigned chars to unsigned ints */
 	char is_up;
+	char os;
 } single_host_info;
 
 typedef struct host_manager {

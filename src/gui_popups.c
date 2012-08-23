@@ -504,8 +504,8 @@ gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data) {
 
 GtkTreeModel *gui_refresh_http_link_domain_selection_model(GtkTreeStore *store, main_gui_data *m_data, http_link *link_anchor) {
 	GtkTreeIter domainsearchiter, hostsearchiter;
+	GtkTreeModel *treemodel;
 	http_link *link_current;
-	GtkTreeModel *treemodel = GTK_TREE_MODEL(store);
 	gchar *domain;
 	gchar *hostname;
 	gboolean item_in_list = FALSE;
@@ -514,6 +514,7 @@ GtkTreeModel *gui_refresh_http_link_domain_selection_model(GtkTreeStore *store, 
 		store = gtk_tree_store_new(NUM_COLS, G_TYPE_BOOLEAN, G_TYPE_STRING);
 	}
 	
+	treemodel = GTK_TREE_MODEL(store);
 	for (link_current = link_anchor; link_current; link_current = link_current->next) {
 		if (gtk_tree_model_get_iter_first(treemodel, &domainsearchiter)) {
 			item_in_list = FALSE;
