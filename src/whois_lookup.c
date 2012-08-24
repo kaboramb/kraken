@@ -34,7 +34,7 @@ int whois_parse_response_arin(char *raw_resp, whois_response *who_resp) {
 			while ((((*(pCur + szData) > 47) && (*(pCur + szData) < 58)) || (*(pCur + szData) == '.') || (*(pCur + szData) == '/')) && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA_S)) {
 				szData += 1;
 			}
-			if (strlen(who_resp->cidr_s) == 0) {
+			if (*who_resp->cidr_s == '\0') {
 				if (szData < WHOIS_SZ_DATA_S) {
 					strncpy(who_resp->cidr_s, pCur, szData);
 				} else {
@@ -50,10 +50,12 @@ int whois_parse_response_arin(char *raw_resp, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			if (szData < WHOIS_SZ_DATA) {
-				strncpy(who_resp->netname, pCur, szData);
-			} else {
-				strncpy(who_resp->netname, pCur, WHOIS_SZ_DATA);
+			if (*who_resp->netname == '\0') {
+				if (szData < WHOIS_SZ_DATA) {
+					strncpy(who_resp->netname, pCur, szData);
+				} else {
+					strncpy(who_resp->netname, pCur, WHOIS_SZ_DATA);
+				}
 			}
 			pCur += szData;
 		} else if (strncasecmp(pCur, "orgname: ", 9) == 0) {
@@ -64,10 +66,12 @@ int whois_parse_response_arin(char *raw_resp, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			if (szData < WHOIS_SZ_DATA) {
-				strncpy(who_resp->orgname, pCur, szData);
-			} else {
-				strncpy(who_resp->orgname, pCur, WHOIS_SZ_DATA);
+			if (*who_resp->orgname == '\0') {
+				if (szData < WHOIS_SZ_DATA) {
+					strncpy(who_resp->orgname, pCur, szData);
+				} else {
+					strncpy(who_resp->orgname, pCur, WHOIS_SZ_DATA);
+				}
 			}
 			pCur += szData;
 		} else if (strncasecmp(pCur, "regdate: ", 9) == 0) {
@@ -78,10 +82,12 @@ int whois_parse_response_arin(char *raw_resp, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			if (szData < WHOIS_SZ_DATA_S) {
-				strncpy(who_resp->regdate_s, pCur, szData);
-			} else {
-				strncpy(who_resp->regdate_s, pCur, WHOIS_SZ_DATA_S);
+			if (*who_resp->regdate_s == '\0') {
+				if (szData < WHOIS_SZ_DATA_S) {
+					strncpy(who_resp->regdate_s, pCur, szData);
+				} else {
+					strncpy(who_resp->regdate_s, pCur, WHOIS_SZ_DATA_S);
+				}
 			}
 			pCur += szData;
 		} else if (strncasecmp(pCur, "updated: ", 9) == 0) {
@@ -92,10 +98,12 @@ int whois_parse_response_arin(char *raw_resp, whois_response *who_resp) {
 			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
 				szData += 1;
 			}
-			if (szData < WHOIS_SZ_DATA_S) {
-				strncpy(who_resp->updated_s, pCur, szData);
-			} else {
-				strncpy(who_resp->updated_s, pCur, WHOIS_SZ_DATA_S);
+			if (*who_resp->updated_s != '\0') {
+				if (szData < WHOIS_SZ_DATA_S) {
+					strncpy(who_resp->updated_s, pCur, szData);
+				} else {
+					strncpy(who_resp->updated_s, pCur, WHOIS_SZ_DATA_S);
+				}
 			}
 			pCur += szData;
 		} else {

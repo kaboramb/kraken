@@ -6,8 +6,54 @@
 
 #include "gui_menu_functions.h"
 #include "gui_model.h"
+#include "plugins.h"
 #include "host_manager.h"
 #include "whois_lookup.h"
+
+#define GUI_MAIN_MAX_CMD_SZ 511
+
+void callback_main_command_reset_color(GtkWidget *widget, main_gui_data *m_data) {
+	gtk_widget_modify_base(widget, GTK_STATE_NORMAL, NULL);
+	return;
+}
+
+void callback_main_command_submit(GtkWidget *widget, main_gui_data *m_data) {
+	const gchar *text;
+	GdkColor color;
+	plugin_object *plugin;
+	char buffer[GUI_MAIN_MAX_CMD_SZ + 1];
+	char *args = NULL;
+	char *command = buffer;
+	char *p = buffer;
+
+	text = gtk_entry_get_text(GTK_ENTRY(widget));
+	if (text == NULL) {
+		return;
+	}
+	memset(buffer, '\0', sizeof(buffer));
+	strncpy(buffer, text, GUI_MAIN_MAX_CMD_SZ);
+
+	while ((*p != ' ') && (*p != '\0') && ((command - p - 1) < GUI_MAIN_MAX_CMD_SZ)) {
+		p++;
+	}
+	*p = '\0';
+	args = p + 1;
+	if (strlen(command) > PLUGIN_SZ_NAME) {
+		return;
+	}
+
+	if (!plugins_get_plugin_by_name(command, &plugin)) {
+		gdk_color_parse("red", &color);
+		gtk_widget_modify_base(widget, GTK_STATE_NORMAL, &color);
+		return;
+	}
+
+	gtk_widget_modify_base(widget, GTK_STATE_NORMAL, NULL);
+	plugins_run_plugin_method_arg_str(plugin, "main", args);
+	gui_model_update_tree_and_marquee(m_data, NULL);
+	gtk_entry_set_text(GTK_ENTRY(widget), "");
+	return;
+}
 
 int gui_show_main_window(kraken_opts *k_opts, host_manager *c_host_manager) {
 	GtkWidget *window;
@@ -15,6 +61,7 @@ int gui_show_main_window(kraken_opts *k_opts, host_manager *c_host_manager) {
 	GtkWidget *main_vbox, *hbox;
 	GtkWidget *main_menu_bar;
 	GtkWidget *view;
+	GtkWidget *txt_entry;
 	main_gui_data m_data;
 
 	g_thread_init(NULL);
@@ -49,8 +96,19 @@ int gui_show_main_window(kraken_opts *k_opts, host_manager *c_host_manager) {
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
 	gtk_widget_show(hbox);
 
+	txt_entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(txt_entry), GUI_MAIN_MAX_CMD_SZ);
+	g_signal_connect(txt_entry, "changed", G_CALLBACK(callback_main_command_reset_color), &m_data);
+	g_signal_connect(txt_entry, "activate", G_CALLBACK(callback_main_command_submit), &m_data);
+
 	gtk_box_pack_start(GTK_BOX(main_vbox), main_menu_bar, FALSE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(main_vbox), scroll_window, TRUE, TRUE, 0);
+	gtk_box_pack_end(GTK_BOX(main_vbox), hbox, FALSE, FALSE, 0);
+
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
+	gtk_box_pack_start(GTK_BOX(hbox), txt_entry, TRUE, TRUE, 0);
+	gtk_widget_show(hbox);
 	gtk_box_pack_end(GTK_BOX(main_vbox), hbox, FALSE, FALSE, 0);
 
 	gtk_widget_show_all(window);

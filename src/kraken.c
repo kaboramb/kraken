@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
 
 	if (host_manager_init(&c_host_manager) != 0) {
 		LOGGING_QUICK_FATAL("kraken", "could not initialize the host manager, it is likely that there is not enough memory")
-		return 0;
+		return 1;
 	}
 
 	if (kraken_opts_init_from_config(&k_opts) != 0) {
@@ -169,8 +169,15 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	if (plugins_init(argv[0], &k_opts, &c_host_manager) < 0) {
+		kraken_opts_destroy(&k_opts);
+		host_manager_destroy(&c_host_manager);
+#ifndef WITHOUT_LOG4C
+		log4c_fini();
+#endif
+		return 1;
+	}
 	LOGGING_QUICK_WARNING("kraken", "releasing the kraken")
-	plugins_init(argv[0]);
 
 	gui_show_main_window(&k_opts, &c_host_manager);
 

@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "plugins.h"
+#include "host_manager.h"
 #include "logging.h"
 #include "utilities.h"
 
@@ -35,22 +36,48 @@ static PyMethodDef pymod_kraken_methods[] = {
 	{NULL, NULL, 0, NULL}
 };
 
-void plugins_pymod_kraken_init(void) {
-   	PyObject *mod;
-	mod = Py_InitModule3("kraken", pymod_kraken_methods, PYMOD_KRAKEN_DOC);
-	PyModule_AddStringConstant(mod, "version", PYMOD_KRAKEN_VERSION);
+static PyObject *pymod_kraken_host_manager_quick_add_by_name(PyObject *self, PyObject *args) {
+	char *hostname;
+	int ret_val;
 
-	PyModule_AddIntConstant(mod, "LOG_LVL_FATAL", LOGGING_FATAL);
-	PyModule_AddIntConstant(mod, "LOG_LVL_ALERT", LOGGING_ALERT);
-	PyModule_AddIntConstant(mod, "LOG_LVL_CRITICAL", LOGGING_CRITICAL);
-	PyModule_AddIntConstant(mod, "LOG_LVL_ERROR", LOGGING_ERROR);
-	PyModule_AddIntConstant(mod, "LOG_LVL_WARNING", LOGGING_WARNING);
-	PyModule_AddIntConstant(mod, "LOG_LVL_NOTICE", LOGGING_NOTICE);
-	PyModule_AddIntConstant(mod, "LOG_LVL_INFO", LOGGING_INFO);
-	PyModule_AddIntConstant(mod, "LOG_LVL_DEBUG", LOGGING_DEBUG);
-	PyModule_AddIntConstant(mod, "LOG_LVL_TRACE", LOGGING_TRACE);
-	PyModule_AddIntConstant(mod, "LOG_LVL_NOTSET", LOGGING_NOTSET);
-	PyModule_AddIntConstant(mod, "LOG_LVL_UNKNOWN", LOGGING_UNKNOWN);
+	if (!PyArg_ParseTuple(args, "s", &hostname)) {
+		return NULL;
+	}
+	ret_val = host_manager_quick_add_by_name(c_plugin_manager->c_host_manager, hostname);
+	if (ret_val == -1) {
+		PyErr_SetString(PyExc_ValueError, "could not resolve the hostname");
+		return NULL;
+	}
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
+static PyMethodDef pymod_kraken_host_manager_methods[] = {
+	{"quick_add_by_name", pymod_kraken_host_manager_quick_add_by_name, METH_VARARGS, ""},
+	{NULL, NULL, 0, NULL}
+};
+
+void plugins_pymod_kraken_init(void) {
+   	PyObject *pymod_kraken;
+   	PyObject *pymod_kraken_host_manager;
+
+	pymod_kraken = Py_InitModule3("kraken", pymod_kraken_methods, PYMOD_KRAKEN_DOC);
+	PyModule_AddStringConstant(pymod_kraken, "version", PYMOD_KRAKEN_VERSION);
+
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_FATAL", LOGGING_FATAL);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_ALERT", LOGGING_ALERT);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_CRITICAL", LOGGING_CRITICAL);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_ERROR", LOGGING_ERROR);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_WARNING", LOGGING_WARNING);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_NOTICE", LOGGING_NOTICE);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_INFO", LOGGING_INFO);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_DEBUG", LOGGING_DEBUG);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_TRACE", LOGGING_TRACE);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_NOTSET", LOGGING_NOTSET);
+	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_UNKNOWN", LOGGING_UNKNOWN);
+
+	pymod_kraken_host_manager = Py_InitModule3("kraken.host_manager", pymod_kraken_host_manager_methods, PYMOD_KRAKEN_DOC);
+	PyModule_AddObject(pymod_kraken, "host_manager", pymod_kraken_host_manager);
 	return;
 }
 
@@ -62,7 +89,7 @@ void plugins_python_sys_path_append(char *path) {
 	return;
 }
 
-int plugins_init(char *name) {
+int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) {
 	DIR *dp;
 	struct dirent *ep;
 	unsigned int c_plugin = 0;
@@ -120,8 +147,10 @@ int plugins_init(char *name) {
 		logging_log("kraken.plugins", LOGGING_CRITICAL, "could not allocate enough memory for the plugin engine");
 		return -2;
 	}
+	c_plugin_manager->k_opts = k_opts;
+	c_plugin_manager->c_host_manager = c_host_manager;
 	c_plugin_manager->n_plugins = n_plugins;
-	c_plugin_manager->plugins = (plugin_object *)(c_plugin_manager + sizeof(plugin_manager));
+	n_plugins = 0;
 
 	plugins_iter_init(&plugin_i);
 	dp = opendir(plugin_path);
@@ -136,6 +165,7 @@ int plugins_init(char *name) {
 		if (name_sz > PLUGIN_SZ_NAME) {
 			continue;
 		}
+		memset(plugin_name, '\0', sizeof(plugin_name));
 		strncpy(plugin_name, ep->d_name, name_sz);
 		pName = PyString_FromString(plugin_name);
 		pPluginObj = PyImport_Import(pName);
@@ -147,6 +177,7 @@ int plugins_init(char *name) {
 		plugins_iter_next(&plugin_i, &plugin_obj);
 		strncpy(plugin_obj->name, plugin_name, name_sz);
 		plugin_obj->python_object = pPluginObj;
+		n_plugins++;
 
 		/* run the initialize method if it is defined */
 		pInitFunc = PyObject_GetAttrString(plugin_obj->python_object, PLUGIN_METHOD_INITIALIZE);
@@ -170,7 +201,7 @@ int plugins_init(char *name) {
 		Py_XDECREF(pReturnValue);
 	}
 	closedir(dp);
-
+	c_plugin_manager->n_plugins = n_plugins;
 	logging_log("kraken.plugins", LOGGING_INFO, "successfully loaded %u plugins", c_plugin_manager->n_plugins);
 	return;
 }
@@ -206,6 +237,7 @@ void plugins_destroy(void) {
 		}
 		Py_XDECREF(pReturnValue);
 	}
+
 	Py_Finalize();
 	return;
 }
@@ -231,6 +263,43 @@ int plugins_iter_next(plugin_iter *iter, plugin_object **plugin) {
 	return 1;
 }
 
+int plugins_get_plugin_by_name(char *name, plugin_object **plugin) {
+	plugin_iter plugin_i;
+	plugin_object *c_plugin;
+
+	*plugin = NULL;
+	plugins_iter_init(&plugin_i);
+	while (plugins_iter_next(&plugin_i, &c_plugin)) {
+		if (strlen(c_plugin->name) != strlen(name)) {
+			continue;
+		}
+		if (strcasecmp(c_plugin->name, name) != 0) {
+			continue;
+		}
+		*plugin = c_plugin;
+		return 1;
+	}
+	return 0;
+}
+
+int plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method, char *plugin_args) {
+	PyObject *arg;
+	PyObject *args_container;
+	int ret_val = 0;
+
+	args_container = PyTuple_New(1);
+	arg = PyString_FromString(plugin_args);
+	if ((args_container == NULL) || (arg == NULL)) {
+		return -1;
+	}
+	PyTuple_SetItem(args_container, 0, arg);
+	ret_val = plugins_run_plugin_method(plugin, plugin_method, args_container);
+
+	Py_XDECREF(arg);
+	Py_XDECREF(args_container);
+	return ret_val;
+}
+
 int plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObject *plugin_args) {
 	PyObject *pFunc;
 	PyObject *pReturnValue;
@@ -248,7 +317,7 @@ int plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObje
 	pReturnValue = PyObject_CallObject(pFunc, plugin_args);
 	if (pReturnValue == NULL) {
 		Py_XDECREF(pFunc);
-		logging_log("kraken.plugins", LOGGING_ERROR, "the call to function %s.%s() failed", plugin->name, plugin_method);
+		logging_log("kraken.plugins", LOGGING_ERROR, "the call to function %s.%s failed", plugin->name, plugin_method);
 		return -3;
 	}
 

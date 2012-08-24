@@ -295,7 +295,7 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hos
 	s = getaddrinfo(hostname, NULL, &hints, &result);
 	if (s != 0) {
 		LOGGING_QUICK_ERROR("kraken.host_manager", "could not resolve the hostname")
-		return 1;
+		return -1;
 	}
 
 	for (rp = result; rp != NULL; rp = rp->ai_next) {
@@ -308,6 +308,7 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hos
 			}
 			single_host_init(&new_host);
 			memcpy(&new_host.ipv4_addr, &sin->sin_addr, sizeof(struct in_addr));
+			single_host_add_hostname(&new_host, hostname);
 
 			host_manager_get_whois(c_host_manager, &new_host.ipv4_addr, &cur_who_resp);
 			if (cur_who_resp != NULL) {
