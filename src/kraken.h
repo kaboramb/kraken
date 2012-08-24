@@ -1,6 +1,7 @@
 #ifndef _KRAKEN_KRAKEN_H
 #define _KRAKEN_KRAKEN_H
 
+#include <Python.h>
 #include <arpa/inet.h>
 
 #ifndef _KRAKEN_WHOIS_LOOKUP_H					/* if it hasn't been included yet, include it */

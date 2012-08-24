@@ -1,3 +1,5 @@
+#include "kraken.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
@@ -7,7 +9,6 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
-#include "kraken.h"
 #include "whois_lookup.h"
 #include "host_manager.h"
 #include "network_addr.h"

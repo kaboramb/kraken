@@ -1,9 +1,11 @@
+#include "kraken.h"
+
 #include <gtk/gtk.h>
 #include <glib.h>
 #include <arpa/inet.h>
+
 #include "gui_menu_functions.h"
 #include "gui_model.h"
-#include "kraken.h"
 #include "host_manager.h"
 #include "whois_lookup.h"
 
@@ -14,46 +16,46 @@ int gui_show_main_window(kraken_opts *k_opts, host_manager *c_host_manager) {
 	GtkWidget *main_menu_bar;
 	GtkWidget *view;
 	main_gui_data m_data;
-	
+
 	g_thread_init(NULL);
 	gdk_threads_init();
 	gdk_threads_enter();
 	gtk_init(NULL, NULL);
-	
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);	
+
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	g_signal_connect(window, "delete-event", gtk_main_quit, NULL); /* dirty */
 	gtk_window_set_title(GTK_WINDOW(window), "Kraken");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 0);
 	gtk_widget_set_size_request(window, 550, 600);
-	
+
 	main_vbox = gtk_vbox_new(FALSE, 1);
 	gtk_container_set_border_width(GTK_CONTAINER(main_vbox), 1);
 	gtk_container_add(GTK_CONTAINER(window), main_vbox);
-	
+
 	scroll_window = gtk_scrolled_window_new(NULL, NULL);
 	gtk_container_set_border_width(GTK_CONTAINER(scroll_window), 5);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
-	
+
 	view = create_view_and_model(c_host_manager, &m_data);
 	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll_window), view);
-	
+
 	m_data.tree_view = view;
 	m_data.k_opts = k_opts;
 	m_data.c_host_manager = c_host_manager;
 	main_menu_bar = get_main_menubar(window, &m_data);
-	
+
 	hbox = gtk_hbox_new(FALSE, 0);
 	m_data.main_marquee = hbox;
 	gtk_container_set_border_width(GTK_CONTAINER(hbox), 2);
 	gtk_widget_show(hbox);
-	
+
 	gtk_box_pack_start(GTK_BOX(main_vbox), main_menu_bar, FALSE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(main_vbox), scroll_window, TRUE, TRUE, 0);
 	gtk_box_pack_end(GTK_BOX(main_vbox), hbox, FALSE, FALSE, 0);
-	
+
 	gtk_widget_show_all(window);
 	gui_model_update_tree_and_marquee(&m_data, NULL);
-	
+
 	gtk_main();
 	gdk_threads_leave();
 	return 0;

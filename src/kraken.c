@@ -19,7 +19,6 @@
 //
 //
 
-#include "plugins.h"
 #include "kraken.h"
 
 #include <stdio.h>
@@ -33,6 +32,7 @@
 #include <log4c.h>
 #endif
 
+#include "plugins.h"
 #include "host_manager.h"
 #include "export.h"
 #include "gui_main.h"

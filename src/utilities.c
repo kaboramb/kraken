@@ -2,11 +2,12 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
+
 #include "utilities.h"
 
 int util_dir_exists(const char *dir_path) {
 	struct stat st;
-	
+
 	if (stat(dir_path, &st) == 0) {
 		return 1;
 	}
@@ -22,7 +23,7 @@ int util_dir_create_if_not_exists(const char *dir_path) {
 
 void util_str_replace(char *string, char *old, char *new) {
 	char *pos = string;
-	
+
 	while (*pos != '\0') {
 		if (*pos == *old) {
 			*pos = *new;

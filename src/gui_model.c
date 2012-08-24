@@ -1,11 +1,13 @@
+#include "kraken.h"
+
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <arpa/inet.h>
 #include <string.h>
+
 #include "gui_model.h"
 #include "gui_menu_functions.h"
 #include "gui_popups.h"
-#include "kraken.h"
 #include "host_manager.h"
 #include "http_scan.h"
 #include "whois_lookup.h"

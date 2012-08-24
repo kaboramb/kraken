@@ -1,3 +1,5 @@
+#include "kraken.h"
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +9,6 @@
 #include <libxml/parser.h>
 #include <libxml/xmlwriter.h>
 
-#include "kraken.h"
 #include "logging.h"
 #include "utilities.h"
 #include "xml_utilities.h"
@@ -106,7 +107,7 @@ int kraken_opts_set(kraken_opts *k_opts, int type, void *value) {
 
 int kraken_conf_get_data_directory_path(char *path, size_t pathsz) {
 	char *envpath;
-	
+
 	memset(path, '\0', pathsz);
 	envpath = getenv(KRAKEN_CONF_DIR_ENV_VAR);
 	if (envpath == NULL) {
@@ -123,7 +124,7 @@ int kraken_conf_get_data_directory_path(char *path, size_t pathsz) {
 
 int kraken_conf_get_config_file_path(char *path, size_t pathsz) {
 	int response;
-	
+
 	response = kraken_conf_get_data_directory_path(path, pathsz);
 	if (response) {
 		return response;
@@ -145,13 +146,13 @@ int kraken_conf_load_config(const char *conf_path, kraken_opts *k_opts) {
 	xmlAttr *attribute = NULL;
 	xmlChar *value = NULL;
 	int correct_type = 0;
-	
+
 	if (access(conf_path, R_OK) == -1) {
 		logging_log("kraken.conf", LOGGING_ERROR, "could not read configuration file: %s", conf_path);
 		return 1;
 	}
 	doc = xmlParseFile(conf_path);
-	
+
 	if (doc == NULL) {
 		LOGGING_QUICK_ERROR("kraken.conf", "could not read/parse the XML document")
 		return 2;
@@ -192,7 +193,7 @@ int kraken_conf_load_config(const char *conf_path, kraken_opts *k_opts) {
 			http_settings = cur_node;
 		}
 	}
-	
+
 	if (dns_settings != NULL) {
 		for (cur_node = dns_settings->children; cur_node; cur_node = cur_node->next) {
 			if (cur_node->type != XML_ELEMENT_NODE) {
@@ -216,7 +217,7 @@ int kraken_conf_load_config(const char *conf_path, kraken_opts *k_opts) {
 			xmlFree(value);
 		}
 	}
-	
+
 	if (http_settings != NULL) {
 		for (cur_node = http_settings->children; cur_node; cur_node = cur_node->next) {
 			if (cur_node->type != XML_ELEMENT_NODE) {
@@ -245,7 +246,7 @@ int kraken_conf_save_config(const char *conf_path, kraken_opts *k_opts) {
 	xmlChar *xtmp;
 	char *ctmp;
 	int response;
-	
+
 	writer = xmlNewTextWriterFilename(conf_path, 0);
 	if (writer == NULL) {
 		LOGGING_QUICK_ERROR("kraken.conf", "could not create the XML writer")
@@ -255,7 +256,7 @@ int kraken_conf_save_config(const char *conf_path, kraken_opts *k_opts) {
 	xmlTextWriterStartElement(writer, BAD_CAST "kraken");
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "version", BAD_CAST KRAKEN_XML_VERSION);
 	xmlTextWriterWriteAttribute(writer, BAD_CAST "type", "config");
-	
+
 	xmlTextWriterStartElement(writer, BAD_CAST "dns");
 	response = kraken_opts_get(k_opts, KRAKEN_OPT_DNS_WORDLIST, &ctmp);
 	if (response == 0) {
@@ -266,7 +267,7 @@ int kraken_conf_save_config(const char *conf_path, kraken_opts *k_opts) {
 		}
 	}
 	xmlTextWriterEndElement(writer);
-	
+
 	xmlTextWriterStartElement(writer, BAD_CAST "http");
 	response = kraken_opts_get(k_opts, KRAKEN_OPT_BING_API_KEY, &ctmp);
 	if (response == 0) {
@@ -277,11 +278,11 @@ int kraken_conf_save_config(const char *conf_path, kraken_opts *k_opts) {
 		}
 	}
 	xmlTextWriterEndElement(writer);
-	
+
 	xmlTextWriterEndElement(writer);
 	xmlTextWriterEndDocument(writer);
 	xmlFreeTextWriter(writer);
-	
+
 	return 0;
 }
-	
+

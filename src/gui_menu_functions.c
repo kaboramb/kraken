@@ -1,12 +1,14 @@
+#include "kraken.h"
+
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <arpa/inet.h>
 #include <string.h>
+
 #include "export.h"
 #include "gui_menu_functions.h"
 #include "gui_model.h"
 #include "gui_popups.h"
-#include "kraken.h"
 #include "host_manager.h"
 
 static void suppress_log_function(G_GNUC_UNUSED const gchar *log_domain, G_GNUC_UNUSED GLogLevelFlags log_level, G_GNUC_UNUSED const gchar *message, G_GNUC_UNUSED gpointer user_data) {
@@ -27,11 +29,11 @@ void gui_menu_file_export_csv(main_gui_data *userdata, guint action, GtkWidget *
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
 	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), ".");
 	gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "kraken_export.csv");
-	
+
 	log_handler = g_log_set_handler(domain, G_LOG_LEVEL_WARNING, suppress_log_function, NULL);
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	g_log_remove_handler(domain, log_handler);
-	
+
 	if (response == GTK_RESPONSE_ACCEPT) {
 		char *filename;
 		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
@@ -99,11 +101,11 @@ void gui_menu_file_save_as(main_gui_data *userdata, guint action, GtkWidget *wid
 	} else {
 		gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dialog), userdata->c_host_manager->save_file_path);
 	}
-	
+
 	log_handler = g_log_set_handler(domain, G_LOG_LEVEL_WARNING, suppress_log_function, NULL);
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	g_log_remove_handler(domain, log_handler);
-	
+
 	if (response == GTK_RESPONSE_ACCEPT) {
 		char *filename;
 		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
@@ -134,7 +136,7 @@ void gui_menu_file_save(main_gui_data *userdata, guint action, GtkWidget *widget
 		gui_menu_file_save_as(userdata, action, widget);
 		return;
 	}
-	
+
 	response = export_host_manager_to_xml(userdata->c_host_manager, userdata->c_host_manager->save_file_path);
 	if (response != 0) {
 		GUI_POPUP_ERROR_EXPORT_FAILED(NULL);

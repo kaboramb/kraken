@@ -1,3 +1,5 @@
+#include "kraken.h"
+
 #include <ares.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +13,6 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include "kraken.h"
 #include "host_manager.h"
 #include "dns_enum.h"
 #include "network_addr.h"
@@ -54,7 +55,7 @@ static void callback_host(void *c_host_manager, int status, int timeouts, struct
 		//logging_log("kraken.dns_enum", LOGGING_TRACE, "lookup of IP address failed with error: %s", ares_strerror(status));
 		return;
 	}
-	
+
 	int a = 0;
 	int i = 0;
 	single_host_info c_host;
@@ -127,7 +128,7 @@ char *dns_get_domain(char *originalname) {
 	/* this returns a pointer to the second-to-top-level domain */
 	char *pCur = originalname;
 	int dotfound = 0;
-	
+
 	pCur += strlen(originalname);
 	while (pCur != originalname) {
 		if (*pCur == '.') {
@@ -158,7 +159,7 @@ int dns_host_in_domain(char *hostname, char *domain) {
 }
 
 int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameservers) {
-	/* 
+	/*
 	 * returns a negative on an error
 	 * otherwise returns the number of nameservers identified up to
 	 * the DNS_MAX_NS_HOSTS variable
@@ -166,7 +167,7 @@ int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameserv
 	ares_channel channel;
 	int status;
 	int i;
-	
+
 	logging_log("kraken.dns_enum", LOGGING_INFO, "querying nameservers for domain: %s", target_domain);
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS){
@@ -179,23 +180,23 @@ int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameserv
 		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not initialize ares options with error: %s", ares_strerror(status));
 		return -1;
 	}
-	
+
 	ares_query(channel, target_domain, 1, DNS_QRY_NS, callback_nameserver_servers, (domain_ns_list *)nameservers);
 	wait_ares(channel, 0);
-	
+
 	if (nameservers->servers[0][0] == '\0') {
 		logging_log("kraken.dns_enum", LOGGING_WARNING, "failed to identify any name servers for domain: %s", target_domain);
 		ares_destroy(channel);
 		ares_library_cleanup();
 		return 0;
 	}
-	
+
 	for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); ++i) {
 		logging_log("kraken.dns_enum", LOGGING_INFO, "looking up IP for name server %s", nameservers->servers[i]);
 		ares_gethostbyname(channel, nameservers->servers[i], AF_INET, callback_nameserver_hosts, (domain_ns_list *)nameservers);
 	}
 	wait_ares(channel, 0);
-	
+
 	ares_destroy(channel);
 	ares_library_cleanup();
 	LOGGING_QUICK_INFO("kraken.dns_enum", "finished determining name servers")
@@ -211,7 +212,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	char line[MAX_LINE];
 	char hostname[MAX_LINE];
 	int i;
-	
+
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS){
 		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not initialize ares with error: %s", ares_strerror(status));
@@ -223,7 +224,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not initialize ares options with error: %s", ares_strerror(status));
 		return 1;
 	}
-	
+
 #ifndef WITHOUT_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
@@ -232,7 +233,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		struct in_addr blank_address;
 		memset(&servers_addr_node, '\0', sizeof(servers_addr_node));
 		memset(&blank_address, '\0', sizeof(blank_address));
-		
+
 		for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
 			if (memcmp(&nameservers->ipv4_addrs[i], &blank_address, sizeof(blank_address))) {
 				servers_addr_node[i].family = AF_INET;
@@ -244,7 +245,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
 #endif
-	
+
 	logging_log("kraken.dns_enum", LOGGING_INFO, "bruteforcing names for domain: %s", target_domain);
 
 	if ((hostlist = fopen(d_opts->wordlist, "r")) == NULL) {
@@ -253,7 +254,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		ares_library_cleanup();
 		return 2;
 	}
-	
+
 	while (fgets(line, MAX_LINE, hostlist)) {
 		wordlist_lines += 1;
 	}
@@ -273,12 +274,12 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 			break;
 		}
 	}
-	
+
 	wait_ares(channel, 0);
 	if (d_opts->progress_update != NULL) {
 		d_opts->progress_update(wordlist_lines, wordlist_lines, d_opts->progress_update_data);
 	}
-	
+
 	ares_destroy(channel);
 	ares_library_cleanup();
 	logging_log("kraken.dns_enum", LOGGING_INFO, "finished bruteforcing, %u queries were used", query_counter);
@@ -295,7 +296,7 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 	struct in_addr c_ip;
 	char ipstr[INET6_ADDRSTRLEN];
 	char netstr[INET6_ADDRSTRLEN];
-	
+
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS){
 		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not initialize ares with error: %s", ares_strerror(status));
@@ -307,7 +308,7 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not initialize ares options with error: %s", ares_strerror(status));
 		return 1;
 	}
-	
+
 #ifndef WITHOUT_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
@@ -316,7 +317,7 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 		struct in_addr blank_address;
 		memset(&servers_addr_node, '\0', sizeof(servers_addr_node));
 		memset(&blank_address, '\0', sizeof(blank_address));
-		
+
 		for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
 			if (memcmp(&nameservers->ipv4_addrs[i], &blank_address, sizeof(blank_address))) {
 				servers_addr_node[i].family = AF_INET;
@@ -328,17 +329,17 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
 #endif
-	
+
 	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
 	while (netaddr_ip_in_nwk(target_net, &c_ip) == 1) {
 		num_of_hosts += 1;
 		c_ip.s_addr = htonl(ntohl(c_ip.s_addr) + 1);
 	}
-	
+
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
 	inet_ntop(AF_INET, &target_net->subnetmask, netstr, sizeof(netstr));
 	logging_log("kraken.dns_enum", LOGGING_INFO, "bruteforcing a total of %u names in network: %s %s", num_of_hosts, ipstr, netstr);
-	
+
 	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
 	while (netaddr_ip_in_nwk(target_net, &c_ip) == 1) {
 		if (DNS_SHOULD_STOP(d_opts)) {
@@ -357,12 +358,12 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 			d_opts->progress_update(query_counter, num_of_hosts, d_opts->progress_update_data);
 		}
 	}
-	
+
 	wait_ares(channel, 0);
 	if (d_opts->progress_update != NULL) {
 		d_opts->progress_update(num_of_hosts, num_of_hosts, d_opts->progress_update_data);
 	}
-	
+
 	ares_destroy(channel);
 	ares_library_cleanup();
 	logging_log("kraken.dns_enum", LOGGING_INFO, "finished bruteforcing, %u queries were used", query_counter);
@@ -372,11 +373,11 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 int dns_enum_domain(host_manager *c_host_manager, char *target_domain, const char *hostfile) {
 	int response;
 	dns_enum_opts d_opts;
-	
+
 	dns_enum_opts_init(&d_opts);
 	dns_enum_opts_set_wordlist(&d_opts, hostfile);
 	response = dns_enum_domain_ex(c_host_manager, target_domain, &d_opts);
-	dns_enum_opts_destroy(&d_opts);	
+	dns_enum_opts_destroy(&d_opts);
 	return response;
 }
 
@@ -385,7 +386,7 @@ int dns_enum_domain_ex(host_manager *c_host_manager, char *target_domain, dns_en
 	single_host_info c_host;
 	char ipstr[INET_ADDRSTRLEN];
 	int i;
-	
+
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	if (access(d_opts->wordlist, R_OK) == -1) {
 		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not read file: %s", d_opts->wordlist);
@@ -393,7 +394,7 @@ int dns_enum_domain_ex(host_manager *c_host_manager, char *target_domain, dns_en
 	}
 	memset(&nameservers, '\0', sizeof(nameservers));
 	logging_log("kraken.dns_enum", LOGGING_INFO, "enumerating domain: %s", target_domain);
-	
+
 	if (dns_get_nameservers_for_domain(target_domain, &nameservers) == 0) {
 		return -1;
 	}
@@ -421,19 +422,19 @@ int dns_enum_network_ex(host_manager *c_host_manager, char *target_domain, netwo
 	char ipstr[INET6_ADDRSTRLEN];
 	char netstr[INET6_ADDRSTRLEN];
 	int i;
-	
+
 	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	memset(&nameservers, '\0', sizeof(nameservers));
-	
+
 	dns_enum_opts_init(&new_opts);
 	if (d_opts == NULL) {
 		d_opts = &new_opts;
 	}
-	
+
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
 	inet_ntop(AF_INET, &target_net->subnetmask, netstr, sizeof(netstr));
 	logging_log("kraken.dns_enum", LOGGING_INFO, "enumerating network: %s %s", ipstr, netstr);
-	
+
 	if (dns_get_nameservers_for_domain(target_domain, &nameservers) == 0) {
 		return -1;
 	}

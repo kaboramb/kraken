@@ -1,4 +1,4 @@
-#include "plugins.h"
+#include "kraken.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include <dirent.h>
 #include <string.h>
 
-#include "kraken.h"
+#include "plugins.h"
 #include "logging.h"
 #include "utilities.h"
 

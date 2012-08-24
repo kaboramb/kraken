@@ -1,3 +1,5 @@
+#include "kraken.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +9,6 @@
 #include <libxml/parser.h>
 #include <uriparser/Uri.h>
 
-#include "kraken.h"
 #include "host_manager.h"
 #include "http_scan.h"
 

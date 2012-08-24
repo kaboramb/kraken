@@ -1,3 +1,5 @@
+#include "kraken.h"
+
 #include <stdlib.h>
 #include <assert.h>
 #include <arpa/inet.h>
@@ -5,7 +7,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "kraken.h"
 #include "host_manager.h"
 #include "export.h"
 #include "whois_lookup.h"

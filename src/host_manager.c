@@ -1,3 +1,5 @@
+#include "kraken.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +7,6 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-#include "kraken.h"
 #include "host_manager.h"
 #include "whois_lookup.h"
 #include "network_addr.h"
@@ -42,7 +43,7 @@ int single_host_iter_hostname_next(single_host_info *c_host, hostname_iter *iter
 		*hostname = NULL;
 		return 0;
 	}
-	*hostname = &c_host->names[iter->position];
+	*hostname = (char *)&c_host->names[iter->position];
 	return 1;
 }
 
