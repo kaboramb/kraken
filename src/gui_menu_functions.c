@@ -172,9 +172,28 @@ void gui_menu_edit_preferences(main_gui_data *m_data, guint action, GtkWidget *w
 	gui_popup_manage_kraken_settings(m_data);
 }
 
+void gui_menu_view_console(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	if (GTK_CHECK_MENU_ITEM(widget)->active) {
+		gtk_widget_show_all(m_data->plugin_box);
+	} else {
+		gtk_widget_hide_all(m_data->plugin_box);
+	}
+	return;
+}
+
+void gui_menu_view_expand_all(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gtk_tree_view_expand_all(GTK_TREE_VIEW(m_data->tree_view));
+	return;
+}
+
+void gui_menu_view_collapse_all(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gtk_tree_view_collapse_all(GTK_TREE_VIEW(m_data->tree_view));
+	return;
+}
+
 static GtkItemFactoryEntry main_menu_entries[] = {
-	{ "/File",									NULL,		NULL,							0, 	"<Branch>" },
-	{ "/File/Export",							NULL,		NULL,							0,	"<Branch>" },
+	{ "/File",									NULL,		NULL,							0, 	"<Branch>"	},
+	{ "/File/Export",							NULL,		NULL,							0,	"<Branch>"	},
 	{ "/File/Export/CSV",						NULL,		gui_menu_file_export_csv,		0,	NULL		},
 	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
 	{ "/File/Open",								NULL,		gui_menu_file_open,				0,	NULL	},
@@ -191,19 +210,29 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/Edit/Add Hosts/HTTP Search Bing",		NULL,		gui_menu_edit_http_search_bing,		0,	NULL	},
 	{ "/Edit/",									NULL,		NULL,							0,	"<Separator>"	},
 	{ "/Edit/Preferences",						NULL,		gui_menu_edit_preferences,		0,	NULL	},
+	{ "/View",									NULL,		NULL,							0,	"<Branch>"	},
+	{ "/View/Console",							NULL,		gui_menu_view_console,			0,	"<CheckItem>"	},
+	{ "/View/",									NULL,		NULL,							0,	"<Separator>"	},
+	{ "/View/Expand All",						NULL,		gui_menu_view_expand_all,		0,	NULL	},
+	{ "/View/Collapse All",						NULL,		gui_menu_view_collapse_all,		0,	NULL	},
 };
 
 static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);
 
-GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata) {
+GtkWidget *gui_menu_get_main_menubar(GtkWidget  *window, gpointer userdata) {
 	GtkItemFactory *item_factory;
 	GtkAccelGroup *accel_group;
+	GtkWidget *tmp_widget;
 
 	/* Make an accelerator group (shortcut keys) */
 	accel_group = gtk_accel_group_new();
 
 	item_factory = gtk_item_factory_new(GTK_TYPE_MENU_BAR, "<main>", accel_group);
 	gtk_item_factory_create_items(item_factory, nmain_menu_entries, main_menu_entries, userdata);
+
+	tmp_widget = gtk_item_factory_get_item(item_factory, "/View/Console");
+	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(tmp_widget), TRUE);
+
 	gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
 
 	return gtk_item_factory_get_widget(item_factory, "<main>");

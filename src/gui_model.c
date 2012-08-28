@@ -293,7 +293,7 @@ GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, host_manager *c_host_m
 	return GTK_TREE_MODEL(store);
 }
 
-GtkWidget *create_view_and_model(host_manager *c_host_manager, main_gui_data *m_data) {
+GtkWidget *gui_model_create_view_and_model(host_manager *c_host_manager, main_gui_data *m_data) {
 	GtkCellRenderer *renderer;
 	GtkTreeViewColumn *col;
 	GtkTreeModel *model;

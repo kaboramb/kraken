@@ -24,11 +24,7 @@
 #define GUI_POPUP_BUTTON_TYPE_BASIC_CANCEL 6
 
 typedef struct popup_data {
-	GtkWidget *tree_view;
-	GtkWidget *main_marquee;
-	kraken_opts *k_opts;
-	host_manager *c_host_manager;
-	
+	main_gui_data *m_data;
 	void (*thread_function)(void *data);
 	GtkWidget *popup_window;
 	GtkWidget *text_entry0;

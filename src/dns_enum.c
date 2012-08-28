@@ -192,7 +192,7 @@ int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameserv
 	}
 
 	for (i = 0; (nameservers->servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); ++i) {
-		logging_log("kraken.dns_enum", LOGGING_INFO, "looking up IP for name server %s", nameservers->servers[i]);
+		logging_log("kraken.dns_enum", LOGGING_NOTICE, "looking up IP for name server %s", nameservers->servers[i]);
 		ares_gethostbyname(channel, nameservers->servers[i], AF_INET, callback_nameserver_hosts, (domain_ns_list *)nameservers);
 	}
 	wait_ares(channel, 0);
@@ -400,7 +400,7 @@ int dns_enum_domain_ex(host_manager *c_host_manager, char *target_domain, dns_en
 	}
 	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
 		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
-		logging_log("kraken.dns_enum", LOGGING_INFO, "found name server %s %s", nameservers.servers[i], ipstr);
+		logging_log("kraken.dns_enum", LOGGING_NOTICE, "found name server %s %s", nameservers.servers[i], ipstr);
 		single_host_init(&c_host);
 		memcpy(&c_host.ipv4_addr, &nameservers.ipv4_addrs[i], sizeof(struct in_addr));
 		single_host_add_hostname(&c_host, nameservers.servers[i]);

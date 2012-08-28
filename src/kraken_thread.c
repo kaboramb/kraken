@@ -28,21 +28,36 @@ int kraken_thread_is_alive(kraken_thread *k_thread) {
 }
 
 int kraken_thread_mutex_init(kraken_thread_mutex *k_mutex) {
-	pthread_mutex_init(k_mutex, NULL);
+	if (pthread_mutex_init(k_mutex, NULL) != 0) {
+		return -1;
+	}
 	return 0;
 }
 
 int kraken_thread_mutex_destroy(kraken_thread_mutex *k_mutex) {
-	pthread_mutex_destroy(k_mutex);
+	if (pthread_mutex_destroy(k_mutex) != 0) {
+		return -1;
+	}
 	return 0;
 }
 
 int kraken_thread_mutex_lock(kraken_thread_mutex *k_mutex) {
-	pthread_mutex_lock(k_mutex);
+	if (pthread_mutex_lock(k_mutex) != 0) {
+		return -1;
+	}
+	return 0;
+}
+
+int kraken_thread_mutex_trylock(kraken_thread_mutex *k_mutex) {
+	if (pthread_mutex_trylock(k_mutex) != 0) {
+		return -1;
+	}
 	return 0;
 }
 
 int kraken_thread_mutex_unlock(kraken_thread_mutex *k_mutex) {
-	pthread_mutex_unlock(k_mutex);
+	if (pthread_mutex_unlock(k_mutex) != 0) {
+		return -1;
+	}
 	return 0;
 }

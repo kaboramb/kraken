@@ -346,6 +346,7 @@ void host_manager_set_host_status(host_manager *c_host_manager, struct in_addr *
 }
 
 int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *target_ip, single_host_info **desired_host) {
+	/* Returns 1 on found, 0 on failure */
 	host_iter host_i;
 	single_host_info *c_host;
 	*desired_host = NULL;
@@ -355,14 +356,16 @@ int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
 		if (memcmp(target_ip, &c_host->ipv4_addr, sizeof(struct in_addr)) == 0) {
 			*desired_host = c_host;
-			break;
+			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
+			return 1;
 		}
 	}
 	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 	return 0;
 }
 
-void host_manager_get_host_by_name(host_manager *c_host_manager, const char *target_hostname, single_host_info **desired_host) {
+int host_manager_get_host_by_name(host_manager *c_host_manager, const char *target_hostname, single_host_info **desired_host) {
+	/* Returns 1 on found, 0 on failure */
 	host_iter host_i;
 	single_host_info *c_host;
 	hostname_iter hostname_i;
@@ -380,12 +383,22 @@ void host_manager_get_host_by_name(host_manager *c_host_manager, const char *tar
 			if (strcasecmp(hostname, target_hostname) == 0) {
 				*desired_host = c_host;
 				kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
-				return;
+				return 1;
 			}
 		}
 	}
 	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
-	return;
+	return 0;
+}
+
+int host_manager_get_host_by_id(host_manager *c_host_manager, unsigned int id, single_host_info **desired_host) {
+	/* Returns 1 on found, 0 on failure */
+	*desired_host = NULL;
+	if (id >= c_host_manager->known_hosts) {
+		return 0;
+	}
+	*desired_host = &c_host_manager->hosts[id];
+	return 1;
 }
 
 int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record) {

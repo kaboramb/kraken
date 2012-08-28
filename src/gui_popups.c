@@ -22,12 +22,7 @@ enum {
 
 void gui_popup_data_init(popup_data *p_data, main_gui_data *m_data) {
 	memset(p_data, '\0', sizeof(popup_data));
-
-	p_data->tree_view = m_data->tree_view;
-	p_data->main_marquee = m_data->main_marquee;
-	p_data->k_opts = m_data->k_opts;
-	p_data->c_host_manager = m_data->c_host_manager;
-
+	p_data->m_data = m_data;
 	p_data->thread_function = NULL;
 	p_data->action_status = KRAKEN_ACTION_PAUSE;
 	p_data->cancel_dialog = NULL;
@@ -593,7 +588,7 @@ void callback_add_selected_hosts(GtkWidget *widget, popup_data *p_data) {
 			do {
 				gtk_tree_model_get(treemodel, &citer, COL_SELECT, &selected, COL_DOMAIN, &hostname, -1);
 				if (selected) {
-					host_manager_quick_add_by_name(p_data->c_host_manager, hostname);
+					host_manager_quick_add_by_name(p_data->m_data->c_host_manager, hostname);
 				}
 				g_free(hostname);
 			} while (gtk_tree_model_iter_next(treemodel, &citer));
@@ -713,17 +708,17 @@ void callback_manage_settings(GtkWidget *widget, popup_data *p_data) {
 
 	option_text = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
 	if ((option_text != NULL) && strlen(option_text)) {
-		kraken_opts_set(p_data->k_opts, KRAKEN_OPT_BING_API_KEY, (char *)option_text);
+		kraken_opts_set(p_data->m_data->k_opts, KRAKEN_OPT_BING_API_KEY, (char *)option_text);
 	}
 
 	option_text = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry1));
 	if ((option_text != NULL) && strlen(option_text)) {
-		kraken_opts_set(p_data->k_opts, KRAKEN_OPT_DNS_WORDLIST, (char *)option_text);
+		kraken_opts_set(p_data->m_data->k_opts, KRAKEN_OPT_DNS_WORDLIST, (char *)option_text);
 	}
 
 	response = kraken_conf_get_config_file_path(conf_path, MAX_LINE);
 	if (response == 0) {
-		response = kraken_conf_save_config(conf_path, p_data->k_opts);
+		response = kraken_conf_save_config(conf_path, p_data->m_data->k_opts);
 	}
 	if (response != 0) {
 		gui_popup_error_dialog(p_data->popup_window, "Could Not Save Options", "Error: Could Not Save Options");
@@ -838,12 +833,10 @@ gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
 	gtk_container_add(GTK_CONTAINER(button), hbox);
 
 	/* end configuration of the "basic" tab */
+	gui_popup_data_init(p_data, m_data);
 	p_data->popup_window = window;
 	p_data->text_entry0 = bing_entry;
 	p_data->text_entry1 = dns_wordlist_entry;
-	p_data->main_marquee = m_data->main_marquee;
-	p_data->k_opts = m_data->k_opts;
-	p_data->c_host_manager = m_data->c_host_manager;
 
 	main_hbox = gtk_hbox_new(FALSE, 3);
 	gtk_container_set_border_width(GTK_CONTAINER(main_hbox), 2);

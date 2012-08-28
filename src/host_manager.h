@@ -26,7 +26,8 @@ void host_manager_delete_host_by_ip(host_manager *c_host_manager, struct in_addr
 int  host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hostname);
 void host_manager_set_host_status(host_manager *c_host_manager, struct in_addr *target_ip, const char status);
 int  host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *target_ip, single_host_info **desired_host);
-void host_manager_get_host_by_name(host_manager *c_host_manager, const char *hostname, single_host_info **desired_host);
+int  host_manager_get_host_by_name(host_manager *c_host_manager, const char *hostname, single_host_info **desired_host);
+int  host_manager_get_host_by_id(host_manager *c_host_manager, unsigned int id, single_host_info **desired_host);
 int  host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record);
 int  host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_ip, whois_record **desired_record);
 void host_manager_sync_whois_data(host_manager *c_host_manager);

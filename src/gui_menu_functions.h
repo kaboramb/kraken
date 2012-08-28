@@ -4,6 +4,6 @@
 #include "kraken.h"
 #include "gui_model.h"
 
-GtkWidget *get_main_menubar(GtkWidget  *window, gpointer userdata);
+GtkWidget *gui_menu_get_main_menubar(GtkWidget  *window, gpointer userdata);
 
 #endif

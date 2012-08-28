@@ -74,17 +74,17 @@ void gui_popup_thread_dns_enum_domain(popup_data *p_data) {
 	gtk_widget_set_sensitive(p_data->start_button, FALSE);
 	delete_handler = g_signal_connect(p_data->popup_window, "delete-event", G_CALLBACK(callback_thread_window_destroy), p_data);
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Enumerating Domain");
-	gui_model_update_marquee((main_gui_data *)p_data, "Enumerating Domain");
+	gui_model_update_marquee(p_data->m_data, "Enumerating Domain");
 	gdk_threads_leave();
 
 	dns_enum_opts_init(&d_opts);
-	dns_enum_opts_set_wordlist(&d_opts, p_data->k_opts->dns_wordlist);
+	dns_enum_opts_set_wordlist(&d_opts, p_data->m_data->k_opts->dns_wordlist);
 	d_opts.progress_update = (void *)&callback_thread_update_progress;
 	d_opts.progress_update_data = p_data;
 	d_opts.action_status = &p_data->action_status;
 	p_data->action_status = KRAKEN_ACTION_RUN;
 
-	response = dns_enum_domain_ex(p_data->c_host_manager, target_domain, &d_opts);
+	response = dns_enum_domain_ex(p_data->m_data->c_host_manager, target_domain, &d_opts);
 
 	gdk_threads_enter();
 	if (p_data->action_status == KRAKEN_ACTION_STOP) {
@@ -95,14 +95,14 @@ void gui_popup_thread_dns_enum_domain(popup_data *p_data) {
 	}
 	if (response == -1) {
 		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
-		gui_model_update_marquee((main_gui_data *)p_data, NULL);
+		gui_model_update_marquee(p_data->m_data, NULL);
 	} else {
 		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Requesting WHOIS Records");
-		gui_model_update_marquee((main_gui_data *)p_data, "Requesting WHOIS Records");
+		gui_model_update_marquee(p_data->m_data, "Requesting WHOIS Records");
 		gdk_threads_leave();
-		whois_fill_host_manager(p_data->c_host_manager);
+		whois_fill_host_manager(p_data->m_data->c_host_manager);
 		gdk_threads_enter();
-		gui_model_update_tree_and_marquee((main_gui_data *)p_data, NULL);
+		gui_model_update_tree_and_marquee(p_data->m_data, NULL);
 	}
 	g_signal_handler_disconnect(p_data->popup_window, delete_handler);
 	gtk_widget_destroy(p_data->popup_window);
@@ -141,7 +141,7 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 	gtk_widget_set_sensitive(p_data->start_button, FALSE);
 	delete_handler = g_signal_connect(p_data->popup_window, "delete-event", G_CALLBACK(callback_thread_window_destroy), p_data);
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Enumerating Network");
-	gui_model_update_marquee((main_gui_data *)p_data, "Enumerating Network");
+	gui_model_update_marquee(p_data->m_data, "Enumerating Network");
 	gdk_threads_leave();
 
 	dns_enum_opts_init(&d_opts);
@@ -150,14 +150,14 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 	d_opts.action_status = &p_data->action_status;
 	p_data->action_status = KRAKEN_ACTION_RUN;
 
-	response = dns_enum_network_ex(p_data->c_host_manager, target_domain, &target_network, &d_opts);
+	response = dns_enum_network_ex(p_data->m_data->c_host_manager, target_domain, &target_network, &d_opts);
 
 	gdk_threads_enter();
 	if (response == 0) {
 		gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Requesting WHOIS Records");
-		gui_model_update_marquee((main_gui_data *)p_data, "Requesting WHOIS Records");
+		gui_model_update_marquee(p_data->m_data, "Requesting WHOIS Records");
 		gdk_threads_leave();
-		whois_fill_host_manager(p_data->c_host_manager);
+		whois_fill_host_manager(p_data->m_data->c_host_manager);
 		gdk_threads_enter();
 		gui_model_update_tree_and_marquee((main_gui_data*)p_data, NULL);
 	}
@@ -201,7 +201,7 @@ void gui_popup_thread_http_scrape_url_for_links(popup_data *p_data) {
 		LOGGING_QUICK_ERROR("kraken.gui.popup", "there was an error requesting the page")
 	}
 	gdk_threads_enter();
-	gui_popup_select_hosts_from_http_links((main_gui_data *)p_data, link_anchor);
+	gui_popup_select_hosts_from_http_links(p_data->m_data, link_anchor);
 	g_signal_handler_disconnect(p_data->popup_window, delete_handler);
 	gtk_widget_destroy(p_data->popup_window);
 	gdk_threads_leave();
@@ -220,7 +220,7 @@ void gui_popup_thread_http_scrape_hosts_for_links(popup_data *p_data) {
 	gtk_widget_set_sensitive(p_data->start_button, FALSE);
 	delete_handler = g_signal_connect(p_data->popup_window, "delete-event", G_CALLBACK(callback_thread_window_destroy), p_data);
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Scanning For Links");
-	gui_model_update_marquee((main_gui_data *)p_data, "Scanning For Links");
+	gui_model_update_marquee(p_data->m_data, "Scanning For Links");
 	gdk_threads_leave();
 
 	http_enum_opts_init(&h_opts);
@@ -229,10 +229,10 @@ void gui_popup_thread_http_scrape_hosts_for_links(popup_data *p_data) {
 	h_opts.action_status = &p_data->action_status;
 	p_data->action_status = KRAKEN_ACTION_RUN;
 
-	http_scrape_hosts_for_links_ex(p_data->c_host_manager, &link_anchor, &h_opts);
+	http_scrape_hosts_for_links_ex(p_data->m_data->c_host_manager, &link_anchor, &h_opts);
 
 	gdk_threads_enter();
-	gui_popup_select_hosts_from_http_links((main_gui_data *)p_data, link_anchor);
+	gui_popup_select_hosts_from_http_links(p_data->m_data, link_anchor);
 	g_signal_handler_disconnect(p_data->popup_window, delete_handler);
 	gtk_widget_destroy(p_data->popup_window);
 	gdk_threads_leave();
@@ -265,22 +265,22 @@ void gui_popup_thread_http_search_engine_bing(popup_data *p_data) {
 	gtk_widget_set_sensitive(p_data->start_button, FALSE);
 	delete_handler = g_signal_connect(p_data->popup_window, "delete-event", G_CALLBACK(callback_thread_window_destroy), p_data);
 	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Searching Bing");
-	gui_model_update_marquee((main_gui_data *)p_data, "Searching Bing");
+	gui_model_update_marquee(p_data->m_data, "Searching Bing");
 	gdk_threads_leave();
 
 	http_enum_opts_init(&h_opts);
 	h_opts.progress_update = (void *)&callback_thread_update_progress;
 	h_opts.progress_update_data = p_data;
-	if (p_data->k_opts->bing_api_key == NULL) {
+	if (p_data->m_data->k_opts->bing_api_key == NULL) {
 		gdk_threads_enter();
 		gui_popup_error_dialog(p_data->popup_window, "Bing API Key Not Set", "Error: Invalid API Key");
-		gui_model_update_marquee((main_gui_data *)p_data, NULL);
+		gui_model_update_marquee(p_data->m_data, NULL);
 		gdk_threads_leave();
 	} else {
-		http_enum_opts_set_bing_api_key(&h_opts, p_data->k_opts->bing_api_key);
+		http_enum_opts_set_bing_api_key(&h_opts, p_data->m_data->k_opts->bing_api_key);
 		h_opts.action_status = &p_data->action_status;
 		p_data->action_status = KRAKEN_ACTION_RUN;
-		response = http_search_engine_bing_ex(p_data->c_host_manager, target_domain, &h_opts);
+		response = http_search_engine_bing_ex(p_data->m_data->c_host_manager, target_domain, &h_opts);
 		gdk_threads_enter();
 		if (response < 0) {
 			if (response == -3) {
@@ -289,7 +289,7 @@ void gui_popup_thread_http_search_engine_bing(popup_data *p_data) {
 				GUI_POPUP_ERROR_GENERIC_ERROR(p_data->popup_window);
 			}
 		}
-		gui_model_update_tree_and_marquee((main_gui_data *)p_data, NULL);
+		gui_model_update_tree_and_marquee(p_data->m_data, NULL);
 		gdk_threads_leave();
 	}
 	gdk_threads_enter();
