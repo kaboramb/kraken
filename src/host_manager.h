@@ -14,6 +14,7 @@ void single_host_iter_hostname_init(single_host_info *c_host, hostname_iter *ite
 int  single_host_iter_hostname_next(single_host_info *c_host, hostname_iter *iter, char **hostname);
 int  single_host_add_hostname(single_host_info *c_host, const char *name);
 int  single_host_merge(single_host_info *dst, single_host_info *src);
+void single_host_set_status(single_host_info *c_host, char status);
 
 int  host_manager_init(host_manager *c_host_manager);
 int  host_manager_destroy(host_manager *c_host_manager);
@@ -29,7 +30,8 @@ int  host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr 
 int  host_manager_get_host_by_name(host_manager *c_host_manager, const char *hostname, single_host_info **desired_host);
 int  host_manager_get_host_by_id(host_manager *c_host_manager, unsigned int id, single_host_info **desired_host);
 int  host_manager_add_whois(host_manager *c_host_manager, whois_record *new_record);
-int  host_manager_get_whois(host_manager *c_host_manager, struct in_addr *target_ip, whois_record **desired_record);
+int  host_manager_get_whois(host_manager *c_host_manager, network_addr *network, whois_record **desired_record);
+int  host_manager_get_whois_by_addr(host_manager *c_host_manager, struct in_addr *target_ip, whois_record **desired_record);
 void host_manager_sync_whois_data(host_manager *c_host_manager);
 
 #endif

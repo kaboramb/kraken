@@ -1,6 +1,5 @@
 #include "kraken.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -15,7 +14,128 @@
 #define PYMOD_KRAKEN_DOC ""
 #define PYMOD_KRAKEN_VERSION "0.1"
 
+#define PLUGINS_PYTHON_CONVERSION_ERROR() PyErr_SetString(PyExc_ValueError, "could not convert a value to a Python type")
+
 static plugin_manager *c_plugin_manager = NULL;
+
+PyObject *plugins_util_host_get_hostnames_list(single_host_info *c_host) {
+	char *hostname;
+	hostname_iter hostname_i;
+	PyObject *py_hostname_list;
+	PyObject *py_hostname;
+
+	py_hostname_list = PyList_New(0);
+	if (py_hostname_list == NULL) {
+		PyErr_SetString(PyExc_MemoryError, "could not create a new list");
+		return NULL;
+	}
+	single_host_iter_hostname_init(c_host, &hostname_i);
+	while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
+		py_hostname = PyString_FromString(hostname);
+		if (py_hostname == NULL) {
+			Py_DECREF(py_hostname_list);
+			PyErr_SetString(PyExc_ValueError, "invalid hostname");
+			return NULL;
+		}
+		if (PyList_Append(py_hostname_list, py_hostname) < 0) {
+			Py_DECREF(py_hostname);
+			Py_DECREF(py_hostname_list);
+			PyErr_SetString(PyExc_StandardError, "could not insert the hostname into the list");
+			return NULL;
+		}
+		Py_DECREF(py_hostname);
+	}
+	return py_hostname_list;
+}
+
+static PyObject *pymod_kraken_api_callback_register(PyObject *self, PyObject *args) {
+	char *callback_id;
+	PyObject *callback_function;
+	plugin_callback **stored_callback_function = NULL;
+
+	if (!PyArg_ParseTuple(args, "sO", &callback_id, &callback_function)) {
+		return NULL;
+	}
+	if (!PyCallable_Check(callback_function)) {
+		PyErr_SetString(PyExc_TypeError, "the callback function must be callable");
+		return NULL;
+	}
+	if (c_plugin_manager->current_plugin == NULL) {
+		PyErr_SetString(PyExc_RuntimeError, "the callback api is currently locked");
+		return NULL;
+	}
+	if (kraken_thread_mutex_trylock(&c_plugin_manager->callback_mutex) != 0) {
+		PyErr_SetString(PyExc_RuntimeError, "the callback api is currently locked");
+		return NULL;
+	}
+
+	if (strcasecmp(callback_id, "host_on_add") == 0) {
+		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_add;
+	} else if (strcasecmp(callback_id, "host_on_demand") == 0) {
+		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_demand;
+	} else if (strcasecmp(callback_id, "host_on_status_up") == 0) {
+		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_status_up;
+	} else if (strcasecmp(callback_id, "network_on_add") == 0) {
+		stored_callback_function = &c_plugin_manager->current_plugin->callback_network_on_add;
+	} else {
+		kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
+		PyErr_SetString(PyExc_ValueError, "invalid callback identifier");
+		return NULL;
+	}
+	if (*stored_callback_function != NULL) {
+		kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
+		PyErr_SetString(PyExc_RuntimeError, "only one function can be registered to a callback event at a time");
+		return NULL;
+	}
+	Py_INCREF(callback_function);
+	*stored_callback_function = callback_function;
+
+	kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
+static PyObject *pymod_kraken_api_callback_unregister(PyObject *self, PyObject *args) {
+	char *callback_id;
+	plugin_callback **stored_callback_function = NULL;
+
+	if (!PyArg_ParseTuple(args, "s", &callback_id)) {
+		return NULL;
+	}
+	if (c_plugin_manager->current_plugin == NULL) {
+		PyErr_SetString(PyExc_RuntimeError, "the callback api is currently locked");
+		return NULL;
+	}
+	if (kraken_thread_mutex_trylock(&c_plugin_manager->callback_mutex) != 0) {
+		PyErr_SetString(PyExc_RuntimeError, "the callback api is currently locked");
+		return NULL;
+	}
+
+	if (strcasecmp(callback_id, "host_on_add") == 0) {
+		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_add;
+	} else if (strcasecmp(callback_id, "host_on_demand") == 0) {
+		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_demand;
+	} else if (strcasecmp(callback_id, "host_on_status_up") == 0) {
+		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_status_up;
+	} else if (strcasecmp(callback_id, "network_on_add") == 0) {
+		stored_callback_function = &c_plugin_manager->current_plugin->callback_network_on_add;
+	} else {
+		kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
+		PyErr_SetString(PyExc_ValueError, "invalid callback identifier");
+		return NULL;
+	}
+	if (*stored_callback_function == NULL) {
+		kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
+		PyErr_SetString(PyExc_RuntimeError, "no callback is registered to that event");
+		return NULL;
+	}
+	Py_XDECREF(*stored_callback_function);
+	*stored_callback_function = NULL;
+
+	kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
+	Py_INCREF(Py_None);
+	return Py_None;
+}
 
 static PyObject *pymod_kraken_api_log(PyObject *self, PyObject *args) {
 	char *message;
@@ -32,6 +152,8 @@ static PyObject *pymod_kraken_api_log(PyObject *self, PyObject *args) {
 }
 
 static PyMethodDef pymod_kraken_methods[] = {
+	{"callback_register", pymod_kraken_api_callback_register, METH_VARARGS, ""},
+	{"callback_unregister", pymod_kraken_api_callback_unregister, METH_VARARGS, ""},
 	{"log", pymod_kraken_api_log, METH_VARARGS, ""},
 	{NULL, NULL, 0, NULL}
 };
@@ -40,7 +162,7 @@ static PyObject *pymod_kraken_host_manager_get_host_count(PyObject *self, PyObje
 	if (!PyArg_ParseTuple(args, "")) {
 		return NULL;
 	}
-	return Py_BuildValue("I", c_plugin_manager->c_host_manager->known_hosts);;
+	return Py_BuildValue("I", c_plugin_manager->c_host_manager->known_hosts);
 }
 
 static PyObject *pymod_kraken_host_manager_get_host_by_id(PyObject *self, PyObject *args) {
@@ -58,6 +180,165 @@ static PyObject *pymod_kraken_host_manager_get_host_by_id(PyObject *self, PyObje
 	inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
 
 	return Py_BuildValue("s", ipstr);
+}
+
+static PyObject *pymod_kraken_host_manager_get_host_details(PyObject *self, PyObject *args) {
+	char *ipstr;
+	single_host_info *c_host;
+	struct in_addr ip;
+	PyObject *py_host_dict;
+	PyObject *py_tmp_obj;
+
+	if (!PyArg_ParseTuple(args, "s", &ipstr)) {
+		return NULL;
+	}
+	inet_pton(AF_INET, ipstr, &ip);
+	if (!host_manager_get_host_by_addr(c_plugin_manager->c_host_manager, &ip, &c_host)) {
+		PyErr_SetString(PyExc_ValueError, "invalid ip address");
+		return NULL;
+	}
+
+	py_host_dict = PyDict_New();
+	if (py_host_dict == NULL) {
+		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
+		return NULL;
+	}
+
+	py_tmp_obj = PyString_FromString(ipstr);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_host_dict);
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	PyDict_SetItemString(py_host_dict, "ipv4_addr", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	if (c_host->whois_data == NULL) {
+		Py_INCREF(Py_None);
+		PyDict_SetItemString(py_host_dict, "network", Py_None);
+	} else {
+		py_tmp_obj = PyString_FromString(c_host->whois_data->cidr_s);
+		if (py_tmp_obj == NULL) {
+			Py_DECREF(py_host_dict);
+			PLUGINS_PYTHON_CONVERSION_ERROR();
+			return NULL;
+		}
+		PyDict_SetItemString(py_host_dict, "network", py_tmp_obj);
+		Py_DECREF(py_tmp_obj);
+	}
+
+	py_tmp_obj = plugins_util_host_get_hostnames_list(c_host);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_host_dict);
+		return NULL;
+	}
+	PyDict_SetItemString(py_host_dict, "names", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	py_tmp_obj = PyInt_FromLong(c_host->status);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_host_dict);
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	PyDict_SetItemString(py_host_dict, "status", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	return py_host_dict;
+}
+
+static PyObject *pymod_kraken_host_manager_set_host_details(PyObject *self, PyObject *args) {
+	char *tmphostname;
+	char *ipstr;
+	single_host_info *c_host;
+	single_host_info new_host;
+	struct in_addr ip;
+	PyObject *py_host_dict;
+	PyObject *py_tmp_obj;
+
+	if (!PyArg_ParseTuple(args, "O!", &PyDict_Type, &py_host_dict)) {
+		return NULL;
+	}
+
+	py_tmp_obj = PyDict_GetItemString(py_host_dict, "ipv4_addr");
+	if (py_tmp_obj == NULL) {
+		PyErr_SetString(PyExc_KeyError, "missing ipv4_addr key");
+		return NULL;
+	}
+	if (!PyString_Check(py_tmp_obj)) {
+		PyErr_SetString(PyExc_TypeError, "ipv4_addr must be specified as a string");
+		return NULL;
+	}
+	ipstr = PyString_AsString(py_tmp_obj);
+	if (ipstr == NULL) {
+		return NULL; /* PyString_AsString rasies a TypeError if necessary */
+	}
+
+	if (!inet_pton(AF_INET, ipstr, &ip)) {
+		PyErr_SetString(PyExc_ValueError, "invalid ip address");
+		return NULL;
+	}
+
+	single_host_init(&new_host);
+	new_host.status = KRAKEN_HOST_STATUS_UNKNOWN;
+	if (!host_manager_get_host_by_addr(c_plugin_manager->c_host_manager, &ip, &c_host)) {
+		memcpy(&new_host.ipv4_addr, &ip, sizeof(struct in_addr));
+		c_host = &new_host;
+	}
+
+	py_tmp_obj = PyDict_GetItemString(py_host_dict, "status");
+	if (py_tmp_obj != NULL) {
+		if (!PyInt_Check(py_tmp_obj)) {
+			single_host_destroy(&new_host);
+			PyErr_SetString(PyExc_TypeError, "status must be specified as an integer");
+			return NULL;
+		}
+		if (!KRAKEN_HOST_STATUS_IS_VALID(PyInt_AsLong(py_tmp_obj))) {
+			single_host_destroy(&new_host);
+			PyErr_SetString(PyExc_ValueError, "the status is not within a valid range");
+			return NULL;
+		}
+		c_host->status = PyInt_AsLong(py_tmp_obj);
+	}
+
+	py_tmp_obj = PyDict_GetItemString(py_host_dict, "names");
+	if (py_tmp_obj != NULL) {
+		if (PyString_Check(py_tmp_obj)) {
+			tmphostname = PyString_AsString(py_tmp_obj);
+			if (tmphostname == NULL) {
+				single_host_destroy(&new_host);
+				return NULL; /* PyString_AsString rasies a TypeError if necessary */
+			}
+			single_host_add_hostname(c_host, tmphostname);
+		} else if (PyList_Check(py_tmp_obj)) {
+			PyObject *py_hostname_list = py_tmp_obj;
+			Py_ssize_t list_sz = 0;
+			Py_ssize_t list_pos = 0;
+			list_sz = PyList_Size(py_hostname_list);
+			for (list_pos = 0; list_pos < list_sz; list_pos++) {
+				py_tmp_obj = PyList_GetItem(py_hostname_list, list_pos);
+				if (!PyString_Check(py_tmp_obj)) {
+					single_host_destroy(&new_host);
+					PyErr_SetString(PyExc_TypeError, "the name must be specified as a string");
+					return NULL;
+				}
+				tmphostname = PyString_AsString(py_tmp_obj);
+				if (tmphostname == NULL) {
+					single_host_destroy(&new_host);
+					return NULL;
+				}
+				single_host_add_hostname(c_host, tmphostname);
+			}
+		} else {
+			single_host_destroy(&new_host);
+			PyErr_SetString(PyExc_TypeError, "the names field must be specified as a string or a list of strings");
+			return NULL;
+		}
+	}
+	host_manager_add_host(c_plugin_manager->c_host_manager, c_host);
+	single_host_destroy(&new_host);
+	Py_INCREF(Py_None);
+	return Py_None;
 }
 
 static PyObject *pymod_kraken_host_manager_get_hosts(PyObject *self, PyObject *args) {
@@ -80,10 +361,13 @@ static PyObject *pymod_kraken_host_manager_get_hosts(PyObject *self, PyObject *a
 		inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
 		py_ipstr = PyString_FromString(ipstr);
 		if (py_ipstr == NULL) {
+			Py_DECREF(py_ip_list);
 			PyErr_SetString(PyExc_ValueError, "invalid ip address");
 			return NULL;
 		}
 		if (PyList_Append(py_ip_list, py_ipstr) < 0) {
+			Py_DECREF(py_ipstr);
+			Py_DECREF(py_ip_list);
 			PyErr_SetString(PyExc_StandardError, "could not insert the ip address into the list");
 			return NULL;
 		}
@@ -94,12 +378,8 @@ static PyObject *pymod_kraken_host_manager_get_hosts(PyObject *self, PyObject *a
 
 static PyObject *pymod_kraken_host_manager_get_hostnames(PyObject *self, PyObject *args) {
 	char *ipstr;
-	char *hostname;
-	hostname_iter hostname_i;
 	single_host_info *c_host;
 	struct in_addr ip;
-	PyObject *py_hostname_list;
-	PyObject *py_hostname;
 
 	if (!PyArg_ParseTuple(args, "s", &ipstr)) {
 		return NULL;
@@ -109,25 +389,8 @@ static PyObject *pymod_kraken_host_manager_get_hostnames(PyObject *self, PyObjec
 		PyErr_SetString(PyExc_ValueError, "invalid ip address");
 		return NULL;
 	}
-	py_hostname_list = PyList_New(0);
-	if (py_hostname_list == NULL) {
-		PyErr_SetString(PyExc_MemoryError, "could not create a new list");
-		return NULL;
-	}
-	single_host_iter_hostname_init(c_host, &hostname_i);
-	while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
-		py_hostname = PyString_FromString(hostname);
-		if (py_hostname == NULL) {
-			PyErr_SetString(PyExc_ValueError, "invalid hostname");
-			return NULL;
-		}
-		if (PyList_Append(py_hostname_list, py_hostname) < 0) {
-			PyErr_SetString(PyExc_StandardError, "could not insert the hostname into the list");
-			return NULL;
-		}
-		Py_DECREF(py_hostname);
-	}
-	return py_hostname_list;
+
+	return plugins_util_host_get_hostnames_list(c_host);
 }
 
 static PyObject *pymod_kraken_host_manager_add_hostname(PyObject *self, PyObject *args) {
@@ -156,6 +419,173 @@ static PyObject *pymod_kraken_host_manager_get_network_count(PyObject *self, PyO
 	return Py_BuildValue("I", c_plugin_manager->c_host_manager->known_whois_records);;
 }
 
+static PyObject *pymod_kraken_host_manager_get_network_by_id(PyObject *self, PyObject *args) {
+	unsigned int id;
+	char ipstr[INET_ADDRSTRLEN];
+	whois_record *w_rcd;
+
+	if (!PyArg_ParseTuple(args, "I", &id)) {
+		return NULL;
+	}
+	if (!host_manager_get_whois_by_id(c_plugin_manager->c_host_manager, id, &w_rcd)) {
+		PyErr_SetString(PyExc_ValueError, "invalid network id");
+		return NULL;
+	}
+
+	return Py_BuildValue("s", w_rcd->cidr_s);
+}
+
+static PyObject *pymod_kraken_host_manager_get_network_details(PyObject *self, PyObject *args) {
+	char *ipstr;
+	whois_record *w_rcd;
+	network_addr network;
+	struct in_addr ip;
+	PyObject *py_net_dict;
+	PyObject *py_tmp_obj;
+
+	if (!PyArg_ParseTuple(args, "s", &ipstr)) {
+		return NULL;
+	}
+	if (inet_pton(AF_INET, ipstr, &ip)) {
+		if (!host_manager_get_whois_by_addr(c_plugin_manager->c_host_manager, &ip, &w_rcd)) {
+			PyErr_SetString(PyExc_ValueError, "no network information available");
+			return NULL;
+		}
+	} else if (netaddr_cidr_str_to_nwk(&network, ipstr)) {
+		if (!host_manager_get_whois(c_plugin_manager->c_host_manager, &network, &w_rcd)) {
+			PyErr_SetString(PyExc_ValueError, "no network information available");
+			return NULL;
+		}
+	} else {
+		PyErr_SetString(PyExc_ValueError, "invalid host\network specification");
+		return NULL;
+	}
+
+	py_net_dict = PyDict_New();
+	if (py_net_dict == NULL) {
+		PyErr_SetString(PyExc_MemoryError, "could not create a dictionary to store the results");
+		return NULL;
+	}
+
+	py_tmp_obj = PyString_FromString(w_rcd->cidr_s);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_net_dict);
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	PyDict_SetItemString(py_net_dict, "cidr", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	py_tmp_obj = PyString_FromString(w_rcd->netname);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_net_dict);
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	PyDict_SetItemString(py_net_dict, "netname", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	py_tmp_obj = PyString_FromString(w_rcd->description);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_net_dict);
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	PyDict_SetItemString(py_net_dict, "description", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	py_tmp_obj = PyString_FromString(w_rcd->orgname);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_net_dict);
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	PyDict_SetItemString(py_net_dict, "orgname", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	py_tmp_obj = PyString_FromString(w_rcd->regdate_s);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_net_dict);
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	PyDict_SetItemString(py_net_dict, "regdate", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	py_tmp_obj = PyString_FromString(w_rcd->updated_s);
+	if (py_tmp_obj == NULL) {
+		Py_DECREF(py_net_dict);
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	PyDict_SetItemString(py_net_dict, "updated", py_tmp_obj);
+	Py_DECREF(py_tmp_obj);
+
+	return py_net_dict;
+}
+
+static PyObject *pymod_kraken_host_manager_get_network_by_addr(PyObject *self, PyObject *args) {
+	char *ipstr;
+	whois_record *w_rcd;
+	struct in_addr ip;
+	PyObject *py_cidr;
+
+	if (!PyArg_ParseTuple(args, "s", &ipstr)) {
+		return NULL;
+	}
+	if (!inet_pton(AF_INET, ipstr, &ip)) {
+		PyErr_SetString(PyExc_ValueError, "invalid ip address");
+		return NULL;
+	}
+	if (!host_manager_get_whois_by_addr(c_plugin_manager->c_host_manager, &ip, &w_rcd)) {
+		PyErr_SetString(PyExc_ValueError, "no network information available");
+		return NULL;
+	}
+	py_cidr = PyString_FromString(w_rcd->cidr_s);
+	if (py_cidr == NULL) {
+		PLUGINS_PYTHON_CONVERSION_ERROR();
+		return NULL;
+	}
+	return py_cidr;
+}
+
+static PyObject *pymod_kraken_host_manager_get_networks(PyObject *self, PyObject *args) {
+	whois_iter whois_i;
+	whois_record *w_rcd;
+	PyObject *py_cidr_list;
+	PyObject *py_tmp_str;
+
+	if (!PyArg_ParseTuple(args, "")) {
+		return NULL;
+	}
+	py_cidr_list = PyList_New(0);
+	if (py_cidr_list == NULL) {
+		PyErr_SetString(PyExc_MemoryError, "could not create a new list");
+		return NULL;
+	}
+	host_manager_iter_whois_init(c_plugin_manager->c_host_manager, &whois_i);
+	while (host_manager_iter_whois_next(c_plugin_manager->c_host_manager, &whois_i, &w_rcd)) {
+		if (strlen(w_rcd->cidr_s) == 0) {
+			continue;
+		}
+		py_tmp_str = PyString_FromString(w_rcd->cidr_s);
+		if (py_tmp_str == NULL) {
+			Py_DECREF(py_cidr_list);
+			PLUGINS_PYTHON_CONVERSION_ERROR();
+			return NULL;
+		}
+		if (PyList_Append(py_cidr_list, py_tmp_str) < 0) {
+			Py_DECREF(py_tmp_str);
+			Py_DECREF(py_cidr_list);
+			PyErr_SetString(PyExc_StandardError, "could not insert the network into the list");
+			return NULL;
+		}
+		Py_DECREF(py_tmp_str);
+	}
+
+	return py_cidr_list;
+}
+
 static PyObject *pymod_kraken_host_manager_quick_add_by_name(PyObject *self, PyObject *args) {
 	char *hostname;
 	int ret_val;
@@ -175,21 +605,26 @@ static PyObject *pymod_kraken_host_manager_quick_add_by_name(PyObject *self, PyO
 static PyMethodDef pymod_kraken_host_manager_methods[] = {
 	{"get_host_count", pymod_kraken_host_manager_get_host_count, METH_VARARGS, ""},
 	{"get_host_by_id", pymod_kraken_host_manager_get_host_by_id, METH_VARARGS, ""},
+	{"get_host_details", pymod_kraken_host_manager_get_host_details, METH_VARARGS, ""},
+	{"set_host_details", pymod_kraken_host_manager_set_host_details, METH_VARARGS, ""},
 	{"get_hosts", pymod_kraken_host_manager_get_hosts, METH_VARARGS, ""},
 	{"get_hostnames", pymod_kraken_host_manager_get_hostnames, METH_VARARGS, ""},
 	{"add_hostname", pymod_kraken_host_manager_add_hostname, METH_VARARGS, ""},
 	{"get_network_count", pymod_kraken_host_manager_get_network_count, METH_VARARGS, ""},
+	{"get_network_by_id", pymod_kraken_host_manager_get_network_by_id, METH_VARARGS, ""},
+	{"get_network_details", pymod_kraken_host_manager_get_network_details, METH_VARARGS, ""},
+	{"get_network_by_addr", pymod_kraken_host_manager_get_network_by_addr, METH_VARARGS, ""},
+	{"get_networks", pymod_kraken_host_manager_get_networks, METH_VARARGS, ""},
 	{"quick_add_by_name", pymod_kraken_host_manager_quick_add_by_name, METH_VARARGS, ""},
 	{NULL, NULL, 0, NULL}
 };
 
-void plugins_pymod_kraken_init(void) {
+PyObject *plugins_pymod_kraken_init(void) {
    	PyObject *pymod_kraken;
    	PyObject *pymod_kraken_host_manager;
 
 	pymod_kraken = Py_InitModule3("kraken", pymod_kraken_methods, PYMOD_KRAKEN_DOC);
 	PyModule_AddStringConstant(pymod_kraken, "version", PYMOD_KRAKEN_VERSION);
-
 	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_FATAL", LOGGING_FATAL);
 	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_ALERT", LOGGING_ALERT);
 	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_CRITICAL", LOGGING_CRITICAL);
@@ -203,15 +638,32 @@ void plugins_pymod_kraken_init(void) {
 	PyModule_AddIntConstant(pymod_kraken, "LOG_LVL_UNKNOWN", LOGGING_UNKNOWN);
 
 	pymod_kraken_host_manager = Py_InitModule3("kraken.host_manager", pymod_kraken_host_manager_methods, PYMOD_KRAKEN_DOC);
+	PyModule_AddIntConstant(pymod_kraken_host_manager, "HOST_STATUS_UP", KRAKEN_HOST_STATUS_UP);
+	PyModule_AddIntConstant(pymod_kraken_host_manager, "HOST_STATUS_UNKNOWN", KRAKEN_HOST_STATUS_UNKNOWN);
+	PyModule_AddIntConstant(pymod_kraken_host_manager, "HOST_STATUS_DOWN", KRAKEN_HOST_STATUS_DOWN);
+
+	PyModule_AddObject(pymod_kraken, "error", PyErr_NewException("kraken.error", NULL, NULL));
 	PyModule_AddObject(pymod_kraken, "host_manager", pymod_kraken_host_manager);
-	return;
+	return pymod_kraken;
 }
 
 void plugins_python_sys_path_append(char *path) {
-	char command[256];
-	/* TODO: replace this using Py_GetPath (http://docs.python.org/c-api/init.html) and PySys_SetPath */
-	snprintf(command, sizeof(command), "import sys\nsys.path.append('%s')\n", path);
-	PyRun_SimpleString(command);
+	char tmppath[512];
+	if (snprintf(tmppath, sizeof(tmppath), "%s:%s", Py_GetPath(), path) >= sizeof(tmppath)) {
+		logging_log("kraken.plugins", LOGGING_ERROR, "the Python path is to large for the buffer and could not be set");
+		return;
+	}
+	PySys_SetPath(tmppath);
+	return;
+}
+
+void plugins_python_sys_path_prepend(char *path) {
+	char tmppath[512];
+	if (snprintf(tmppath, sizeof(tmppath), "%s:%s", path, Py_GetPath()) >= sizeof(tmppath)) {
+		logging_log("kraken.plugins", LOGGING_ERROR, "the Python path is to large for the buffer and could not be set");
+		return;
+	}
+	PySys_SetPath(tmppath);
 	return;
 }
 
@@ -223,6 +675,7 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 	plugin_iter plugin_i;
 	plugin_object *plugin_obj;
 	size_t name_sz;
+	PyObject *pymod_kraken;
 	PyObject *pName;
 	PyObject *pPluginObj;
 	PyObject *pInitFunc;
@@ -245,8 +698,9 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 
 	Py_SetProgramName(name);
 	Py_Initialize();
-	plugins_pymod_kraken_init();
-	plugins_python_sys_path_append(plugin_path);
+	PyEval_InitThreads();
+	pymod_kraken = plugins_pymod_kraken_init();
+	plugins_python_sys_path_prepend(plugin_path);
 
 	dp = opendir(plugin_path);
 	if (dp == NULL) {
@@ -275,6 +729,10 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 	}
 	c_plugin_manager->k_opts = k_opts;
 	c_plugin_manager->c_host_manager = c_host_manager;
+	c_plugin_manager->current_plugin = NULL;
+	c_plugin_manager->pymod_kraken = pymod_kraken;
+	kraken_thread_mutex_init(&c_plugin_manager->callback_mutex);
+	kraken_thread_mutex_lock(&c_plugin_manager->callback_mutex);
 	c_plugin_manager->n_plugins = n_plugins;
 	n_plugins = 0;
 
@@ -303,6 +761,10 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 		plugins_iter_next(&plugin_i, &plugin_obj);
 		strncpy(plugin_obj->name, plugin_name, name_sz);
 		plugin_obj->python_object = pPluginObj;
+		plugin_obj->callback_host_on_add = NULL;
+		plugin_obj->callback_host_on_demand = NULL;
+		plugin_obj->callback_host_on_status_up = NULL;
+		plugin_obj->callback_network_on_add = NULL;
 		n_plugins++;
 
 		/* run the initialize method if it is defined */
@@ -316,10 +778,13 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 			Py_XDECREF(pInitFunc);
 			continue;
 		}
+		c_plugin_manager->current_plugin = plugin_obj;
+		kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
 		pReturnValue = PyObject_CallObject(pInitFunc, NULL);
+		kraken_thread_mutex_lock(&c_plugin_manager->callback_mutex);
 		Py_XDECREF(pInitFunc);
 		if (pReturnValue == NULL) {
-			logging_log("kraken.plugins", LOGGING_ERROR, "the call to function %s.%s() failed", plugin_name, PLUGIN_METHOD_INITIALIZE);
+			logging_log("kraken.plugins", LOGGING_ERROR, "the call to function %s.%s failed", plugin_name, PLUGIN_METHOD_INITIALIZE);
 			continue;
 		}
 		if (PyErr_Occurred()) {
@@ -329,6 +794,7 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 		Py_XDECREF(pReturnValue);
 	}
 	closedir(dp);
+	c_plugin_manager->current_plugin = NULL;
 	c_plugin_manager->n_plugins = n_plugins;
 	logging_log("kraken.plugins", LOGGING_INFO, "successfully loaded %u plugins", c_plugin_manager->n_plugins);
 	return;
@@ -341,6 +807,14 @@ void plugins_destroy(void) {
 	PyObject *pReturnValue;
 
 	logging_log("kraken.plugins", LOGGING_DEBUG, "finalizing the python plugin engine");
+
+	PyErr_CheckSignals();
+	if (PyErr_Occurred()) {
+		if (!PyErr_ExceptionMatches(PyExc_KeyboardInterrupt)) {
+			logging_log("kraken.plugins", LOGGING_WARNING, "an error has occurred prior to finalizing any plugin");
+		}
+		PyErr_Clear();
+	}
 
 	/* run the finalize method if it is defined */
 	plugins_iter_init(&plugin_i);
@@ -355,10 +829,13 @@ void plugins_destroy(void) {
 			Py_XDECREF(pFiniFunc);
 			continue;
 		}
+		c_plugin_manager->current_plugin = plugin_obj;
+		kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
 		pReturnValue = PyObject_CallObject(pFiniFunc, NULL);
+		kraken_thread_mutex_lock(&c_plugin_manager->callback_mutex);
 		Py_XDECREF(pFiniFunc);
 		if (pReturnValue == NULL) {
-			logging_log("kraken.plugins", LOGGING_ERROR, "the call to function %s.%s() failed", plugin_obj->name, PLUGIN_METHOD_FINALIZE);
+			logging_log("kraken.plugins", LOGGING_ERROR, "the call to function %s.%s failed", plugin_obj->name, PLUGIN_METHOD_FINALIZE);
 			continue;
 		}
 		if (PyErr_Occurred()) {
@@ -371,7 +848,20 @@ void plugins_destroy(void) {
 	plugins_iter_init(&plugin_i);
 	while (plugins_iter_next(&plugin_i, &plugin_obj)) {
 		Py_XDECREF(plugin_obj->python_object);
+		if (plugin_obj->callback_host_on_add != NULL) {
+			Py_XDECREF(plugin_obj->callback_host_on_add);
+		}
+		if (plugin_obj->callback_host_on_demand != NULL) {
+			Py_XDECREF(plugin_obj->callback_host_on_demand);
+		}
+		if (plugin_obj->callback_host_on_status_up != NULL) {
+			Py_XDECREF(plugin_obj->callback_host_on_status_up);
+		}
+		if (plugin_obj->callback_network_on_add != NULL) {
+			Py_XDECREF(plugin_obj->callback_network_on_add);
+		}
 	}
+	c_plugin_manager->current_plugin = NULL;
 	Py_Finalize();
 	return;
 }
@@ -421,6 +911,7 @@ int plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method
 	PyObject *args_container;
 	int ret_val = 0;
 
+	assert(c_plugin_manager != NULL);
 	args_container = PyTuple_New(1);
 	arg = PyString_FromString(plugin_args);
 	if ((args_container == NULL) || (arg == NULL)) {
@@ -429,7 +920,6 @@ int plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method
 	PyTuple_SetItem(args_container, 0, arg);
 	ret_val = plugins_run_plugin_method(plugin, plugin_method, args_container);
 
-	Py_XDECREF(arg);
 	Py_XDECREF(args_container);
 	return ret_val;
 }
@@ -438,29 +928,95 @@ int plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObje
 	PyObject *pFunc;
 	PyObject *pReturnValue;
 
+	assert(c_plugin_manager != NULL);
 	pFunc = PyObject_GetAttrString(plugin->python_object, plugin_method);
 	if (pFunc == NULL) {
 		logging_log("kraken.plugins", LOGGING_ERROR, "could not find plugin attribute %s.%s", plugin->name, plugin_method);
 		return -2;
 	}
 	if (!PyCallable_Check(pFunc)) {
+		Py_XDECREF(pFunc);
 		logging_log("kraken.plugins", LOGGING_ERROR, "plugin attribute %s.%s is not callable", plugin->name, plugin_method);
 		return -2;
 	}
 
 	pReturnValue = PyObject_CallObject(pFunc, plugin_args);
+	Py_XDECREF(pFunc);
 	if (pReturnValue == NULL) {
-		Py_XDECREF(pFunc);
-		logging_log("kraken.plugins", LOGGING_ERROR, "the call to function %s.%s failed", plugin->name, plugin_method);
 		PyErr_Clear();
+		logging_log("kraken.plugins", LOGGING_ERROR, "the call to function %s.%s failed", plugin->name, plugin_method);
 		return -3;
 	}
 
 	if (PyErr_Occurred()) {
-		logging_log("kraken.plugins", LOGGING_WARNING, "the call to function %s.%s produced a Python exception", plugin->name, plugin_method);
 		PyErr_Clear();
+		logging_log("kraken.plugins", LOGGING_WARNING, "the call to function %s.%s produced a Python exception", plugin->name, plugin_method);
 	}
-	Py_XDECREF(pFunc);
 	Py_XDECREF(pReturnValue);
 	return;
+}
+
+int plugins_plugin_get_callback(plugin_object *c_plugin, int callback_id, plugin_callback **callback) {
+	/*
+	 * returns -1 on invalid callback id
+	 * returns 0 when the callback is not registered
+	 * returns 1 when the callback is registered
+	 */
+	*callback = NULL;
+	if (!PLUGIN_CALLBACK_ID_IS_VALID(callback_id)) {
+		return -1;
+	}
+	switch (callback_id) {
+		case PLUGIN_CALLBACK_ID_HOST_ON_ADD:
+			*callback = c_plugin->callback_host_on_add;
+			break;
+		case PLUGIN_CALLBACK_ID_HOST_ON_DEMAND:
+			*callback = c_plugin->callback_host_on_demand;
+			break;
+		case PLUGIN_CALLBACK_ID_HOST_STATUS_UP:
+			*callback = c_plugin->callback_host_on_status_up;
+			break;
+		case PLUGIN_CALLBACK_ID_NETWORK_ON_ADD:
+			*callback = c_plugin->callback_network_on_add;
+			break;
+	}
+	if (*callback == NULL) {
+		return 0;
+	}
+	return 1;
+}
+
+int plugins_plugin_run_callback_host_on_demand(plugin_object *c_plugin, struct in_addr *ip) {
+	plugin_callback *callback;
+	char ipstr[INET_ADDRSTRLEN];
+	PyObject *arg;
+	PyObject *args_container;
+	PyObject *py_ret_val = NULL;
+
+	if (!plugins_plugin_get_callback(c_plugin, PLUGIN_CALLBACK_ID_HOST_ON_DEMAND, &callback)) {
+		return -1;
+	}
+
+	if (inet_ntop(AF_INET, ip, ipstr, sizeof(ipstr)) == NULL) {
+		return -2;
+	}
+	args_container = PyTuple_New(1);
+	arg = PyString_FromString(ipstr);
+	if ((args_container == NULL) || (arg == NULL)) {
+		return -2;
+	}
+	PyTuple_SetItem(args_container, 0, arg);
+
+	py_ret_val = PyObject_CallObject((PyObject *)callback, args_container);
+	Py_XDECREF(args_container);
+	Py_XDECREF(py_ret_val);
+	if (PyErr_Occurred()) {
+		/*if (PyErr_ExceptionMatches(PyObject_GetAttrString(c_plugin_manager->pymod_kraken, "error"))) {
+			TODO: handle sending this message to the user
+		}*/
+		PyErr_Clear();
+		logging_log("kraken.plugins", LOGGING_WARNING, "the callback to function %s produced a Python exception", c_plugin->name);
+		return -4;
+	}
+	return 0;
 }

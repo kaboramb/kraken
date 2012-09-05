@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <curl/curl.h>
 #include <libxml/tree.h>
 #include <libxml/parser.h>
@@ -437,7 +436,7 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 	webpage_f = open_memstream(&webpage_b, &webpage_sz);
 	if (webpage_f == NULL) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
-		return 1;
+		return -1;
 	}
 
 	curl = curl_easy_init();
@@ -469,7 +468,7 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 		LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
 		free(webpage_b);
 		curl_easy_cleanup(curl);
-		return 2;
+		return -2;
 	}
 
 	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &pvt_link_anchor, h_opts);
@@ -514,6 +513,7 @@ int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **lin
 					break;
 				}
 				if (response == 0) {
+					/* TODO: review this section and set the host status to up if the scan completed successfully */
 					response = http_scrape_ip_for_links_ex(hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts);
 				} else {
 					LOGGING_QUICK_WARNING("kraken.http_scan", "skipping alises due to scan error")

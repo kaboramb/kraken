@@ -27,6 +27,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <ares.h>
+#include <gtk/gtk.h>
 #include <argp.h>
 #ifndef WITHOUT_LOG4C
 #include <log4c.h>
@@ -35,6 +36,7 @@
 #include "plugins.h"
 #include "host_manager.h"
 #include "export.h"
+#include "gui_model.h"
 #include "gui_main.h"
 #include "whois_lookup.h"
 
@@ -111,8 +113,9 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 
 int main(int argc, char **argv) {
 	struct arguments arguments;
-	host_manager c_host_manager;
 	kraken_opts k_opts;
+	host_manager c_host_manager;
+	main_gui_data m_data;
 	host_iter host_i;
 	single_host_info *c_host;
 	whois_iter whois_i;
@@ -179,7 +182,10 @@ int main(int argc, char **argv) {
 	}
 	LOGGING_QUICK_WARNING("kraken", "releasing the kraken")
 
-	gui_show_main_window(&k_opts, &c_host_manager);
+	gui_main_data_init(&m_data, &k_opts, &c_host_manager);
+	gui_show_main_window(&m_data);
+	m_data.gui_is_active = 0;
+	kraken_thread_mutex_lock(&m_data.plugin_mutex);
 
 	if (c_host_manager.known_hosts) {
 		printf("\n");
@@ -200,6 +206,8 @@ int main(int argc, char **argv) {
 
 	LOGGING_QUICK_WARNING("kraken", "good luck and good hunting")
 	plugins_destroy();
+	kraken_thread_mutex_unlock(&m_data.plugin_mutex);
+	gui_main_data_destroy(&m_data);
 	kraken_opts_destroy(&k_opts);
 	host_manager_destroy(&c_host_manager);
 #ifndef WITHOUT_LOG4C

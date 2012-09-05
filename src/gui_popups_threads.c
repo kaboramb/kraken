@@ -11,7 +11,6 @@
 #include "gui_model.h"
 #include "host_manager.h"
 #include "http_scan.h"
-#include "network_addr.h"
 #include "whois_lookup.h"
 
 void callback_thread_start(GtkWidget *widget, popup_data *p_data) {
@@ -131,7 +130,7 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 	strncpy(target_domain, text_entry, DNS_MAX_FQDN_LENGTH);
 
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry1));
-	if (netaddr_cidr_str_to_nwk(&target_network, (char *)text_entry) != 0) {
+	if (!netaddr_cidr_str_to_nwk(&target_network, (char *)text_entry)) {
 		GUI_POPUP_ERROR_INVALID_CIDR_NETWORK(p_data->popup_window);
 		gtk_widget_destroy(p_data->popup_window);
 		gdk_threads_leave();

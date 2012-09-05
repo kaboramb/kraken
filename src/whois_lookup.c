@@ -155,7 +155,7 @@ int whois_parse_response_ripe(char *raw_resp, whois_response *who_resp) {
 				pCur += 1;
 			}
 			if ((iplow != NULL) && (iphigh != NULL)) {
-				if (netaddr_range_str_to_nwk(&cidrn, iplow, iphigh) == 0) {
+				if (netaddr_range_str_to_nwk(&cidrn, iplow, iphigh)) {
 					netaddr_nwk_to_cidr_str(&cidrn, who_resp->cidr_s, WHOIS_SZ_DATA_S);
 				}
 			}
@@ -343,7 +343,7 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 
 	host_manager_iter_host_init(c_host_manager, &host_i);
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
-		host_manager_get_whois(c_host_manager, &c_host->ipv4_addr, &cur_who_resp);
+		host_manager_get_whois_by_addr(c_host_manager, &c_host->ipv4_addr, &cur_who_resp);
 		if (cur_who_resp != NULL) {
 			c_host->whois_data = cur_who_resp;
 			continue;
@@ -353,7 +353,7 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 			inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
 			logging_log("kraken.whois", LOGGING_INFO, "got whois record for %s, %s", ipstr, tmp_who_resp.cidr_s);
 			host_manager_add_whois(c_host_manager, &tmp_who_resp);
-			host_manager_get_whois(c_host_manager, &c_host->ipv4_addr, &cur_who_resp);
+			host_manager_get_whois_by_addr(c_host_manager, &c_host->ipv4_addr, &cur_who_resp);
 			c_host->whois_data = cur_who_resp;
 		}
 	}

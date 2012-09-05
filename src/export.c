@@ -1,7 +1,6 @@
 #include "kraken.h"
 
 #include <stdlib.h>
-#include <assert.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <time.h>
@@ -116,12 +115,12 @@ int export_host_manager_to_xml(host_manager *c_host_manager, const char *dest_fi
 			xmlTextWriterEndElement(writer);
 		}
 
-		if (c_host->is_up == KRAKEN_HOST_UP) {
-			xmlTextWriterWriteElement(writer, BAD_CAST "alive", BAD_CAST "true");
-		} else if (c_host->is_up == KRAKEN_HOST_DOWN) {
-			xmlTextWriterWriteElement(writer, BAD_CAST "alive", BAD_CAST "false");
+		if (c_host->status == KRAKEN_HOST_STATUS_UP) {
+			xmlTextWriterWriteElement(writer, BAD_CAST "status", BAD_CAST "up");
+		} else if (c_host->status == KRAKEN_HOST_STATUS_DOWN) {
+			xmlTextWriterWriteElement(writer, BAD_CAST "status", BAD_CAST "down");
 		} else {
-			xmlTextWriterWriteElement(writer, BAD_CAST "alive", BAD_CAST "unknown");
+			xmlTextWriterWriteElement(writer, BAD_CAST "status", BAD_CAST "unknown");
 		}
 
 		xmlTextWriterWriteFormatElement(writer, BAD_CAST "os", "%u", c_host->os);
@@ -245,13 +244,13 @@ int import_host_record_from_xml(xmlNode *host_xml, single_host_info *tmp_host) {
 					xmlFree(attr_value);
 				}
 			}
-		} else if (xmlStrcmp(cur_node->name, (xmlChar *)"alive") == 0) {
-			if (xmlStrcmp(value, (xmlChar *)"true") == 0) {
-				tmp_host->is_up = KRAKEN_HOST_UP;
-			} else if (xmlStrcmp(value, (xmlChar *)"false") == 0) {
-				tmp_host->is_up = KRAKEN_HOST_DOWN;
+		} else if (xmlStrcmp(cur_node->name, (xmlChar *)"status") == 0) {
+			if (xmlStrcmp(value, (xmlChar *)"up") == 0) {
+				tmp_host->status = KRAKEN_HOST_STATUS_UP;
+			} else if (xmlStrcmp(value, (xmlChar *)"down") == 0) {
+				tmp_host->status = KRAKEN_HOST_STATUS_DOWN;
 			} else {
-				tmp_host->is_up = KRAKEN_HOST_UNKNOWN;
+				tmp_host->status = KRAKEN_HOST_STATUS_UNKNOWN;
 			}
 		} else if (xmlStrcmp(cur_node->name, (xmlChar *)"os") == 0) {
 			tmp_host->os = (unsigned char)atoi((const char *)value);

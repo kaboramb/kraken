@@ -16,9 +16,9 @@ int netaddr_ip_in_nwk(struct network_addr *network, struct in_addr *ip) {
 
 int netaddr_cidr_str_to_nwk(struct network_addr *network, char *o_netstr) {
 	/*
-	 * Returns 0 on success
-	 * Returns 1 on failure (due to unparseable address)
-	 * 
+	 * Returns 1 on success
+	 * Returns 0 on failure (due to unparseable address)
+	 *
 	 * netstr is a cidr range such as "192.168.1.1/25" network is a pointer to a network_addr structure
 	 * In the event that the IP is not a member of the network such as above, the network (in this case 192.168.1.0)
 	 * is placed into the network member of the network_addr structure
@@ -26,32 +26,32 @@ int netaddr_cidr_str_to_nwk(struct network_addr *network, char *o_netstr) {
 	char *pCur = NULL;
 	int bits = 0;
 	char netstr[NETADDR_CIDR_ADDRSTRLEN]; /* nice round number, leaves extra space */
-	
+
 	memset(netstr, '\0', NETADDR_CIDR_ADDRSTRLEN);
 	if (strlen(o_netstr) >= NETADDR_CIDR_ADDRSTRLEN) {
-		return 1;
+		return 0;
 	}
 	strncpy(netstr, o_netstr, (NETADDR_CIDR_ADDRSTRLEN - 1));
 	memset(network, '\0', sizeof(struct network_addr));
-	
+
 	pCur = strchr(netstr, '/');
 	if (pCur == NULL) {
-		return 1;
+		return 0;
 	}
 	*pCur = '\0';
 	pCur += 1;
 	if (strlen(pCur) > 2) {
-		return 1;
+		return 0;
 	}
-	
+
 	if (inet_pton(AF_INET, netstr, &network->network) != 1) {
-		return 1;
+		return 0;
 	}
 	bits = atoi(pCur);
 	if (bits > 32) {
-		return 1;
+		return 0;
 	}
-	
+
 	switch (bits) {
 		case 0:  { network->subnetmask.s_addr = 0x00000000; break; }
 		case 1:  { network->subnetmask.s_addr = 0x00000080; break; }
@@ -88,38 +88,38 @@ int netaddr_cidr_str_to_nwk(struct network_addr *network, char *o_netstr) {
 		case 32: { network->subnetmask.s_addr = 0xffffffff; break; }
 	}
 	network->network.s_addr = (network->network.s_addr & network->subnetmask.s_addr);
-	return 0;
+	return 1;
 }
 
 int netaddr_range_str_to_nwk(struct network_addr *network, char *iplow, char *iphigh) {
 	/*
-	 * Returns 0 on success
-	 * Returns 1 on failure (due to unparseable address)
+	 * Returns 1 on success
+	 * Returns 0 on failure (due to unparseable address)
 	 */
 	struct in_addr iplow_s;
 	struct in_addr iphigh_s;
-	
+
 	memset(network, '\0', sizeof(struct network_addr));
-	
+
 	if (inet_pton(AF_INET, iplow, &iplow_s) != 1) {
-		return 1;
+		return 0;
 	}
 	if (inet_pton(AF_INET, iphigh, &iphigh_s) != 1) {
-		return 1;
+		return 0;
 	}
-	
+
 	network->network.s_addr = (iplow_s.s_addr & iphigh_s.s_addr);
 	network->subnetmask.s_addr = (0xffffffff ^ (iphigh_s.s_addr ^ (network->network.s_addr)));
-	return 0;
+	return 1;
 }
 
 int netaddr_nwk_to_cidr_str(struct network_addr *network, char *netstr, size_t sz_netstr) {
 	char mask[4];
-	
+
 	memset(mask, '\0', sizeof(mask));
 	memset(netstr, '\0', sz_netstr);
 	inet_ntop(AF_INET, &network->network, netstr, sz_netstr);
-	
+
 	switch (network->subnetmask.s_addr) {
 		case 0x00000000: { strcpy(mask, "0" ); break; }
 		case 0x00000080: { strcpy(mask, "1" ); break; }
@@ -157,9 +157,9 @@ int netaddr_nwk_to_cidr_str(struct network_addr *network, char *netstr, size_t s
 	}
 	if ((strlen(netstr) + 2 + strlen(mask)) > sz_netstr) {
 		memset(netstr, '\0', sz_netstr);
-		return 1;
+		return 0;
 	}
 	strcat(netstr, "/");
 	strcat(netstr, mask);
-	return 0;
+	return 1;
 }

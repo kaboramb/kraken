@@ -6,6 +6,7 @@
 #define GUI_MODEL_MAX_MARQUEE_MSG_SIZE 32
 
 typedef struct main_gui_data {
+	int gui_is_active;
 	GtkWidget *tree_view;
 	GtkWidget *main_marquee;
 

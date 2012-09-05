@@ -76,8 +76,8 @@ void gui_menu_file_open(main_gui_data *userdata, guint action, GtkWidget *widget
 			free(userdata->c_host_manager->save_file_path);
 		}
 		userdata->c_host_manager->save_file_path = malloc(strlen(filename) + 1);
+		strncpy(userdata->c_host_manager->save_file_path, filename, strlen(filename));
 		userdata->c_host_manager->save_file_path[strlen(filename)] = '\0';
-		strncpy(userdata->c_host_manager->save_file_path, filename, (strlen(filename) + 1));
 		g_free(filename);
 	}
 	gtk_widget_destroy(dialog);

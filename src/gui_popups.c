@@ -11,7 +11,6 @@
 #include "gui_model.h"
 #include "host_manager.h"
 #include "http_scan.h"
-#include "network_addr.h"
 #include "whois_lookup.h"
 
 enum {

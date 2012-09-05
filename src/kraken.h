@@ -3,12 +3,15 @@
 
 #include <Python.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 #ifndef _KRAKEN_WHOIS_LOOKUP_H					/* if it hasn't been included yet, include it */
 #define _KRAKEN_WHOIS_LOOKUP_H_SKIP_FUNCDEFS	/* but skil the function definitions at the end */
 #include "whois_lookup.h"
 #undef _KRAKEN_WHOIS_LOOKUP_H_SKIP_FUNCDEFS		/* don't skip the function definitions next time */
 #undef _KRAKEN_WHOIS_LOOKUP_H 					/* next time do include it again because we'll need the function definitions */
+
+#include "network_addr.h"
 
 #include "kraken_thread.h"
 #include "kraken_options.h"
@@ -17,9 +20,10 @@
 #define MAX_LINE 512
 
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in dns_enum.h */
-#define KRAKEN_HOST_UP 1
-#define KRAKEN_HOST_UNKNOWN 0
-#define KRAKEN_HOST_DOWN -1
+#define KRAKEN_HOST_STATUS_UP 1
+#define KRAKEN_HOST_STATUS_UNKNOWN 0
+#define KRAKEN_HOST_STATUS_DOWN -1
+#define KRAKEN_HOST_STATUS_IS_VALID(i) ((-2 < i) && (i < 2))
 
 #define KRAKEN_ACTION_PAUSE -1
 #define KRAKEN_ACTION_STOP 0
@@ -37,8 +41,8 @@ typedef struct single_host_info {
 	struct in_addr ipv4_addr;
 	struct whois_record *whois_data;
 	char (*names)[DNS_MAX_FQDN_LENGTH + 1];
-	unsigned int n_names; /* TODO: convert old unsigned chars to unsigned ints */
-	char is_up;
+	unsigned int n_names;
+	char status;
 	char os;
 } single_host_info;
 
