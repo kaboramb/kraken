@@ -178,6 +178,7 @@ void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 	GtkTreeIter piter;
 	struct in_addr ip;
 	gchar *ipstr = NULL;
+	single_host_info *c_host;
 
 	if (menuitem == NULL) {
 		m_data = data;
@@ -206,7 +207,11 @@ void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 	}
 	inet_pton(AF_INET, ipstr, &ip);
 	g_free(ipstr);
-	if (plugins_plugin_run_callback_host_on_demand(c_plugin, &ip) != 0) {
+	if (!host_manager_get_host_by_addr(m_data->c_host_manager, &ip, &c_host)) {
+		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retrieve the host entry from the IP address");
+		return;
+	}
+	if (plugins_plugin_run_callback(c_plugin, PLUGIN_CALLBACK_ID_HOST_ON_DEMAND, c_host) != 0) {
 		GUI_POPUP_ERROR_GENERIC_ERROR(NULL);
 	}
 	gui_model_update_tree_and_marquee(m_data, NULL);

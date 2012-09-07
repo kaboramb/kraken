@@ -8,6 +8,7 @@
 #include <netdb.h>
 
 #include "host_manager.h"
+#include "plugins.h"
 #include "whois_lookup.h"
 
 int single_host_init(single_host_info *c_host) {
@@ -81,18 +82,22 @@ int single_host_add_hostname(single_host_info *c_host, const char *name) {
 }
 
 int single_host_merge(single_host_info *dst, single_host_info *src) {
+	/* returns 0 when nothing changed, otherwise 1 */
 	hostname_iter src_hostname_i;
 	char *src_hostname;
 	hostname_iter dst_hostname_i;
 	char *dst_hostname;
 	int found;
+	int changed = 0;
 
-	if (memcmp(&dst->ipv4_addr, &src->ipv4_addr, sizeof(struct in_addr)) != 0) {
-		memcpy(&dst->ipv4_addr, &src->ipv4_addr, sizeof(struct in_addr));
-	}
 	if (dst->whois_data == NULL) {
 		dst->whois_data = src->whois_data;
+		changed = 1;
 	}
+	if (dst->status != src->status) {
+		dst->status = src->status;
+	}
+
 	single_host_iter_hostname_init(src, &src_hostname_i);
 	while (single_host_iter_hostname_next(src, &src_hostname_i, &src_hostname)) {
 		found = 0;
@@ -105,13 +110,17 @@ int single_host_merge(single_host_info *dst, single_host_info *src) {
 		}
 		if (found == 0) {
 			single_host_add_hostname(dst, src_hostname); // this is not the fastest way to do this
+			changed = 1;
 		}
 	}
-	return 0;
+	return changed;
 }
 
 void single_host_set_status(single_host_info *c_host, char status) {
 	c_host->status = status;
+	if (status == KRAKEN_HOST_STATUS_UP) {
+		plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_STATUS_UP, c_host);
+	}
 	return;
 }
 
@@ -206,7 +215,9 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
 		if (memcmp(&new_host->ipv4_addr, &c_host->ipv4_addr, sizeof(struct in_addr)) == 0) {
-			single_host_merge(c_host, new_host);
+			if (single_host_merge(c_host, new_host)) {
+				plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_ON_ADD, new_host);
+			}
 			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 			return 0;
 		}
@@ -216,7 +227,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 		void *tmpbuffer = malloc(sizeof(struct single_host_info) * (c_host_manager->current_capacity + HOST_CAPACITY_INCREMENT_SIZE));
 		if (tmpbuffer == NULL) {
 			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
-			return 1;
+			return -1;
 		}
 		c_host_manager->current_capacity += HOST_CAPACITY_INCREMENT_SIZE;
 		memset(tmpbuffer, 0, (sizeof(single_host_info) * c_host_manager->current_capacity));
@@ -234,6 +245,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 		}
 	}
 
+	plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_ON_ADD, new_host);
 	memcpy(&c_host_manager->hosts[c_host_manager->known_hosts], new_host, sizeof(single_host_info));
 	if (new_host->names != NULL) {
 		block = malloc((DNS_MAX_FQDN_LENGTH + 1) * (new_host->n_names));
@@ -243,7 +255,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 			c_host_manager->known_hosts++;
 			LOGGING_QUICK_WARNING("kraken.host_manager", "aliases have been lost due to a failed malloc")
 			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
-			return 1;
+			return -2;
 		} else {
 			memset(block, '\0', (DNS_MAX_FQDN_LENGTH + 1) * (new_host->n_names));
 			memcpy(block, new_host->names, (DNS_MAX_FQDN_LENGTH + 1) * new_host->n_names);
@@ -423,7 +435,7 @@ int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_recor
 		void *tmpbuffer = malloc(sizeof(struct whois_record) * (c_host_manager->current_whois_record_capacity + WHOIS_CAPACITY_INCREMENT_SIZE));
 		if (tmpbuffer == NULL) {
 			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
-			return 1;
+			return -1;
 		}
 		c_host_manager->current_whois_record_capacity += WHOIS_CAPACITY_INCREMENT_SIZE;
 		memset(tmpbuffer, 0, (sizeof(whois_record) * c_host_manager->current_whois_record_capacity));
@@ -435,6 +447,7 @@ int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_recor
 		kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	}
 
+	plugins_all_run_callback(PLUGIN_CALLBACK_ID_NETWORK_ON_ADD, new_record);
 	memcpy(&c_host_manager->whois_records[c_host_manager->known_whois_records], new_record, sizeof(whois_record));
 	c_host_manager->known_whois_records++;
 	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
