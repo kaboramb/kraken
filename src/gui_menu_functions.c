@@ -16,11 +16,12 @@ static void suppress_log_function(G_GNUC_UNUSED const gchar *log_domain, G_GNUC_
 	/* https://bugzilla.gnome.org/show_bug.cgi?id=662814 */
 }
 
-void gui_menu_file_export_csv(main_gui_data *userdata, guint action, GtkWidget *widget) {
+void gui_export_csv(main_gui_data *userdata, guint action, GtkWidget *widget, const gchar *file_name, export_csv_opts *e_opts) {
 	GtkWidget *dialog;
 	guint log_handler;
 	const char *domain = "Gtk";
 	gint response;
+
 	if ((userdata->c_host_manager->known_hosts == 0) && (userdata->c_host_manager->known_whois_records == 0)) {
 		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
 		return;
@@ -28,7 +29,7 @@ void gui_menu_file_export_csv(main_gui_data *userdata, guint action, GtkWidget *
 	dialog = gtk_file_chooser_dialog_new("Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL),
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
 	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), ".");
-	gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "kraken_export.csv");
+	gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), file_name);
 
 	log_handler = g_log_set_handler(domain, G_LOG_LEVEL_WARNING, suppress_log_function, NULL);
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
@@ -37,7 +38,7 @@ void gui_menu_file_export_csv(main_gui_data *userdata, guint action, GtkWidget *
 	if (response == GTK_RESPONSE_ACCEPT) {
 		char *filename;
 		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-		response = export_host_manager_to_csv(userdata->c_host_manager, filename);
+		response = export_host_manager_to_csv_ex(userdata->c_host_manager, filename, e_opts);
 		if (response != 0) {
 			GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
 		} else {
@@ -46,6 +47,43 @@ void gui_menu_file_export_csv(main_gui_data *userdata, guint action, GtkWidget *
 		g_free(filename);
 	}
 	gtk_widget_destroy(dialog);
+	return;
+}
+
+void gui_menu_file_export_csv(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	export_csv_opts e_opts;
+
+	export_csv_opts_init(&e_opts);
+	gui_export_csv(userdata, action, widget, "kraken_export.csv", &e_opts);
+	export_csv_opts_destroy(&e_opts);
+	return;
+}
+
+void gui_menu_file_export_ips_list(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	export_csv_opts e_opts;
+
+	export_csv_opts_init(&e_opts);
+	e_opts.show_fields = 0;
+	e_opts.host_names = 0;
+	e_opts.whois_cidr = 0;
+	e_opts.whois_netname = 0;
+	e_opts.whois_orgname = 0;
+	gui_export_csv(userdata, action, widget, "kraken_export_ips.txt", &e_opts);
+	export_csv_opts_destroy(&e_opts);
+	return;
+}
+
+void gui_menu_file_export_hostnames_list(main_gui_data *userdata, guint action, GtkWidget *widget) {
+	export_csv_opts e_opts;
+
+	export_csv_opts_init(&e_opts);
+	e_opts.show_fields = 0;
+	e_opts.host_ipv4_addr = 0;
+	e_opts.whois_cidr = 0;
+	e_opts.whois_netname = 0;
+	e_opts.whois_orgname = 0;
+	gui_export_csv(userdata, action, widget, "kraken_export_hostnames.txt", &e_opts);
+	export_csv_opts_destroy(&e_opts);
 	return;
 }
 
@@ -195,6 +233,8 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/File",									NULL,		NULL,							0, 	"<Branch>"	},
 	{ "/File/Export",							NULL,		NULL,							0,	"<Branch>"	},
 	{ "/File/Export/CSV",						NULL,		gui_menu_file_export_csv,		0,	NULL		},
+	{ "/File/Export/IPs List",					NULL,		gui_menu_file_export_ips_list,	0,	NULL		},
+	{ "/File/Export/Hostnames List",			NULL,		gui_menu_file_export_hostnames_list,	0,	NULL		},
 	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
 	{ "/File/Open",								NULL,		gui_menu_file_open,				0,	NULL	},
 	{ "/File/Save",								"<CTRL>S",	gui_menu_file_save,				0,	NULL	},

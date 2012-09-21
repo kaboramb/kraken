@@ -38,7 +38,7 @@ AC_CHECK_LIB([curl], [curl_easy_init], [], [
 	AC_MSG_NOTICE([please install libcurl >= 7.19.1])
 	exit 1
 ])
-AC_CHECK_LIB([python2.7], [Py_Initialize], [], [
+AC_CHECK_LIB([python$PYTHON_VERSION], [Py_Initialize], [], [
 	AC_MSG_NOTICE([could not find the python development headers])
 	AC_MSG_NOTICE([please install libpython])
 	exit 1

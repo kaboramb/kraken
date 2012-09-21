@@ -11,7 +11,30 @@
 #include "whois_lookup.h"
 #include "xml_utilities.h"
 
-int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_file) {
+void export_csv_opts_init(export_csv_opts *e_opts) {
+	memset(e_opts, '\0', sizeof(export_csv_opts));
+	strcpy(e_opts->primary_delimiter, ",");
+	strcpy(e_opts->secondary_delimiter, " ");
+	strcpy(e_opts->new_line, "\n");
+	e_opts->show_fields = 1;
+
+	e_opts->filter_host_is_up = 0;
+
+	e_opts->host_ipv4_addr = 1;
+	e_opts->host_names = 1;
+
+	e_opts->whois_cidr = 1;
+	e_opts->whois_netname = 1;
+	e_opts->whois_orgname = 1;
+	return;
+}
+
+void export_csv_opts_destroy(export_csv_opts *e_opts) {
+	memset(e_opts, '\0', sizeof(export_csv_opts));
+	return;
+}
+
+int export_host_manager_to_csv_ex(host_manager *c_host_manager, const char *dest_file, export_csv_opts *e_opts) {
 	FILE *csv_f;
 	host_iter host_i;
 	single_host_info *c_host;
@@ -20,6 +43,7 @@ int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_fi
 	hostname_iter hostname_i;
 	char *hostname;
 	char ipstr[INET6_ADDRSTRLEN];
+	int use_delimiter = 0;
 
 	csv_f = fopen(dest_file, "w");
 	if (csv_f == NULL) {
@@ -27,26 +51,111 @@ int export_host_manager_to_csv(host_manager *c_host_manager, const char *dest_fi
 		return 1;
 	}
 
-	fprintf(csv_f, "Known Hosts:\n");
-	fprintf(csv_f, "IP Address,Hostnames\n");
-	host_manager_iter_host_init(c_host_manager, &host_i);
-	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
-		inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
-		fprintf(csv_f, "%s,", ipstr);
-		single_host_iter_hostname_init(c_host, &hostname_i);
-		while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
-			fprintf(csv_f, "%s ", hostname);
+	if (e_opts->show_fields) {
+		if (e_opts->host_ipv4_addr || e_opts->host_names) {
+			fprintf(csv_f, "Known Hosts:%s", e_opts->new_line);
 		}
-		fseek(csv_f, -1, SEEK_CUR);
-		fprintf(csv_f, "\n");
+		if (e_opts->host_ipv4_addr) {
+			fprintf(csv_f, "IP Address");
+			use_delimiter = 1;
+		}
+		if (use_delimiter) {
+			fprintf(csv_f, "%s", e_opts->primary_delimiter);
+		}
+		if (e_opts->host_names) {
+			fprintf(csv_f, "Hostnames");
+		}
+		if (e_opts->host_ipv4_addr || e_opts->host_names) {
+			fprintf(csv_f, "%s", e_opts->new_line);
+		}
 	}
-	fprintf(csv_f, "\n");
-	fprintf(csv_f, "Known Networks:\n");
-	fprintf(csv_f, "Network,Network Name,Organization Name\n");
-	host_manager_iter_whois_init(c_host_manager, &whois_i);
-	while (host_manager_iter_whois_next(c_host_manager, &whois_i, &current_who)) {
-		fprintf(csv_f, "%s,%s,%s\n", current_who->cidr_s, current_who->netname, current_who->orgname);
+	if (e_opts->host_ipv4_addr || e_opts->host_names) {
+		host_manager_iter_host_init(c_host_manager, &host_i);
+		while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
+			if ((e_opts->filter_host_is_up) && (c_host->status != KRAKEN_HOST_STATUS_UP)) {
+				continue;
+			}
+			use_delimiter = 0;
+			if (e_opts->host_ipv4_addr) {
+				inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
+				fprintf(csv_f, "%s", ipstr);
+				use_delimiter = 1;
+			}
+			if (e_opts->host_names) {
+				if (use_delimiter) {
+					fprintf(csv_f, "%s", e_opts->primary_delimiter);
+				}
+				single_host_iter_hostname_init(c_host, &hostname_i);
+				while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
+					fprintf(csv_f, "%s%s", hostname, e_opts->secondary_delimiter);
+				}
+				fseek(csv_f, -strlen(e_opts->secondary_delimiter), SEEK_CUR);
+				use_delimiter = 1;
+			}
+			fprintf(csv_f, "%s", e_opts->new_line);
+		}
 	}
+
+	use_delimiter = 0;
+	if (e_opts->show_fields) {
+		if (e_opts->whois_cidr || e_opts->whois_netname || e_opts->whois_orgname) {
+			if (e_opts->host_ipv4_addr || e_opts->host_names) {
+				fprintf(csv_f, "%s", e_opts->new_line);
+			}
+			fprintf(csv_f, "Known Networks:%s", e_opts->new_line);
+		}
+		if (e_opts->whois_cidr) {
+			fprintf(csv_f, "Network");
+			use_delimiter = 1;
+		}
+		if (e_opts->whois_netname) {
+			if (use_delimiter) {
+				fprintf(csv_f, "%s", e_opts->primary_delimiter);
+			}
+			fprintf(csv_f, "Network Name");
+			use_delimiter = 1;
+		}
+		if (e_opts->whois_orgname) {
+			if (use_delimiter) {
+				fprintf(csv_f, "%s", e_opts->primary_delimiter);
+			}
+			fprintf(csv_f, "Organization Name");
+			use_delimiter = 1;
+		}
+		if (e_opts->whois_cidr || e_opts->whois_netname || e_opts->whois_orgname) {
+			fprintf(csv_f, "%s", e_opts->new_line);
+		}
+	}
+
+	if (e_opts->whois_cidr || e_opts->whois_netname || e_opts->whois_orgname) {
+		host_manager_iter_whois_init(c_host_manager, &whois_i);
+		while (host_manager_iter_whois_next(c_host_manager, &whois_i, &current_who)) {
+			use_delimiter = 0;
+			if (e_opts->whois_cidr) {
+				if (use_delimiter) {
+					fprintf(csv_f, "%s", e_opts->primary_delimiter);
+				}
+				fprintf(csv_f, "%s", current_who->cidr_s);
+				use_delimiter = 1;
+			}
+			if (e_opts->whois_netname) {
+				if (use_delimiter) {
+					fprintf(csv_f, "%s", e_opts->primary_delimiter);
+				}
+				fprintf(csv_f, "%s", current_who->netname);
+				use_delimiter = 1;
+			}
+			if (e_opts->whois_orgname) {
+				if (use_delimiter) {
+					fprintf(csv_f, "%s", e_opts->primary_delimiter);
+				}
+				fprintf(csv_f, "%s", current_who->orgname);
+				use_delimiter = 1;
+			}
+			fprintf(csv_f, "%s", e_opts->new_line);
+		}
+	}
+
 	logging_log("kraken.export", LOGGING_INFO, "exported %u hosts and %u whois records", c_host_manager->known_hosts, c_host_manager->known_whois_records);
 	fclose(csv_f);
 	return 0;

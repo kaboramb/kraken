@@ -492,7 +492,7 @@ static PyObject *pymod_kraken_host_manager_get_network_count(PyObject *self, PyO
 	if (!PyArg_ParseTuple(args, "")) {
 		return NULL;
 	}
-	return Py_BuildValue("I", c_plugin_manager->c_host_manager->known_whois_records);;
+	return Py_BuildValue("I", c_plugin_manager->c_host_manager->known_whois_records);
 }
 
 static PyObject *pymod_kraken_host_manager_get_network_by_id(PyObject *self, PyObject *args) {
@@ -920,7 +920,7 @@ int plugins_get_plugin_by_name(char *name, plugin_object **plugin) {
 	return 0;
 }
 
-int plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method, char *plugin_args) {
+kstatus_plugin plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method, char *plugin_args) {
 	PyObject *arg;
 	PyObject *args_container;
 	int ret_val = 0;
@@ -929,7 +929,7 @@ int plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method
 	args_container = PyTuple_New(1);
 	arg = PyString_FromString(plugin_args);
 	if ((args_container == NULL) || (arg == NULL)) {
-		return -1;
+		return KSTATUS_PLUGIN_ERROR_PYOBJCREATE;
 	}
 	PyTuple_SetItem(args_container, 0, arg);
 	ret_val = plugins_run_plugin_method(plugin, plugin_method, args_container);
@@ -938,7 +938,7 @@ int plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method
 	return ret_val;
 }
 
-int plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObject *args_container) {
+kstatus_plugin plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObject *args_container) {
 	PyObject *pFunc;
 	PyObject *py_ret_val = NULL;
 
@@ -946,12 +946,12 @@ int plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObje
 	pFunc = PyObject_GetAttrString(plugin->python_object, plugin_method);
 	if (pFunc == NULL) {
 		logging_log("kraken.plugins", LOGGING_ERROR, "could not find plugin attribute %s.%s", plugin->name, plugin_method);
-		return -2;
+		return KSTATUS_PLUGIN_ERROR_NO_PYATTRIBUTE;
 	}
 	if (!PyCallable_Check(pFunc)) {
 		Py_XDECREF(pFunc);
 		logging_log("kraken.plugins", LOGGING_ERROR, "plugin attribute %s.%s is not callable", plugin->name, plugin_method);
-		return -2;
+		return KSTATUS_PLUGIN_ERROR_PYFUNCTION;
 	}
 
 	py_ret_val = PyObject_CallObject(pFunc, args_container);
@@ -960,9 +960,9 @@ int plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObje
 	if (PyErr_Occurred()) {
 		PyErr_Clear();
 		logging_log("kraken.plugins", LOGGING_WARNING, "the call to function %s.%s produced a Python exception", plugin->name, plugin_method);
+		return KSTATUS_PLUGIN_ERROR_PYEXC;
 	}
-	Py_XDECREF(py_ret_val);
-	return;
+	return KSTATUS_PLUGIN_OK;
 }
 
 int plugins_plugin_get_callback(plugin_object *c_plugin, int callback_id, plugin_callback **callback) {
@@ -998,21 +998,23 @@ int plugins_plugin_get_callback(plugin_object *c_plugin, int callback_id, plugin
 	return 1;
 }
 
-int plugins_all_run_callback(int callback_id, void *data) {
+kstatus_plugin plugins_all_run_callback(int callback_id, void *data) {
 	plugin_iter plugin_i;
 	plugin_object *c_plugin;
 	plugin_callback *test_callback;
 
 	/* check plugins have been initialized and the callback_id is valid before proceeding */
-	assert(c_plugin_manager != NULL);
+	if (c_plugin_manager == NULL) {
+		return KSTATUS_PLUGIN_ERROR_NOT_INITIALIZED;
+	}
 	plugins_iter_init(&plugin_i);
 	if (!plugins_iter_next(&plugin_i, &c_plugin)) {
 		logging_log("kraken.plugins", LOGGING_INFO, "no plugins are loaded");
-		return 0;
+		return KSTATUS_PLUGIN_ERROR_NO_PLUGINS;
 	}
 	if (plugins_plugin_get_callback(c_plugin, callback_id, &test_callback) < 0) {
 		logging_log("kraken.plugins", LOGGING_ERROR, "invalid callback ID specified");
-		return -1;
+		return KSTATUS_PLUGIN_ERROR_ARGUMENT;
 	}
 
 	/* validation complete, run 'em all */
@@ -1021,23 +1023,25 @@ int plugins_all_run_callback(int callback_id, void *data) {
 		plugins_plugin_run_callback(c_plugin, callback_id, data);
 	}
 
-	return 0;
+	return KSTATUS_PLUGIN_OK;
 }
 
-int plugins_plugin_run_callback(plugin_object *c_plugin, int callback_id, void *data) {
+kstatus_plugin plugins_plugin_run_callback(plugin_object *c_plugin, int callback_id, void *data) {
 	plugin_callback *callback;
 	PyObject *arg;
 	PyObject *args_container;
 	PyObject *py_ret_val = NULL;
 
-	assert(c_plugin_manager != NULL);
+	if (c_plugin_manager == NULL) {
+		return KSTATUS_PLUGIN_ERROR_NOT_INITIALIZED;
+	}
 	if (!plugins_plugin_get_callback(c_plugin, callback_id, &callback)) {
-		return -1;
+		return KSTATUS_PLUGIN_ERROR_ARGUMENT;
 	}
 
 	args_container = PyTuple_New(1);
 	if (args_container == NULL) {
-		return -2;
+		return KSTATUS_PLUGIN_ERROR_PYOBJCREATE;
 	}
 	if (PLUGIN_CALLBACK_DATA_HOST(callback_id)) {
 		arg = plugins_utils_host_get_host_dict((single_host_info *)data);
@@ -1045,14 +1049,14 @@ int plugins_plugin_run_callback(plugin_object *c_plugin, int callback_id, void *
 		arg = plugins_utils_host_get_network_dict((whois_record *)data);
 	} else {
 		Py_DECREF(args_container);
-		return -1;
+		return KSTATUS_PLUGIN_ERROR_ARGUMENT;
 	}
 
 	if (arg == NULL) {
 		logging_log("kraken.plugins", LOGGING_ERROR, "the plugins_util function failed to convert the object to a python object");
 		PyErr_Clear();
 		Py_DECREF(args_container);
-		return -2;
+		return KSTATUS_PLUGIN_ERROR_PYOBJCREATE;
 	}
 
 	PyTuple_SetItem(args_container, 0, arg);
@@ -1066,7 +1070,7 @@ int plugins_plugin_run_callback(plugin_object *c_plugin, int callback_id, void *
 		}*/
 		PyErr_Clear();
 		logging_log("kraken.plugins", LOGGING_WARNING, "the callback in plugin %s produced a Python exception", c_plugin->name);
-		return -4;
+		return KSTATUS_PLUGIN_ERROR_PYEXC;
 	}
-	return 0;
+	return KSTATUS_PLUGIN_OK;
 }

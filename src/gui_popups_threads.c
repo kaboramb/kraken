@@ -16,6 +16,14 @@
 void callback_thread_start(GtkWidget *widget, popup_data *p_data) {
 	kraken_thread k_thread;
 
+	if (p_data != NULL) {
+		if (p_data->text_entry0 != NULL) {
+			gtk_entry_set_editable(GTK_ENTRY(p_data->text_entry0), FALSE);
+		}
+		if (p_data->text_entry1 != NULL) {
+			gtk_entry_set_editable(GTK_ENTRY(p_data->text_entry1), FALSE);
+		}
+	}
 	kraken_thread_create(&k_thread, p_data->thread_function, p_data);
 	return;
 }
@@ -158,7 +166,7 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 		gdk_threads_leave();
 		whois_fill_host_manager(p_data->m_data->c_host_manager);
 		gdk_threads_enter();
-		gui_model_update_tree_and_marquee((main_gui_data*)p_data, NULL);
+		gui_model_update_tree_and_marquee(p_data->m_data, NULL);
 	}
 	g_signal_handler_disconnect(p_data->popup_window, delete_handler);
 	gtk_widget_destroy(p_data->popup_window);

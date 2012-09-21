@@ -16,8 +16,20 @@
 #define PLUGIN_CALLBACK_ID_NETWORK_ON_ADD 20
 #define PLUGIN_CALLBACK_DATA_NETWORK(i) ((19 < i) && (i < 30))
 
+#define KSTATUS_PLUGIN_IS_ERROR(i) (i < 0)
+#define KSTATUS_PLUGIN_OK 0
+#define KSTATUS_PLUGIN_ERROR_ARGUMENT -2
+#define KSTATUS_PLUGIN_ERROR_PYFUNCTION -3
+#define KSTATUS_PLUGIN_ERROR_PYARGUMENT -4
+#define KSTATUS_PLUGIN_ERROR_NO_PYATTRIBUTE -5
+#define KSTATUS_PLUGIN_ERROR_PYOBJCREATE -6
+#define KSTATUS_PLUGIN_ERROR_NOT_INITIALIZED -1000
+#define KSTATUS_PLUGIN_ERROR_NO_PLUGINS -1001
+#define KSTATUS_PLUGIN_ERROR_PYEXC -2000
+
 typedef kraken_basic_iter plugin_iter;
 typedef PyObject plugin_callback;
+typedef int kstatus_plugin;
 
 typedef struct plugin_object {
 	char name[PLUGIN_SZ_NAME + 1];

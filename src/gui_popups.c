@@ -23,6 +23,8 @@ void gui_popup_data_init(popup_data *p_data, main_gui_data *m_data) {
 	memset(p_data, '\0', sizeof(popup_data));
 	p_data->m_data = m_data;
 	p_data->thread_function = NULL;
+	p_data->text_entry0 = NULL;
+	p_data->text_entry1 = NULL;
 	p_data->action_status = KRAKEN_ACTION_PAUSE;
 	p_data->cancel_dialog = NULL;
 	return;

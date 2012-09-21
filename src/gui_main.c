@@ -29,6 +29,7 @@ void callback_main_command_submit_thread(main_gui_data *m_data) {
 	char *args = NULL;
 	char *command = buffer;
 	char *p = buffer;
+	int ret_val;
 
 	gdk_threads_enter();
 	text = gtk_entry_get_text(GTK_ENTRY(m_data->plugin_entry));
@@ -70,11 +71,16 @@ void callback_main_command_submit_thread(main_gui_data *m_data) {
 	}
 
 	gdk_threads_leave();
-	plugins_run_plugin_method_arg_str(plugin, PLUGIN_METHOD_MAIN, args);
-	
+	ret_val = plugins_run_plugin_method_arg_str(plugin, PLUGIN_METHOD_MAIN, args);
+
 	if (m_data->gui_is_active) {
 		gdk_threads_enter();
-		gtk_widget_modify_base(m_data->plugin_entry, GTK_STATE_NORMAL, NULL);
+		if (ret_val < 0) {
+			gdk_color_parse("#FF6600", &color);
+			gtk_widget_modify_base(m_data->plugin_entry, GTK_STATE_NORMAL, &color);
+		} else {
+			gtk_widget_modify_base(m_data->plugin_entry, GTK_STATE_NORMAL, NULL);
+		}
 		gtk_entry_set_editable(GTK_ENTRY(m_data->plugin_entry), TRUE);
 
 		gui_model_update_tree_and_marquee(m_data, NULL);

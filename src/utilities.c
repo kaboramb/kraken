@@ -32,3 +32,27 @@ void util_str_replace(char *string, char *old, char *new) {
 	}
 	return;
 }
+
+void util_str_to_lower(char *string) {
+	char *pos = string;
+
+	while (*pos != '\0') {
+		if ((*pos < 91) && (*pos > 64)) {
+			*pos = (*pos + 32);
+		}
+		pos++;
+	}
+	return;
+}
+
+void util_str_to_upper(char *string) {
+	char *pos = string;
+
+	while (*pos != '\0') {
+		if ((*pos < 123) && (*pos > 96)) {
+			*pos = (*pos - 32);
+		}
+		pos++;
+	}
+	return;
+}
