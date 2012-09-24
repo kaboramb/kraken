@@ -85,14 +85,18 @@ int export_host_manager_to_csv_ex(host_manager *c_host_manager, const char *dest
 				if (use_delimiter) {
 					fprintf(csv_f, "%s", e_opts->primary_delimiter);
 				}
-				single_host_iter_hostname_init(c_host, &hostname_i);
-				while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
-					fprintf(csv_f, "%s%s", hostname, e_opts->secondary_delimiter);
+				if (c_host->n_names) {
+					single_host_iter_hostname_init(c_host, &hostname_i);
+					while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
+						fprintf(csv_f, "%s%s", hostname, e_opts->secondary_delimiter);
+					}
+					fseek(csv_f, -strlen(e_opts->secondary_delimiter), SEEK_CUR);
+					use_delimiter = 1;
 				}
-				fseek(csv_f, -strlen(e_opts->secondary_delimiter), SEEK_CUR);
-				use_delimiter = 1;
 			}
-			fprintf(csv_f, "%s", e_opts->new_line);
+			if (use_delimiter) {
+				fprintf(csv_f, "%s", e_opts->new_line);
+			}
 		}
 	}
 
