@@ -46,5 +46,6 @@ gboolean gui_popup_dns_enum_domain(main_gui_data *m_data);
 gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str);
 gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link *link_anchor);
 gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data);
+gboolean gui_popup_help_about(main_gui_data *m_data);
 
 #endif

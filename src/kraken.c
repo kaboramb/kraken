@@ -40,7 +40,8 @@
 #include "gui_main.h"
 #include "whois_lookup.h"
 
-const char *argp_program_version = "kraken 0.1";
+char kraken_version_string[128];
+const char *argp_program_version = kraken_version_string;
 const char *argp_program_bug_address = "<smcintyre@securestate.net>";
 static char doc[] = "Enumerate targets.";
 static char args_doc[] = "";
@@ -133,6 +134,12 @@ int main(int argc, char **argv) {
 	arguments.loglvl = 0;
 #endif
 
+	/* patch the version string from kraken.h */
+	if (strlen(KRAKEN_REVISION_STRING)) {
+		snprintf(kraken_version_string, sizeof(kraken_version_string), "kraken v:%u.%u rev:%s", KRAKEN_VERSION_MAJOR, KRAKEN_VERSION_MINOR, KRAKEN_REVISION_STRING);
+	} else {
+		snprintf(kraken_version_string, sizeof(kraken_version_string), "kraken v:%u.%u", KRAKEN_VERSION_MAJOR, KRAKEN_VERSION_MINOR);
+	}
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 	if (log4c_init()) {

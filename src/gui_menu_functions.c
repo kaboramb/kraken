@@ -231,6 +231,11 @@ void gui_menu_view_collapse_all(main_gui_data *m_data, guint action, GtkWidget *
 	return;
 }
 
+void gui_menu_help_about(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_help_about(m_data);
+	return;
+}
+
 static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/File",									NULL,		NULL,							0, 	"<Branch>"	},
 	{ "/File/Export",							NULL,		NULL,							0,	"<Branch>"	},
@@ -257,6 +262,8 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/View/",									NULL,		NULL,							0,	"<Separator>"	},
 	{ "/View/Expand All",						NULL,		gui_menu_view_expand_all,		0,	NULL	},
 	{ "/View/Collapse All",						NULL,		gui_menu_view_collapse_all,		0,	NULL	},
+	{ "/Help",									NULL,		NULL,							0,	"<Branch>"	},
+	{ "/Help/About",							NULL,		gui_menu_help_about,			0, 	NULL	},
 };
 
 static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);

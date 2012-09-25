@@ -17,6 +17,11 @@
 #include "kraken_options.h"
 #include "logging.h"
 
+extern char kraken_version_string[128];
+#define KRAKEN_VERSION_MAJOR 0
+#define KRAKEN_VERSION_MINOR 1
+#define KRAKEN_REVISION_STRING ""
+
 #define MAX_LINE 512
 
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in dns_enum.h */

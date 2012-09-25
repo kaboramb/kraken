@@ -13,6 +13,8 @@
 #include "http_scan.h"
 #include "whois_lookup.h"
 
+char kraken_version_string[128];
+
 enum {
 	COL_SELECT = 0,
 	COL_DOMAIN,
@@ -101,19 +103,17 @@ GtkWidget *gui_popup_get_button(int type, popup_data *p_data, const char* text) 
 		case GUI_POPUP_BUTTON_TYPE_BASIC_APPLY:
 			gtk_widget_set_can_default(button, TRUE);
 			image = gtk_image_new_from_stock(GTK_STOCK_APPLY, GTK_ICON_SIZE_BUTTON);
-			if (text == NULL) {
-				label = gtk_label_new("Apply");
-			} else {
-				label = gtk_label_new(text);
-			}
+			label = gtk_label_new("Apply");
 			break;
 		case GUI_POPUP_BUTTON_TYPE_BASIC_CANCEL:
 			image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
-			if (text == NULL) {
-				label = gtk_label_new("Cancel");
-			} else {
-				label = gtk_label_new(text);
-			}
+			label = gtk_label_new("Cancel");
+	}
+	if (text != NULL) {
+		if (label != NULL) {
+			gtk_widget_destroy(label);
+		}
+		label = gtk_label_new(text);
 	}
 	if (image != NULL) {
 		gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
@@ -851,6 +851,76 @@ gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
 
 	/* get the Cancel button */
 	button = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL, p_data, NULL);
+	gtk_box_pack_end(GTK_BOX(main_hbox), button, FALSE, FALSE, 0);
+
+	gtk_widget_show_all(window);
+	return TRUE;
+}
+
+gboolean gui_popup_help_about(main_gui_data *m_data) {
+	GtkWidget *window;
+	GtkWidget *main_vbox, *vbox, *main_hbox;
+	GtkWidget *label;
+	GtkWidget *button;
+	char version[32];
+	char revision[32];
+	popup_data *p_data;
+	p_data = malloc(sizeof(popup_data));
+	if (p_data == NULL) {
+		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
+		return TRUE;
+	}
+
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_widget_set_size_request(window, 250, 180);
+	gtk_window_set_title(GTK_WINDOW(window), "About Kraken");
+	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
+	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+
+	main_vbox = gtk_vbox_new(FALSE, 3);
+	gtk_container_add(GTK_CONTAINER(window), main_vbox);
+
+	vbox = gtk_vbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
+	gtk_container_add(GTK_CONTAINER(main_vbox), vbox); /* yo dawg, I heard you like vbox's */
+
+	label = gtk_label_new(NULL);
+	gtk_label_set_markup(GTK_LABEL(label), "<b>Kraken</b>");
+	gtk_container_add(GTK_CONTAINER(vbox), label);
+
+	snprintf(version, sizeof(version), "Version: %u.%u", KRAKEN_VERSION_MAJOR, KRAKEN_VERSION_MINOR);
+	label = gtk_label_new(version);
+	gtk_container_add(GTK_CONTAINER(vbox), label);
+
+	if (strlen(KRAKEN_REVISION_STRING)) {
+		gtk_widget_set_size_request(window, 250, 200);
+		snprintf(version, sizeof(version), "Revision: %s", KRAKEN_REVISION_STRING);
+		label = gtk_label_new(version);
+		gtk_container_add(GTK_CONTAINER(vbox), label);
+	}
+
+	vbox = gtk_vbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
+	gtk_container_add(GTK_CONTAINER(main_vbox), vbox);
+
+	label = gtk_label_new("Copyright (c) 2012");
+	gtk_container_add(GTK_CONTAINER(vbox), label);
+
+	label = gtk_label_new("Credits:");
+	gtk_container_add(GTK_CONTAINER(vbox), label);
+
+	label = gtk_label_new("Spencer McIntyre");
+	gtk_container_add(GTK_CONTAINER(vbox), label);
+
+	main_hbox = gtk_hbox_new(FALSE, 3);
+	gtk_container_set_border_width(GTK_CONTAINER(main_hbox), 2);
+	gtk_container_add(GTK_CONTAINER(main_vbox), main_hbox);
+
+	gui_popup_data_init(p_data, m_data);
+	p_data->popup_window = window;
+
+	/* get the Cancel button */
+	button = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL, p_data, "Close");
 	gtk_box_pack_end(GTK_BOX(main_hbox), button, FALSE, FALSE, 0);
 
 	gtk_widget_show_all(window);
