@@ -5,6 +5,7 @@
 #include <string.h>
 #include <gtk/gtk.h>
 
+#include "plugins.h"
 #include "dns_enum.h"
 #include "gui_popups.h"
 #include "gui_popups_threads.h"
@@ -38,6 +39,17 @@ void gui_popup_error_dialog(gpointer window, const char *message, const char *ti
 	gtk_window_set_title(GTK_WINDOW(dialog), title);
 	gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
+}
+
+void gui_popup_error_dialog_plugin(gpointer window, kstatus_plugin status, const char *message) {
+	if (strlen(message)) {
+		gui_popup_error_dialog(window, message, "Plugin Error");
+	} else if (KSTATUS_PLUGIN_IS_PYEXC(status)) {
+		gui_popup_error_dialog(window, "An unhandled Python exception occured", "Plugin Error");
+	} else {
+		gui_popup_error_dialog(window, "The plugin encountered and error", "Plugin Error");
+	}
+	return;
 }
 
 void gui_popup_info_dialog(gpointer window, const char *message, const char *title) {

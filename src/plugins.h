@@ -4,7 +4,6 @@
 #include <Python.h>
 
 #define PLUGIN_SZ_NAME 31
-#define PLUGIN_SZ_LAST_ERROR_MSG 63
 #define PLUGIN_METHOD_INITIALIZE "initialize"
 #define PLUGIN_METHOD_MAIN "main"
 #define PLUGIN_METHOD_FINALIZE "finalize"
@@ -17,6 +16,7 @@
 #define PLUGIN_CALLBACK_DATA_NETWORK(i) ((19 < i) && (i < 30))
 
 #define KSTATUS_PLUGIN_IS_ERROR(i) (i < 0)
+#define KSTATUS_PLUGIN_IS_PYEXC(i) ((i < -1999) && (i > -3000))
 #define KSTATUS_PLUGIN_OK 0
 #define KSTATUS_PLUGIN_ERROR_ARGUMENT -2
 #define KSTATUS_PLUGIN_ERROR_PYFUNCTION -3
@@ -55,9 +55,10 @@ void plugins_destroy(void);
 void plugins_iter_init(plugin_iter *iter);
 int plugins_iter_next(plugin_iter *iter, plugin_object **plugin);
 int plugins_get_plugin_by_name(char *name, plugin_object **plugin);
-int plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObject *args_container);
+kstatus_plugin plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method, char *plugin_args, char *error_msg, size_t error_msg_sz);
+kstatus_plugin plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObject *args_container, char *error_msg, size_t error_msg_sz);
 int plugins_plugin_get_callback(plugin_object *c_plugin, int callback_id, plugin_callback **callback);
-int plugins_all_run_callback(int callback_id, void *data);
-int plugins_plugin_run_callback(plugin_object *c_plugin, int callback_id, void *data);
+kstatus_plugin plugins_all_run_callback(int callback_id, void *data, char *error_msg, size_t error_msg_sz);
+kstatus_plugin plugins_plugin_run_callback(plugin_object *c_plugin, int callback_id, void *data, char *error_msg, size_t error_msg_sz);
 
 #endif

@@ -23,10 +23,11 @@ void callback_main_command_submit_thread(main_gui_data *m_data) {
 	GdkColor color;
 	plugin_object *plugin;
 	char buffer[GUI_MAIN_MAX_CMD_SZ + 1];
+	char error_msg[64];
 	char *args = NULL;
 	char *command = buffer;
 	char *p = buffer;
-	int ret_val;
+	kstatus_plugin ret_val;
 
 	gdk_threads_enter();
 	text = gtk_entry_get_text(GTK_ENTRY(m_data->plugin_entry));
@@ -68,20 +69,20 @@ void callback_main_command_submit_thread(main_gui_data *m_data) {
 	}
 
 	gdk_threads_leave();
-	ret_val = plugins_run_plugin_method_arg_str(plugin, PLUGIN_METHOD_MAIN, args);
+	ret_val = plugins_run_plugin_method_arg_str(plugin, PLUGIN_METHOD_MAIN, args, error_msg, sizeof(error_msg));
 
 	if (m_data->gui_is_active) {
 		gdk_threads_enter();
-		if (ret_val < 0) {
+		if (KSTATUS_PLUGIN_IS_ERROR(ret_val)) {
 			gdk_color_parse("#FF6600", &color);
 			gtk_widget_modify_base(m_data->plugin_entry, GTK_STATE_NORMAL, &color);
+			gui_popup_error_dialog_plugin(m_data->main_window, ret_val, error_msg);
 		} else {
+			gtk_entry_set_text(GTK_ENTRY(m_data->plugin_entry), "");
 			gtk_widget_modify_base(m_data->plugin_entry, GTK_STATE_NORMAL, NULL);
 		}
 		gtk_entry_set_editable(GTK_ENTRY(m_data->plugin_entry), TRUE);
-
 		gui_model_update_tree_and_marquee(m_data, NULL);
-		gtk_entry_set_text(GTK_ENTRY(m_data->plugin_entry), "");
 		gdk_threads_leave();
 	}
 	kraken_thread_mutex_unlock(&m_data->plugin_mutex);
@@ -97,6 +98,7 @@ void callback_main_command_submit(GtkWidget *widget, main_gui_data *m_data) {
 
 void gui_main_data_init(main_gui_data *m_data, kraken_opts *k_opts, host_manager *c_host_manager) {
 	memset(m_data, '\0', sizeof(main_gui_data));
+	m_data->main_window = NULL;
 	m_data->k_opts = k_opts;
 	m_data->c_host_manager = c_host_manager;
 	kraken_thread_mutex_init(&m_data->plugin_mutex);
@@ -126,6 +128,7 @@ int gui_show_main_window(main_gui_data *m_data) {
 	gtk_init(NULL, NULL);
 
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	m_data->main_window = window;
 	g_signal_connect(window, "delete-event", gtk_main_quit, NULL); /* dirty */
 	gtk_window_set_title(GTK_WINDOW(window), "Kraken");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 0);

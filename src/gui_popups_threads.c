@@ -5,6 +5,7 @@
 #include <string.h>
 #include <gtk/gtk.h>
 
+#include "plugins.h"
 #include "dns_enum.h"
 #include "gui_popups.h"
 #include "gui_popups_threads.h"

@@ -8,6 +8,7 @@
 #include "export.h"
 #include "gui_menu_functions.h"
 #include "gui_model.h"
+#include "plugins.h"
 #include "gui_popups.h"
 #include "host_manager.h"
 

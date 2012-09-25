@@ -5,10 +5,10 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+#include "plugins.h"
 #include "gui_model.h"
 #include "gui_menu_functions.h"
 #include "gui_popups.h"
-#include "plugins.h"
 #include "host_manager.h"
 #include "http_scan.h"
 #include "whois_lookup.h"
@@ -170,7 +170,6 @@ void view_popup_menu_onDelete(GtkWidget *menuitem, main_gui_data *m_data) {
 void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 	static main_gui_data *m_data;
 	plugin_object *c_plugin;
-
 	GtkTreeView *treeview;
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
@@ -179,6 +178,8 @@ void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 	struct in_addr ip;
 	gchar *ipstr = NULL;
 	single_host_info *c_host;
+	kstatus_plugin ret_val;
+	char error_msg[64];
 
 	if (menuitem == NULL) {
 		m_data = data;
@@ -211,8 +212,9 @@ void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retrieve the host entry from the IP address");
 		return;
 	}
-	if (plugins_plugin_run_callback(c_plugin, PLUGIN_CALLBACK_ID_HOST_ON_DEMAND, c_host) != 0) {
-		GUI_POPUP_ERROR_GENERIC_ERROR(NULL);
+	ret_val = plugins_plugin_run_callback(c_plugin, PLUGIN_CALLBACK_ID_HOST_ON_DEMAND, c_host, error_msg, sizeof(error_msg));
+	if (KSTATUS_PLUGIN_IS_ERROR(ret_val)) {
+		gui_popup_error_dialog_plugin(m_data->main_window, ret_val, error_msg);
 	}
 	gui_model_update_tree_and_marquee(m_data, NULL);
 	return;

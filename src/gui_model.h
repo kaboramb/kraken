@@ -7,6 +7,7 @@
 
 typedef struct main_gui_data {
 	int gui_is_active;
+	GtkWidget *main_window;
 	GtkWidget *tree_view;
 	GtkWidget *main_marquee;
 

@@ -344,7 +344,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 		http_get_links_from_html(*webpage_b, &link_current);
 		*link_anchor = link_current;
 	} else {
-		logging_log("kraken.http_scan", LOGGING_WARNING, "received invalid content type of: %s", content_type);
+		logging_log("kraken.http_scan", LOGGING_WARNING, "received an invalid content type from %s", target_url);
 		return 5;
 	}
 	if (link_current && (*pvt_link_anchor == NULL)) {
@@ -586,7 +586,7 @@ int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **lin
 						}
 					}
 				} else {
-					LOGGING_QUICK_WARNING("kraken.http_scan", "skipping alises due to scan error")
+					logging_log("kraken.http_scan", LOGGING_NOTICE, "skipping alises due to scan error");
 				}
 				done++;
 				if (h_opts->progress_update != NULL) {

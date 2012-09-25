@@ -119,7 +119,7 @@ int single_host_merge(single_host_info *dst, single_host_info *src) {
 void single_host_set_status(single_host_info *c_host, char status) {
 	c_host->status = status;
 	if (status == KRAKEN_HOST_STATUS_UP) {
-		plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_STATUS_UP, c_host);
+		plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_STATUS_UP, c_host, NULL, 0);
 	}
 	return;
 }
@@ -216,7 +216,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
 		if (memcmp(&new_host->ipv4_addr, &c_host->ipv4_addr, sizeof(struct in_addr)) == 0) {
 			if (single_host_merge(c_host, new_host)) {
-				plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_ON_ADD, new_host);
+				plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_ON_ADD, new_host, NULL, 0);
 			}
 			kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
 			return 0;
@@ -245,7 +245,7 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 		}
 	}
 
-	plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_ON_ADD, new_host);
+	plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_ON_ADD, new_host, NULL, 0);
 	memcpy(&c_host_manager->hosts[c_host_manager->known_hosts], new_host, sizeof(single_host_info));
 	if (new_host->names != NULL) {
 		block = malloc((DNS_MAX_FQDN_LENGTH + 1) * (new_host->n_names));
@@ -447,7 +447,7 @@ int host_manager_add_whois(host_manager *c_host_manager, whois_record *new_recor
 		kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	}
 
-	plugins_all_run_callback(PLUGIN_CALLBACK_ID_NETWORK_ON_ADD, new_record);
+	plugins_all_run_callback(PLUGIN_CALLBACK_ID_NETWORK_ON_ADD, new_record, NULL, 0);
 	memcpy(&c_host_manager->whois_records[c_host_manager->known_whois_records], new_record, sizeof(whois_record));
 	c_host_manager->known_whois_records++;
 	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);

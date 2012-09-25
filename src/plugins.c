@@ -173,11 +173,12 @@ PyObject *plugins_utils_host_get_network_dict(whois_record *w_rcd) {
 }
 
 static PyObject *pymod_kraken_api_callback_register(PyObject *self, PyObject *args) {
-	char *callback_id;
+	static char *callback_id_original;
+	char callback_id[32];
 	PyObject *callback_function;
 	plugin_callback **stored_callback_function = NULL;
 
-	if (!PyArg_ParseTuple(args, "sO", &callback_id, &callback_function)) {
+	if (!PyArg_ParseTuple(args, "sO", &callback_id_original, &callback_function)) {
 		return NULL;
 	}
 	if (!PyCallable_Check(callback_function)) {
@@ -193,13 +194,16 @@ static PyObject *pymod_kraken_api_callback_register(PyObject *self, PyObject *ar
 		return NULL;
 	}
 
-	if (strcasecmp(callback_id, "host_on_add") == 0) {
+	strncpy(callback_id, callback_id_original, (sizeof(callback_id) - 1));
+	util_str_to_lower(callback_id);
+
+	if (strcmp(callback_id, "host_on_add") == 0) {
 		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_add;
-	} else if (strcasecmp(callback_id, "host_on_demand") == 0) {
+	} else if (strcmp(callback_id, "host_on_demand") == 0) {
 		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_demand;
-	} else if (strcasecmp(callback_id, "host_on_status_up") == 0) {
+	} else if (strcmp(callback_id, "host_on_status_up") == 0) {
 		stored_callback_function = &c_plugin_manager->current_plugin->callback_host_on_status_up;
-	} else if (strcasecmp(callback_id, "network_on_add") == 0) {
+	} else if (strcmp(callback_id, "network_on_add") == 0) {
 		stored_callback_function = &c_plugin_manager->current_plugin->callback_network_on_add;
 	} else {
 		kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
@@ -215,6 +219,7 @@ static PyObject *pymod_kraken_api_callback_register(PyObject *self, PyObject *ar
 	*stored_callback_function = callback_function;
 
 	kraken_thread_mutex_unlock(&c_plugin_manager->callback_mutex);
+	logging_log("kraken.plugins", LOGGING_NOTICE, "plugin %s registered a callback for event: %s", c_plugin_manager->current_plugin->name, callback_id);
 	Py_INCREF(Py_None);
 	return Py_None;
 }
@@ -765,6 +770,7 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 		}
 		memset(plugin_name, '\0', sizeof(plugin_name));
 		strncpy(plugin_name, ep->d_name, name_sz);
+		logging_log("kraken.plugins", LOGGING_TRACE, "loading plugin %s", plugin_name);
 		pName = PyString_FromString(plugin_name);
 		pPluginObj = PyImport_Import(pName);
 		Py_DECREF(pName);
@@ -920,7 +926,7 @@ int plugins_get_plugin_by_name(char *name, plugin_object **plugin) {
 	return 0;
 }
 
-kstatus_plugin plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method, char *plugin_args) {
+kstatus_plugin plugins_run_plugin_method_arg_str(plugin_object *plugin, char *plugin_method, char *plugin_args, char *error_msg, size_t error_msg_sz) {
 	PyObject *arg;
 	PyObject *args_container;
 	int ret_val = 0;
@@ -932,17 +938,20 @@ kstatus_plugin plugins_run_plugin_method_arg_str(plugin_object *plugin, char *pl
 		return KSTATUS_PLUGIN_ERROR_PYOBJCREATE;
 	}
 	PyTuple_SetItem(args_container, 0, arg);
-	ret_val = plugins_run_plugin_method(plugin, plugin_method, args_container);
+	ret_val = plugins_run_plugin_method(plugin, plugin_method, args_container, error_msg, error_msg_sz);
 
 	Py_XDECREF(args_container);
 	return ret_val;
 }
 
-kstatus_plugin plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObject *args_container) {
+kstatus_plugin plugins_run_plugin_method(plugin_object *plugin, char *plugin_method, PyObject *args_container, char *error_msg, size_t error_msg_sz) {
 	PyObject *pFunc;
 	PyObject *py_ret_val = NULL;
 
 	assert(c_plugin_manager != NULL);
+	if (error_msg != NULL) {
+		memset(error_msg, '\0', error_msg_sz);
+	}
 	pFunc = PyObject_GetAttrString(plugin->python_object, plugin_method);
 	if (pFunc == NULL) {
 		logging_log("kraken.plugins", LOGGING_ERROR, "could not find plugin attribute %s.%s", plugin->name, plugin_method);
@@ -957,9 +966,33 @@ kstatus_plugin plugins_run_plugin_method(plugin_object *plugin, char *plugin_met
 	py_ret_val = PyObject_CallObject(pFunc, args_container);
 	Py_XDECREF(args_container);
 	Py_XDECREF(py_ret_val);
+
 	if (PyErr_Occurred()) {
+		if (PyErr_ExceptionMatches(PyObject_GetAttrString(c_plugin_manager->pymod_kraken, "error"))) {
+			PyObject *py_ret_val;
+			PyObject *py_err_type;
+			PyObject *py_err_value;
+			PyObject *py_err_traceback;
+			PyObject *py_message;
+			char *message;
+
+			PyErr_Fetch(&py_err_type, &py_err_value, &py_err_traceback);
+			if (py_err_value != NULL) {
+				py_message = PyObject_GetAttrString(py_err_value, "message");
+				message = PyString_AsString(py_message);
+				if (error_msg != NULL) {
+					if (strlen(message) < error_msg_sz) {
+						strncpy(error_msg, message, error_msg_sz);
+					}
+				}
+				logging_log("kraken.plugins", LOGGING_WARNING, "the call to function %s.%s produced a Kraken exception with message: %s", plugin->name, plugin_method, message);
+			} else {
+				logging_log("kraken.plugins", LOGGING_WARNING, "the call to function %s.%s produced a Kraken exception, but the message could not be retrieved", plugin->name, plugin_method);
+			}
+		} else {
+			logging_log("kraken.plugins", LOGGING_WARNING, "the call to function %s.%s produced a Python exception", plugin->name, plugin_method);
+		}
 		PyErr_Clear();
-		logging_log("kraken.plugins", LOGGING_WARNING, "the call to function %s.%s produced a Python exception", plugin->name, plugin_method);
 		return KSTATUS_PLUGIN_ERROR_PYEXC;
 	}
 	return KSTATUS_PLUGIN_OK;
@@ -998,7 +1031,7 @@ int plugins_plugin_get_callback(plugin_object *c_plugin, int callback_id, plugin
 	return 1;
 }
 
-kstatus_plugin plugins_all_run_callback(int callback_id, void *data) {
+kstatus_plugin plugins_all_run_callback(int callback_id, void *data, char *error_msg, size_t error_msg_sz) {
 	plugin_iter plugin_i;
 	plugin_object *c_plugin;
 	plugin_callback *test_callback;
@@ -1020,13 +1053,13 @@ kstatus_plugin plugins_all_run_callback(int callback_id, void *data) {
 	/* validation complete, run 'em all */
 	plugins_iter_init(&plugin_i);
 	while (plugins_iter_next(&plugin_i, &c_plugin)) {
-		plugins_plugin_run_callback(c_plugin, callback_id, data);
+		plugins_plugin_run_callback(c_plugin, callback_id, data, error_msg, error_msg_sz);
 	}
 
 	return KSTATUS_PLUGIN_OK;
 }
 
-kstatus_plugin plugins_plugin_run_callback(plugin_object *c_plugin, int callback_id, void *data) {
+kstatus_plugin plugins_plugin_run_callback(plugin_object *c_plugin, int callback_id, void *data, char *error_msg, size_t error_msg_sz) {
 	plugin_callback *callback;
 	PyObject *arg;
 	PyObject *args_container;
@@ -1034,6 +1067,9 @@ kstatus_plugin plugins_plugin_run_callback(plugin_object *c_plugin, int callback
 
 	if (c_plugin_manager == NULL) {
 		return KSTATUS_PLUGIN_ERROR_NOT_INITIALIZED;
+	}
+	if (error_msg != NULL) {
+		memset(error_msg, '\0', error_msg_sz);
 	}
 	if (!plugins_plugin_get_callback(c_plugin, callback_id, &callback)) {
 		return KSTATUS_PLUGIN_ERROR_ARGUMENT;
@@ -1065,11 +1101,31 @@ kstatus_plugin plugins_plugin_run_callback(plugin_object *c_plugin, int callback
 	Py_XDECREF(args_container);
 	Py_XDECREF(py_ret_val);
 	if (PyErr_Occurred()) {
-		/*if (PyErr_ExceptionMatches(PyObject_GetAttrString(c_plugin_manager->pymod_kraken, "error"))) {
-			TODO: handle sending this message to the user
-		}*/
+		if (PyErr_ExceptionMatches(PyObject_GetAttrString(c_plugin_manager->pymod_kraken, "error"))) {
+			PyObject *py_ret_val;
+			PyObject *py_err_type;
+			PyObject *py_err_value;
+			PyObject *py_err_traceback;
+			PyObject *py_message;
+			char *message;
+
+			PyErr_Fetch(&py_err_type, &py_err_value, &py_err_traceback);
+			if (py_err_value != NULL) {
+				py_message = PyObject_GetAttrString(py_err_value, "message");
+				message = PyString_AsString(py_message);
+				if (error_msg != NULL) {
+					if (strlen(message) < error_msg_sz) {
+						strncpy(error_msg, message, error_msg_sz);
+					}
+				}
+				logging_log("kraken.plugins", LOGGING_WARNING, "the callback in plugin %s produced a Kraken exception with message: %s", c_plugin->name, message);
+			} else {
+				logging_log("kraken.plugins", LOGGING_WARNING, "the callback in plugin %s produced a Kraken exception, but the message could not be retrieved", c_plugin->name);
+			}
+		} else {
+			logging_log("kraken.plugins", LOGGING_WARNING, "the callback in plugin %s produced a Python exception", c_plugin->name);
+		}
 		PyErr_Clear();
-		logging_log("kraken.plugins", LOGGING_WARNING, "the callback in plugin %s produced a Python exception", c_plugin->name);
 		return KSTATUS_PLUGIN_ERROR_PYEXC;
 	}
 	return KSTATUS_PLUGIN_OK;

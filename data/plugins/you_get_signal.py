@@ -13,9 +13,11 @@ def you_get_signal_scan(host):
 	except:
 		kraken.log(kraken.LOG_LVL_WARNING, "failed to get yougetsignal data")
 		raise kraken.error("failed to get yougetsignal data")
-	if (not data['status'].lower() == 'success') or (not data.has_key('domainArray')):
-		kraken.log(kraken.LOG_LVL_WARNING, "failed to get yougetsignal data")
-		raise kraken.error("failed to get yougetsignal data")
+	if data['status'].lower() != 'success':
+		kraken.log(kraken.LOG_LVL_WARNING, data['message'])
+		raise kraken.error(" ".join(data['message'].split()[:6]))
+	if data['domainCount'] == 0:
+		return
 	domainArray = map(lambda x: x[0], data['domainArray'])
 	if not len(domainArray):
 		return
@@ -39,8 +41,5 @@ def initialize():
 def main(args):
 	ips = kraken.host_manager.get_hosts()
 	for ip in ips:
-		try:
-			you_get_signal_scan({'ipv4_addr':ip})
-		except:
-			break
+		you_get_signal_scan({'ipv4_addr':ip})
 	return 0
