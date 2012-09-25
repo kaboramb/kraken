@@ -152,8 +152,10 @@ int dns_host_in_domain(char *hostname, char *domain) {
 	if (hdomain == NULL) {
 		return 0;
 	}
-	if (strncasecmp(hdomain, domain, strlen(domain)) == 0) {
-		return 1;
+	if (strlen(hdomain) == strlen(domain)) {
+		if (strncasecmp(hdomain, domain, strlen(domain)) == 0) {
+			return 1;
+		}
 	}
 	return 0;
 }

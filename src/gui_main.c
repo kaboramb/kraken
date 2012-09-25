@@ -19,9 +19,6 @@ void callback_main_command_reset_color(GtkWidget *widget, main_gui_data *m_data)
 }
 
 void callback_main_command_submit_thread(main_gui_data *m_data) {
-	/* TODO: add additional color responses here
-	 * an error occurred, missing/invalid arguments
-	 */
 	const gchar *text;
 	GdkColor color;
 	plugin_object *plugin;

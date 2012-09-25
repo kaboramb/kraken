@@ -19,6 +19,7 @@ void http_enum_opts_init(http_enum_opts *h_opts) {
 	h_opts->progress_update = NULL;
 	h_opts->progress_update_data = NULL;
 	h_opts->action_status = NULL;
+	h_opts->use_ssl = 0;
 	return;
 }
 
@@ -47,14 +48,18 @@ int http_enum_opts_set_bing_api_key(http_enum_opts *h_opts, const char *bing_api
 	return 0;
 }
 
-int http_redirect_on_same_server(const char *original_url, const char *redirect_url) {
+int http_redirect_in_same_domain(const char *original_url, const char *redirect_url) {
 	/*
 	 * Returns 0 on "No, the redirect url is to a different server"
-	 * Returns 1 on "Yes, the redirect url is on the same server"
+	 * Returns 1 on "Yes the redirect url is in the same domain"
+	 * Returns 2 on "Yes, and the redirect url is on the same server"
 	 */
 	UriParserStateA uri_state;
 	UriUriA orig_uri;
 	UriUriA redir_uri;
+	char *original_domain;
+	char original_host[DNS_MAX_FQDN_LENGTH + 1];
+	char redirect_host[DNS_MAX_FQDN_LENGTH + 1];
 
 	uri_state.uri = &redir_uri;
 	if (uriParseUriA(&uri_state, redirect_url) != URI_SUCCESS) {
@@ -63,7 +68,7 @@ int http_redirect_on_same_server(const char *original_url, const char *redirect_
 	}
 	if ((redir_uri.hostText.afterLast - redir_uri.hostText.first) == 0) {
 		uriFreeUriMembersA(&redir_uri);
-		return 1;
+		return 2;
 	}
 
 	uri_state.uri = &orig_uri;
@@ -73,18 +78,34 @@ int http_redirect_on_same_server(const char *original_url, const char *redirect_
 		return -1;
 	}
 
-	if ((orig_uri.hostText.afterLast - orig_uri.hostText.first) != (redir_uri.hostText.afterLast - redir_uri.hostText.first)) {
-		uriFreeUriMembersA(&redir_uri);
-		uriFreeUriMembersA(&orig_uri);
-		return 0;
+	memset(original_host, '\0', sizeof(original_host));
+	memset(redirect_host, '\0', sizeof(redirect_host));
+
+	if ((orig_uri.hostText.afterLast - orig_uri.hostText.first) > DNS_MAX_FQDN_LENGTH) {
+		return -1;
 	}
-	if (strncasecmp(orig_uri.hostText.first, redir_uri.hostText.first, (orig_uri.hostText.afterLast - orig_uri.hostText.first)) == 0) {
-		uriFreeUriMembersA(&redir_uri);
-		uriFreeUriMembersA(&orig_uri);
-		return 1;
+	if ((redir_uri.hostText.afterLast - redir_uri.hostText.first) > DNS_MAX_FQDN_LENGTH) {
+		return -1;
 	}
+	strncpy(original_host, orig_uri.hostText.first, (orig_uri.hostText.afterLast - orig_uri.hostText.first));
+	strncpy(redirect_host, redir_uri.hostText.first, (redir_uri.hostText.afterLast - redir_uri.hostText.first));
+
 	uriFreeUriMembersA(&redir_uri);
 	uriFreeUriMembersA(&orig_uri);
+
+	if (strlen(original_host) == strlen(redirect_host)) {
+		if (strncasecmp(original_host, redirect_host, strlen(original_host)) == 0) {
+			return 2;
+		}
+	}
+
+	original_domain = dns_get_domain(original_host);
+	if (original_domain == NULL) {
+		return -1;
+	}
+	if (dns_host_in_domain(redirect_host, original_domain)) {
+		return 1;
+	}
 	return 0;
 }
 
@@ -266,7 +287,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 	while (((http_code == 301) || (http_code == 302)) && (redirect_count < HTTP_MAX_REDIRECTS)) {
 		redirect_count++;
 		curl_easy_getinfo(curl, CURLINFO_REDIRECT_URL, &redirected_url);
-		if (http_redirect_on_same_server(target_url, redirected_url) == 1) {
+		if (http_redirect_in_same_domain(target_url, redirected_url)) {
 			if (curl_redir != NULL) {
 				curl_easy_cleanup(curl_redir);
 			}
@@ -401,6 +422,10 @@ int http_scrape_ip_for_links(const char *hostname, const struct in_addr *addr, c
 
 	http_enum_opts_init(&h_opts);
 	response = http_scrape_ip_for_links_ex(hostname, addr, resource, link_anchor, &h_opts);
+	if (response < 0) {
+		h_opts.use_ssl = 1;
+		response = http_scrape_ip_for_links_ex(hostname, addr, resource, link_anchor, &h_opts);
+	}
 	http_enum_opts_destroy(&h_opts);
 	return response;
 }
@@ -408,8 +433,6 @@ int http_scrape_ip_for_links(const char *hostname, const struct in_addr *addr, c
 int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor, http_enum_opts *h_opts) {
 	/* link_anchor should either be NULL or an existing list returned by
 	 * a previous call to this or a similar function */
-	/* this function will follow redirects but only when on the same
-	 * server in the future I may change this to on the same domain */
 	size_t webpage_sz;
 	FILE *webpage_f = NULL;
 	char *webpage_b = NULL;
@@ -430,7 +453,11 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 	inet_ntop(AF_INET, addr, ipstr, sizeof(ipstr));
 	target_url = malloc(strlen(ipstr) + strlen(resource) + 9);
 	assert(target_url != NULL);
-	snprintf(target_url, (strlen(ipstr) + strlen(resource) + 9), "http://%s%s", ipstr, resource);
+	if (h_opts->use_ssl) {
+		snprintf(target_url, (strlen(ipstr) + strlen(resource) + 9), "https://%s%s", ipstr, resource);
+	} else {
+		snprintf(target_url, (strlen(ipstr) + strlen(resource) + 9), "http://%s%s", ipstr, resource);
+	}
 	snprintf(hoststr, (DNS_MAX_FQDN_LENGTH + 7), "Host: %s", hostname);
 
 	webpage_f = open_memstream(&webpage_b, &webpage_sz);
@@ -482,13 +509,15 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 }
 
 int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **link_anchor, http_enum_opts *h_opts) {
+	char ipstr[INET_ADDRSTRLEN];
 	host_iter host_i;
 	single_host_info *c_host;
 	hostname_iter hostname_i;
 	char *hostname;
 	unsigned int done = 0;
 	unsigned int total = 0;
-	int response = 0;
+	int check_http = 1;
+	int check_https = 1;
 
 	host_manager_iter_host_init(c_host_manager, &host_i);
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
@@ -503,18 +532,59 @@ int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **lin
 
 	host_manager_iter_host_init(c_host_manager, &host_i);
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
+		inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
+		check_http = 1;
+		check_https = 1;
+
 		if (HTTP_SHOULD_STOP(h_opts)) {
 			break;
 		}
+		h_opts->use_ssl = 0;
+		if (http_scrape_ip_for_links_ex(ipstr, &c_host->ipv4_addr, "/", link_anchor, h_opts) < 0) {
+			check_http = 0;
+			logging_log("kraken.http_scan", LOGGING_DEBUG, "skipping http scans on host: %s due to a connection error", ipstr);
+		}
+		if (HTTP_SHOULD_STOP(h_opts)) {
+			break;
+		}
+		h_opts->use_ssl = 1;
+		if (http_scrape_ip_for_links_ex(ipstr, &c_host->ipv4_addr, "/", link_anchor, h_opts) < 0) {
+			check_https = 0;
+			logging_log("kraken.http_scan", LOGGING_DEBUG, "skipping https scans on host: %s due to a connection error", ipstr);
+		}
+		if (check_http || check_https) {
+			single_host_set_status(c_host, KRAKEN_HOST_STATUS_UP);
+		}
+
+		done++;
+		if (h_opts->progress_update != NULL) {
+			h_opts->progress_update(done, total, h_opts->progress_update_data);
+		}
+
 		if (c_host->names != NULL) {
 			single_host_iter_hostname_init(c_host, &hostname_i);
 			while (single_host_iter_hostname_next(c_host, &hostname_i, &hostname)) {
-				if (HTTP_SHOULD_STOP(h_opts)) {
-					break;
-				}
-				if (response == 0) {
-					/* TODO: review this section and set the host status to up if the scan completed successfully */
-					response = http_scrape_ip_for_links_ex(hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts);
+				if (check_http || check_https) {
+					if (HTTP_SHOULD_STOP(h_opts)) {
+						break;
+					}
+					if (check_http) {
+						h_opts->use_ssl = 0;
+						if (http_scrape_ip_for_links_ex(hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts) < 0) {
+							check_http = 0;
+							logging_log("kraken.http_scan", LOGGING_DEBUG, "skipping http scans on host: %s due to a connection error", ipstr);
+						}
+					}
+					if (HTTP_SHOULD_STOP(h_opts)) {
+						break;
+					}
+					if (check_https) {
+						h_opts->use_ssl = 1;
+						if (http_scrape_ip_for_links_ex(hostname, &c_host->ipv4_addr, "/", link_anchor, h_opts) < 0) {
+							check_https = 0;
+							logging_log("kraken.http_scan", LOGGING_DEBUG, "skipping https scans on host: %s due to a connection error", ipstr);
+						}
+					}
 				} else {
 					LOGGING_QUICK_WARNING("kraken.http_scan", "skipping alises due to scan error")
 				}

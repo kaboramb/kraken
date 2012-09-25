@@ -29,12 +29,13 @@ typedef struct http_enum_opts {
 	long timeout;
 	long timeout_ms;
 	char *bing_api_key;
+	int use_ssl;
 } http_enum_opts;
 
 void http_enum_opts_init(http_enum_opts *h_opts);
 void http_enum_opts_destroy(http_enum_opts *h_opts);
 int http_enum_opts_set_bing_api_key(http_enum_opts *h_opts, const char *bing_api_key);
-int http_redirect_on_same_server(const char *original_url, const char *redirect_url);
+int http_redirect_in_same_domain(const char *original_url, const char *redirect_url);
 void http_free_link(http_link *current_link);
 int http_scrape_url_for_links(char *target_url, http_link **link_anchor);
 int http_scrape_ip_for_links(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor);
