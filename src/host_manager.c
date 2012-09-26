@@ -117,10 +117,10 @@ int single_host_merge(single_host_info *dst, single_host_info *src) {
 }
 
 void single_host_set_status(single_host_info *c_host, char status) {
-	c_host->status = status;
-	if (status == KRAKEN_HOST_STATUS_UP) {
+	if ((c_host->status != KRAKEN_HOST_STATUS_UP) && (status == KRAKEN_HOST_STATUS_UP)) {
 		plugins_all_run_callback(PLUGIN_CALLBACK_ID_HOST_STATUS_UP, c_host, NULL, 0);
 	}
+	c_host->status = status;
 	return;
 }
 

@@ -17,13 +17,15 @@ enum {
 	COL_HOSTNAME = 0,
 	COL_IPADDR,
 	COL_WHO_BESTNAME,
+	COL_IPADDR_BGCOLOR,
+	COL_IPADDR_BGCOLOR_SET,
 	NUM_COLS
 };
 
 enum {
 	SORTID_HOSTNAME = 0,
 	SORTID_IPADDR,
-	SORTID_WHO_ORGNAME,
+	SORTID_WHO_ORGNAME
 };
 
 void view_popup_menu_onDoDNSBruteforceDomain(GtkWidget *menuitem, main_gui_data *m_data) {
@@ -339,7 +341,7 @@ GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, host_manager *c_host_m
 	char n_names_str[18];
 
 	if (store == NULL) {
-		store = gtk_tree_store_new(NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+		store = gtk_tree_store_new(NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN);
 	}
 
 	treemodel = GTK_TREE_MODEL(store);
@@ -349,6 +351,9 @@ GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, host_manager *c_host_m
 		inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
 		gtk_tree_store_append(store, &ipiter, NULL);
 		gtk_tree_store_set(store, &ipiter, COL_IPADDR, ipstr, -1);
+		if (netaddr_ip_is_rfc1918(&c_host->ipv4_addr) || netaddr_ip_is_rfc3330(&c_host->ipv4_addr)) {
+			gtk_tree_store_set(store, &ipiter, COL_IPADDR_BGCOLOR, "Yellow", COL_IPADDR_BGCOLOR_SET, TRUE, -1);
+		}
 		if (c_host->n_names == 1) {
 			gtk_tree_store_set(store, &ipiter, COL_HOSTNAME, c_host->names[0], -1);
 		} else if (c_host->n_names > 1) {
@@ -377,14 +382,14 @@ GtkWidget *gui_model_create_view_and_model(host_manager *c_host_manager, main_gu
 	GtkTreeStore *store;
 
 	view = gtk_tree_view_new();
-	store = gtk_tree_store_new(NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+	store = gtk_tree_store_new(NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN);
 	model = gui_refresh_tree_model(NULL, c_host_manager);
 	g_signal_connect(view, "button-press-event", (GCallback)view_onButtonPressed, m_data);
 
 	renderer = gtk_cell_renderer_text_new();
 	col = gtk_tree_view_column_new();
 	gtk_tree_view_column_pack_start(col, renderer, TRUE);
-	gtk_tree_view_column_add_attribute(col, renderer, "text", COL_IPADDR);
+	gtk_tree_view_column_set_attributes(col, renderer, "text", COL_IPADDR, "background", COL_IPADDR_BGCOLOR, "background-set", COL_IPADDR_BGCOLOR_SET, NULL);
 	gtk_tree_view_column_set_title(col, "IP Address");
 	gtk_tree_view_column_set_sort_column_id(col, SORTID_IPADDR);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);
