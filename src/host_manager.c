@@ -81,6 +81,27 @@ int single_host_add_hostname(single_host_info *c_host, const char *name) {
 	return 0;
 }
 
+int single_host_delete_hostname(single_host_info *c_host, const char *name) {
+	unsigned int current_name_i;
+	char *found_name = NULL;
+
+	for (current_name_i = 0; current_name_i < c_host->n_names; current_name_i++) {
+		if (strncasecmp(c_host->names[current_name_i], name, DNS_MAX_FQDN_LENGTH) == 0) {
+			found_name = c_host->names[current_name_i];
+			break;
+		}
+	}
+	if (found_name == NULL) {
+		return -1;
+	}
+	c_host->n_names--;
+	memset(found_name, '\0', DNS_MAX_FQDN_LENGTH);
+	if (current_name_i < (c_host->n_names - 1)) {
+		memmove(c_host->names[current_name_i], c_host->names[current_name_i + 1], sizeof(c_host->names[0]) * (c_host->n_names - current_name_i - 1));
+	}
+	return 0;
+}
+
 int single_host_merge(single_host_info *dst, single_host_info *src) {
 	/* returns 0 when nothing changed, otherwise 1 */
 	hostname_iter src_hostname_i;
@@ -269,10 +290,12 @@ int host_manager_add_host(host_manager *c_host_manager, single_host_info *new_ho
 
 void host_manager_delete_host_by_ip(host_manager *c_host_manager, struct in_addr *target_ip) {
 	unsigned int current_host_i = 0;
+	struct in_addr preserved_ip; /* preserve it incase the target_ip is actually in the record we're deleting */
 
+	memcpy(&preserved_ip, target_ip, sizeof(struct in_addr));
 	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
 	while (current_host_i < c_host_manager->known_hosts) {
-		if (memcmp(&c_host_manager->hosts[current_host_i].ipv4_addr, target_ip, sizeof(struct in_addr)) != 0) {
+		if (memcmp(&c_host_manager->hosts[current_host_i].ipv4_addr, &preserved_ip, sizeof(struct in_addr)) != 0) {
 			current_host_i++;
 			continue;
 		}
@@ -345,21 +368,6 @@ int host_manager_quick_add_by_name(host_manager *c_host_manager, const char *hos
 		}
 	}
 	return 0;
-}
-
-void host_manager_set_host_status(host_manager *c_host_manager, struct in_addr *target_ip, const char status) {
-	host_iter host_i;
-	single_host_info *c_host;
-
-	host_manager_iter_host_init(c_host_manager, &host_i);
-	kraken_thread_mutex_lock(&c_host_manager->k_mutex);
-	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
-		if (memcmp(target_ip, &c_host->ipv4_addr, sizeof(struct in_addr)) == 0) {
-			c_host->status = status;
-		}
-	}
-	kraken_thread_mutex_unlock(&c_host_manager->k_mutex);
-	return;
 }
 
 int host_manager_get_host_by_addr(host_manager *c_host_manager, struct in_addr *target_ip, single_host_info **desired_host) {

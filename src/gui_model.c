@@ -28,6 +28,75 @@ enum {
 	SORTID_WHO_ORGNAME
 };
 
+int gui_model_get_host_info_from_tree_iter(GtkTreeModel *model, GtkTreeIter *iter, main_gui_data *m_data, single_host_info **c_host, gchar **ipstr, gchar **name) {
+	GtkTreeIter piter;
+	gchar *lipstr = NULL;
+	gchar *lname = NULL;
+	single_host_info *lc_host = NULL;
+	struct in_addr ip;
+
+	if (gtk_tree_model_iter_parent(model, &piter, iter)) {
+		gtk_tree_model_get(model, &piter, COL_IPADDR, &lipstr, -1);
+		if (lipstr == NULL) {
+			LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
+			return 0;
+		}
+		gtk_tree_model_get(model, iter, COL_HOSTNAME, &lname, -1);
+		if (lname == NULL) {
+			LOGGING_QUICK_WARNING("kraken.gui.model", "could not retreive hostname");
+			g_free(lipstr);
+			return 0;
+		}
+	} else {
+		gtk_tree_model_get(model, iter, COL_IPADDR, &lipstr, -1);
+		if (lipstr == NULL) {
+			LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
+			return 0;
+		}
+		if (!gtk_tree_model_iter_has_child(model, iter)) {
+			gtk_tree_model_get(model, iter, COL_HOSTNAME, &lname, -1);
+		}
+	}
+
+	if (!inet_pton(AF_INET, lipstr, &ip)) {
+		LOGGING_QUICK_ERROR("kraken.gui.model", "the IP address was malformed from the GTK tree");
+		if (lname != NULL) {
+			g_free(lname);
+		}
+		g_free(lipstr);
+		return 0;
+	}
+	if (!host_manager_get_host_by_addr(m_data->c_host_manager, &ip, &lc_host)) {
+		LOGGING_QUICK_ERROR("kraken.gui.model", "failed to retrieve the host information")
+		if (lname != NULL) {
+			g_free(lname);
+		}
+		g_free(lipstr);
+		return 0;
+	}
+
+	if (c_host != NULL) {
+		*c_host = lc_host;
+	}
+	if (name != NULL) {
+		if (lname == NULL) {
+			g_free(lipstr);
+			return 0;
+		}
+		*name = lname;
+	} else {
+		if (lname != NULL) {
+			g_free(lname);
+		}
+	}
+	if (ipstr != NULL) {
+		*ipstr = lipstr;
+	} else {
+		g_free(lipstr);
+	}
+	return 1;
+}
+
 void view_popup_menu_onDoDNSBruteforceDomain(GtkWidget *menuitem, main_gui_data *m_data) {
 	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
 	GtkTreeSelection *selection;
@@ -40,14 +109,14 @@ void view_popup_menu_onDoDNSBruteforceDomain(GtkWidget *menuitem, main_gui_data 
 	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
 		return;
 	}
-	gtk_tree_model_get(model, &iter, COL_HOSTNAME, &name, -1);
-	if (name != NULL) {
-		domain = dns_get_domain(name);
-		if (domain != NULL) {
-			strncpy(m_data->c_host_manager->lw_domain, domain, DNS_MAX_FQDN_LENGTH);
-		}
-		g_free(name);
+	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, NULL, NULL, &name)) {
+		return;
 	}
+	domain = dns_get_domain(name);
+	if (domain != NULL) {
+		strncpy(m_data->c_host_manager->lw_domain, domain, DNS_MAX_FQDN_LENGTH);
+	}
+	g_free(name);
 	gui_popup_dns_enum_domain(m_data);
 	return;
 }
@@ -57,24 +126,16 @@ void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, main_gui_data
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
-	GtkTreeIter piter;
-	struct in_addr target_ip;
 	single_host_info *c_host = NULL;
-	gchar *ipstr = NULL;
 
 	selection = gtk_tree_view_get_selection(treeview);
 	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
 		return;
 	}
-	if (gtk_tree_model_iter_parent(model, &piter, &iter)) {
-		gtk_tree_model_get(model, &piter, COL_IPADDR, &ipstr, -1);
-	} else {
-		gtk_tree_model_get(model, &iter, COL_IPADDR, &ipstr, -1);
+	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, NULL, NULL)) {
+		return;
 	}
-	inet_pton(AF_INET, (char *)ipstr, &target_ip);
-	g_free(ipstr);
-	host_manager_get_host_by_addr(m_data->c_host_manager, &target_ip, &c_host);
-	if ((c_host == NULL) || (c_host->whois_data == NULL)) {
+	if (c_host->whois_data == NULL) {
 		return;
 	}
 	gui_popup_dns_enum_network(m_data, c_host->whois_data->cidr_s);
@@ -86,49 +147,31 @@ void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_dat
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
-	GtkTreeIter piter;
 	http_link *link_anchor = NULL;
-	struct in_addr ip;
 	int ret_val = 0;
+	single_host_info *c_host = NULL;
 	gchar *name = NULL;
 	gchar *ipstr = NULL;
 
 	selection = gtk_tree_view_get_selection(treeview);
 	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
-		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive selection from tree")
 		return;
 	}
-	if (gtk_tree_model_iter_parent(model, &piter, &iter)) {
-		gtk_tree_model_get(model, &piter, COL_IPADDR, &ipstr, -1);
-		if (ipstr == NULL) {
-			LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
+	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, &ipstr, &name)) {
+		g_free(ipstr);
+		if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, &ipstr, NULL)) {
 			return;
 		}
-		gtk_tree_model_get(model, &iter, COL_HOSTNAME, &name, -1);
-		if (name == NULL) {
-			LOGGING_QUICK_WARNING("kraken.gui.model", "could not retreive host name");
-			name = ipstr;
-		}
-		inet_pton(AF_INET, ipstr, &ip);
-		ret_val = http_scrape_ip_for_links(name, &ip, "/", &link_anchor);
+		ret_val = http_scrape_ip_for_links(ipstr, &c_host->ipv4_addr, "/", &link_anchor);
 	} else {
-		gtk_tree_model_get(model, &piter, COL_IPADDR, &ipstr, -1);
-		if (ipstr == NULL) {
-			LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
-			return;
-		}
-		inet_pton(AF_INET, ipstr, &ip);
-		ret_val = http_scrape_ip_for_links("", &ip, "/", &link_anchor);
-	}
-	inet_pton(AF_INET, ipstr, &ip);
-	if ((name != NULL) && (name != ipstr)) {
+		ret_val = http_scrape_ip_for_links(name, &c_host->ipv4_addr, "/", &link_anchor);
 		g_free(name);
 	}
 	g_free(ipstr);
 	if (ret_val) {
 		LOGGING_QUICK_ERROR("kraken.gui.model", "there was an error requesting the page")
 	} else {
-		host_manager_set_host_status(m_data->c_host_manager, &ip, KRAKEN_HOST_STATUS_UP);
+		single_host_set_status(c_host, KRAKEN_HOST_STATUS_UP);
 	}
 	gui_popup_select_hosts_from_http_links(m_data, link_anchor);
 	http_free_link(link_anchor);
@@ -140,32 +183,48 @@ void view_popup_menu_onDelete(GtkWidget *menuitem, main_gui_data *m_data) {
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
-	GtkTreeIter piter;
-	struct in_addr ip;
 	gint response;
-	gchar *ipstr = NULL;
+	single_host_info *c_host = NULL;
 
 	selection = gtk_tree_view_get_selection(treeview);
 	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
-		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive selection from tree")
 		return;
 	}
-	if (gtk_tree_model_iter_parent(model, &piter, &iter)) {
-		gtk_tree_model_get(model, &piter, COL_IPADDR, &ipstr, -1);
-	} else {
-		gtk_tree_model_get(model, &iter, COL_IPADDR, &ipstr, -1);
-	}
-	if (ipstr == NULL) {
-		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
+	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, NULL, NULL)) {
 		return;
 	}
-	inet_pton(AF_INET, ipstr, &ip);
+
 	response = GUI_POPUP_QUESTION_SURE(NULL);
 	if (response) {
-		host_manager_delete_host_by_ip(m_data->c_host_manager, &ip);
+		host_manager_delete_host_by_ip(m_data->c_host_manager, &c_host->ipv4_addr);
 		gui_model_update_tree_and_marquee(m_data, NULL);
 	}
-	g_free(ipstr);
+	return;
+}
+
+void view_popup_menu_onDeleteHostName(GtkWidget *menuitem, main_gui_data *m_data) {
+	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
+	GtkTreeSelection *selection;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gint response;
+	gchar *name = NULL;
+	single_host_info *c_host = NULL;
+
+	selection = gtk_tree_view_get_selection(treeview);
+	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		return;
+	}
+	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, NULL, &name)) {
+		return;
+	}
+
+	response = GUI_POPUP_QUESTION_SURE(NULL);
+	if (response) {
+		single_host_delete_hostname(c_host, name);
+		gui_model_update_tree_and_marquee(m_data, NULL);
+	}
+	g_free(name);
 	return;
 }
 
@@ -176,9 +235,6 @@ void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
 	GtkTreeIter iter;
-	GtkTreeIter piter;
-	struct in_addr ip;
-	gchar *ipstr = NULL;
 	single_host_info *c_host;
 	kstatus_plugin ret_val;
 	char error_msg[64];
@@ -192,26 +248,9 @@ void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 
 	selection = gtk_tree_view_get_selection(treeview);
 	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
-		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive selection from tree")
 		return;
 	}
-	if (gtk_tree_model_iter_parent(model, &piter, &iter)) {
-		gtk_tree_model_get(model, &piter, COL_IPADDR, &ipstr, -1);
-		if (ipstr == NULL) {
-			LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
-			return;
-		}
-	} else {
-		gtk_tree_model_get(model, &iter, COL_IPADDR, &ipstr, -1);
-		if (ipstr == NULL) {
-			LOGGING_QUICK_ERROR("kraken.gui.model", "could not retreive the IP address");
-			return;
-		}
-	}
-	inet_pton(AF_INET, ipstr, &ip);
-	g_free(ipstr);
-	if (!host_manager_get_host_by_addr(m_data->c_host_manager, &ip, &c_host)) {
-		LOGGING_QUICK_ERROR("kraken.gui.model", "could not retrieve the host entry from the IP address");
+	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, NULL, NULL)) {
 		return;
 	}
 	ret_val = plugins_plugin_run_callback(c_plugin, PLUGIN_CALLBACK_ID_HOST_ON_DEMAND, c_host, error_msg, sizeof(error_msg));
@@ -268,6 +307,10 @@ void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data
 	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDelete, m_data);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 
+	menuitem = gtk_menu_item_new_with_label("Delete Hostname");
+	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDeleteHostName, m_data);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+
 	gtk_widget_show_all(menu);
 	gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, (event != NULL) ? event->button : 0, gdk_event_get_time((GdkEvent*)event));
 	return;
@@ -320,7 +363,7 @@ void gui_model_update_marquee(main_gui_data *m_data, const char *status) {
 int gui_model_update_tree_and_marquee(main_gui_data *m_data, const char *status) {
 	GtkTreeModel *model;
 
-	model = gui_refresh_tree_model(NULL, m_data->c_host_manager);
+	model = gui_refresh_tree_model(NULL, m_data);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(m_data->tree_view), model);
 	gui_model_update_marquee(m_data, status);
 	while (gtk_events_pending()) {
@@ -329,7 +372,7 @@ int gui_model_update_tree_and_marquee(main_gui_data *m_data, const char *status)
 	return 0;
 }
 
-GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, host_manager *c_host_manager) {
+GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, main_gui_data *m_data) {
 	GtkTreeIter ipiter;
 	GtkTreeIter nameiter;
 	GtkTreeModel *treemodel;
@@ -346,8 +389,8 @@ GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, host_manager *c_host_m
 
 	treemodel = GTK_TREE_MODEL(store);
 	gtk_tree_model_get_iter_first(treemodel, &ipiter);
-	host_manager_iter_host_init(c_host_manager, &host_i);
-	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
+	host_manager_iter_host_init(m_data->c_host_manager, &host_i);
+	while (host_manager_iter_host_next(m_data->c_host_manager, &host_i, &c_host)) {
 		inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, sizeof(ipstr));
 		gtk_tree_store_append(store, &ipiter, NULL);
 		gtk_tree_store_set(store, &ipiter, COL_IPADDR, ipstr, -1);
@@ -383,7 +426,7 @@ GtkWidget *gui_model_create_view_and_model(host_manager *c_host_manager, main_gu
 
 	view = gtk_tree_view_new();
 	store = gtk_tree_store_new(NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_BOOLEAN);
-	model = gui_refresh_tree_model(NULL, c_host_manager);
+	model = gui_refresh_tree_model(NULL, m_data);
 	g_signal_connect(view, "button-press-event", (GCallback)view_onButtonPressed, m_data);
 
 	renderer = gtk_cell_renderer_text_new();
