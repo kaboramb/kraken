@@ -61,8 +61,9 @@ AC_CHECK_LIB([cares], [ares_set_servers], [], [
 	AC_DEFINE([WITHOUT_ARES_SET_SERVERS], [1])
 ])
 
-AC_CHECK_LIB([gtk+-2.0], [g_thread_init], [], [
-	AC_DEFINE([WITHOUT_GTK_G_THREAD_INIT])
+AC_CHECK_LIB([gthread-2.0], [g_thread_init], [], [
+	AC_MSG_NOTICE([disabling g_thread_init])
+	AC_DEFINE([WITHOUT_GTK_G_THREAD_INIT], [1])
 ])
 
 # Checks for optional libraries.
