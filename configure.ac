@@ -61,6 +61,10 @@ AC_CHECK_LIB([cares], [ares_set_servers], [], [
 	AC_DEFINE([WITHOUT_ARES_SET_SERVERS], [1])
 ])
 
+AC_CHECK_LIB([gtk+-2.0], [g_thread_init], [], [
+	AC_DEFINE([WITHOUT_GTK_G_THREAD_INIT])
+])
+
 # Checks for optional libraries.
 AS_IF([test "x$with_log4c" != "xno"], [
 	AC_MSG_NOTICE([log4c support has been enabled])

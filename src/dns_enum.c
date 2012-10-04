@@ -243,7 +243,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 				servers_addr_node[i].next = &servers_addr_node[i+1];
 			}
 		}
-		servers_addr_node[i].next = NULL;
+		servers_addr_node[i - 1].next = NULL;
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
 #endif
@@ -265,6 +265,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 
 	while (fgets(line, MAX_LINE, hostlist)) {
 		line[strlen(line) - 1] = '\0'; /* kill the newline byte */
+		memset(hostname, '\0', sizeof(hostname));
 		snprintf(hostname, MAX_LINE, "%s.%s", line, target_domain);
 		ares_gethostbyname(channel, hostname, AF_INET, callback_host, (host_manager *)c_host_manager);
 		query_counter += 1;
@@ -327,7 +328,7 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 				servers_addr_node[i].next = &servers_addr_node[i+1];
 			}
 		}
-		servers_addr_node[i].next = NULL;
+		servers_addr_node[i - 1].next = NULL;
 		ares_set_servers(channel, &servers_addr_node[0]);
 	}
 #endif

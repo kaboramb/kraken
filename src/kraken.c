@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
 		printf("Networks found:\n");
 		host_manager_iter_whois_init(&c_host_manager, &whois_i);
 		while (host_manager_iter_whois_next(&c_host_manager, &whois_i, &c_who_rcd)) {
-			printf("\t%s\n", &c_who_rcd->cidr_s);
+			printf("\t%s\n", (char *)&c_who_rcd->cidr_s);
 		}
 	}
 

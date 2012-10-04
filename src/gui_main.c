@@ -122,7 +122,9 @@ int gui_show_main_window(main_gui_data *m_data) {
 	GtkWidget *view;
 	GtkWidget *txt_entry;
 
+#ifndef WITHOUT_GTK_G_THREAD_INIT
 	g_thread_init(NULL);
+#endif
 	gdk_threads_init();
 	gdk_threads_enter();
 	gtk_init(NULL, NULL);
