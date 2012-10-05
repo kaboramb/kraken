@@ -28,6 +28,22 @@ enum {
 	SORTID_WHO_ORGNAME
 };
 
+void callback_thread_view_popup_menu_plugins(gui_data_menu_plugin *gp_data) {
+	char error_msg[64];
+	kstatus_plugin ret_val;
+
+	gui_model_update_marquee(gp_data->m_data, "Running Plugin");
+	ret_val = plugins_plugin_run_callback(gp_data->c_plugin, gp_data->callback_id, gp_data->plugin_data, error_msg, sizeof(error_msg));
+	if (KSTATUS_PLUGIN_IS_ERROR(ret_val)) {
+		gui_popup_error_dialog_plugin(gp_data->m_data->main_window, ret_val, error_msg);
+	}
+	gui_model_update_tree_and_marquee(gp_data->m_data, NULL);
+	gui_model_update_marquee(gp_data->m_data, NULL);
+	kraken_thread_mutex_unlock(&gp_data->m_data->plugin_mutex);
+	free(gp_data);
+	return;
+}
+
 int gui_model_get_host_info_from_tree_iter(GtkTreeModel *model, GtkTreeIter *iter, main_gui_data *m_data, single_host_info **c_host, gchar **ipstr, gchar **name) {
 	GtkTreeIter piter;
 	gchar *lipstr = NULL;
@@ -236,13 +252,13 @@ void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	single_host_info *c_host;
-	kstatus_plugin ret_val;
-	char error_msg[64];
+	gui_data_menu_plugin *gp_data;
 
 	if (menuitem == NULL) {
 		m_data = data;
 		return;
 	}
+
 	treeview = GTK_TREE_VIEW(m_data->tree_view);
 	c_plugin = data;
 
@@ -253,11 +269,17 @@ void view_popup_menu_plugins_onHostDemand(GtkWidget *menuitem, gpointer data) {
 	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, NULL, NULL)) {
 		return;
 	}
-	ret_val = plugins_plugin_run_callback(c_plugin, PLUGIN_CALLBACK_ID_HOST_ON_DEMAND, c_host, error_msg, sizeof(error_msg));
-	if (KSTATUS_PLUGIN_IS_ERROR(ret_val)) {
-		gui_popup_error_dialog_plugin(m_data->main_window, ret_val, error_msg);
+
+	if (kraken_thread_mutex_trylock(&m_data->plugin_mutex) == 0) {
+		gp_data = malloc(sizeof(gui_data_menu_plugin));
+		gp_data->m_data = m_data;
+		gp_data->c_plugin = c_plugin;
+		gp_data->callback_id = PLUGIN_CALLBACK_ID_HOST_ON_DEMAND;
+		gp_data->plugin_data = c_host;
+		kraken_thread_create(&m_data->plugin_thread, callback_thread_view_popup_menu_plugins, gp_data);
+	} else {
+		GUI_POPUP_ERROR_PLUGIN_RUNNING(m_data->main_window);
 	}
-	gui_model_update_tree_and_marquee(m_data, NULL);
 	return;
 }
 

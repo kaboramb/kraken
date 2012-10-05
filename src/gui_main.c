@@ -7,6 +7,7 @@
 #include "gui_menu_functions.h"
 #include "gui_model.h"
 #include "gui_main.h"
+#include "gui_popups.h"
 #include "plugins.h"
 #include "host_manager.h"
 #include "whois_lookup.h"
@@ -18,7 +19,7 @@ void callback_main_command_reset_color(GtkWidget *widget, main_gui_data *m_data)
 	return;
 }
 
-void callback_main_command_submit_thread(main_gui_data *m_data) {
+void callback_thread_main_command_submit(main_gui_data *m_data) {
 	const gchar *text;
 	GdkColor color;
 	plugin_object *plugin;
@@ -61,6 +62,7 @@ void callback_main_command_submit_thread(main_gui_data *m_data) {
 		return;
 	}
 
+	gui_model_update_marquee(m_data, "Running Plugin");
 	gtk_entry_set_editable(GTK_ENTRY(m_data->plugin_entry), FALSE);
 	gdk_color_parse("#00FF00", &color);
 	gtk_widget_modify_base(m_data->plugin_entry, GTK_STATE_NORMAL, &color);
@@ -85,13 +87,16 @@ void callback_main_command_submit_thread(main_gui_data *m_data) {
 		gui_model_update_tree_and_marquee(m_data, NULL);
 		gdk_threads_leave();
 	}
+	gui_model_update_marquee(m_data, NULL);
 	kraken_thread_mutex_unlock(&m_data->plugin_mutex);
 	return;
 }
 
 void callback_main_command_submit(GtkWidget *widget, main_gui_data *m_data) {
 	if (kraken_thread_mutex_trylock(&m_data->plugin_mutex) == 0) {
-		kraken_thread_create(&m_data->plugin_thread, callback_main_command_submit_thread, m_data);
+		kraken_thread_create(&m_data->plugin_thread, callback_thread_main_command_submit, m_data);
+	} else {
+		GUI_POPUP_ERROR_PLUGIN_RUNNING(m_data->main_window);
 	}
 	return;
 }
