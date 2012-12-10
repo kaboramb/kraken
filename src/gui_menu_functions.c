@@ -96,14 +96,14 @@ void gui_menu_file_open(main_gui_data *m_data, guint action, GtkWidget *widget) 
 	gboolean merge = FALSE;
 	if ((m_data->c_host_manager->known_hosts > 0) || (m_data->c_host_manager->known_whois_records > 0)) {
 		response = gui_popup_question_yes_no_dialog(NULL, "Merge With Existing Data?", "Merge?");
-		if (response == GTK_RESPONSE_NO) {
+		if (response == GTK_RESPONSE_YES) {
 			merge = TRUE;
 		}
 	}
 	dialog = gtk_file_chooser_dialog_new("Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		char *filename;
-		if (merge == TRUE) {
+		if (merge == FALSE) {
 			host_manager_destroy(m_data->c_host_manager); /* out with the old */
 			host_manager_init(m_data->c_host_manager); /* in with the new */
 		}

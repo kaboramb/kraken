@@ -211,7 +211,7 @@ void view_popup_menu_onDelete(GtkWidget *menuitem, main_gui_data *m_data) {
 	}
 
 	response = GUI_POPUP_QUESTION_SURE(NULL);
-	if (response) {
+	if (response == GTK_RESPONSE_YES) {
 		host_manager_delete_host_by_ip(m_data->c_host_manager, &c_host->ipv4_addr);
 		gui_model_update_tree_and_marquee(m_data, NULL);
 	}
@@ -236,7 +236,7 @@ void view_popup_menu_onDeleteHostName(GtkWidget *menuitem, main_gui_data *m_data
 	}
 
 	response = GUI_POPUP_QUESTION_SURE(NULL);
-	if (response) {
+	if (response == GTK_RESPONSE_YES) {
 		single_host_delete_hostname(c_host, name);
 		gui_model_update_tree_and_marquee(m_data, NULL);
 	}
