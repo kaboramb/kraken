@@ -35,7 +35,7 @@ void gui_popup_data_init(popup_data *p_data, main_gui_data *m_data) {
 
 void gui_popup_error_dialog(gpointer window, const char *message, const char *title) {
 	GtkWidget *dialog;
-	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, message);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "%s", message);
 	gtk_window_set_title(GTK_WINDOW(dialog), title);
 	gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
@@ -54,7 +54,7 @@ void gui_popup_error_dialog_plugin(gpointer window, kstatus_plugin status, const
 
 void gui_popup_info_dialog(gpointer window, const char *message, const char *title) {
 	GtkWidget *dialog;
-	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_INFO, GTK_BUTTONS_OK, message);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_INFO, GTK_BUTTONS_OK, "%s", message);
 	gtk_window_set_title(GTK_WINDOW(dialog), title);
 	gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
@@ -63,7 +63,7 @@ void gui_popup_info_dialog(gpointer window, const char *message, const char *tit
 gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title) {
 	GtkWidget *dialog;
 	gint response;
-	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, message);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, "%s", message);
 	gtk_window_set_title(GTK_WINDOW(dialog), title);
 	response = gtk_dialog_run(GTK_DIALOG(dialog));
 	gtk_widget_destroy(dialog);
