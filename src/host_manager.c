@@ -84,6 +84,7 @@ int single_host_add_hostname(single_host_info *c_host, const char *name) {
 int single_host_delete_hostname(single_host_info *c_host, const char *name) {
 	unsigned int current_name_i;
 	char *found_name = NULL;
+	size_t sz_names = 0;
 
 	for (current_name_i = 0; current_name_i < c_host->n_names; current_name_i++) {
 		if (strncasecmp(c_host->names[current_name_i], name, DNS_MAX_FQDN_LENGTH) == 0) {
@@ -96,8 +97,12 @@ int single_host_delete_hostname(single_host_info *c_host, const char *name) {
 	}
 	c_host->n_names--;
 	memset(found_name, '\0', DNS_MAX_FQDN_LENGTH);
+	if (c_host->n_names == 0) {
+		return 0;
+	}
 	if (current_name_i < (c_host->n_names - 1)) {
-		memmove(c_host->names[current_name_i], c_host->names[current_name_i + 1], sizeof(c_host->names[0]) * (c_host->n_names - current_name_i - 1));
+		sz_names = (sizeof(c_host->names[0]) * (c_host->n_names - current_name_i - 1));
+		memmove(c_host->names[current_name_i], c_host->names[current_name_i + 1], sz_names);
 	}
 	return 0;
 }
