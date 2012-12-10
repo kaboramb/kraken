@@ -87,7 +87,7 @@ void callback_thread_main_command_submit(main_gui_data *m_data) {
 		gui_model_update_tree_and_marquee(m_data, NULL);
 		gdk_threads_leave();
 	}
-	gui_model_update_marquee(m_data, NULL);
+
 	kraken_thread_mutex_unlock(&m_data->plugin_mutex);
 	return;
 }
