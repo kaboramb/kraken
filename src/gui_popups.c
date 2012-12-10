@@ -608,7 +608,7 @@ void callback_add_selected_hosts(GtkWidget *widget, popup_data *p_data) {
 		}
 	} while (gtk_tree_model_iter_next(treemodel, &piter));
 
-	gui_model_update_tree_and_marquee((main_gui_data*)p_data, NULL);
+	gui_model_update_tree_and_marquee(p_data->m_data, NULL);
 	gtk_widget_destroy(p_data->popup_window);
 	return;
 }
