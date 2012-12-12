@@ -465,7 +465,10 @@ static PyObject *pymod_kraken_host_manager_get_hostnames(PyObject *self, PyObjec
 	if (!PyArg_ParseTuple(args, "s", &ipstr)) {
 		return NULL;
 	}
-	inet_pton(AF_INET, ipstr, &ip);
+	if (!inet_pton(AF_INET, ipstr, &ip)) {
+		PLUGINS_PYTHON_ERROR_INVALID_IP();
+		return NULL;
+	}
 	if (!host_manager_get_host_by_addr(c_plugin_manager->c_host_manager, &ip, &c_host)) {
 		PLUGINS_PYTHON_ERROR_INVALID_IP();
 		return NULL;
@@ -483,7 +486,10 @@ static PyObject *pymod_kraken_host_manager_add_hostname(PyObject *self, PyObject
 	if (!PyArg_ParseTuple(args, "ss", &ipstr, &hostname)) {
 		return NULL;
 	}
-	inet_pton(AF_INET, ipstr, &ip);
+	if (!inet_pton(AF_INET, ipstr, &ip)) {
+		PLUGINS_PYTHON_ERROR_INVALID_IP();
+		return NULL;
+	}
 	if (!host_manager_get_host_by_addr(c_plugin_manager->c_host_manager, &ip, &c_host)) {
 		PLUGINS_PYTHON_ERROR_INVALID_IP();
 		return NULL;
