@@ -143,17 +143,24 @@ void view_popup_menu_onDoDNSBruteforceNetwork(GtkWidget *menuitem, main_gui_data
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	single_host_info *c_host = NULL;
+	gchar *name = NULL;
+	char *domain = NULL;
 
 	selection = gtk_tree_view_get_selection(treeview);
 	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
 		return;
 	}
-	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, NULL, NULL)) {
+	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, &c_host, NULL, &name)) {
 		return;
 	}
 	if (c_host->whois_data == NULL) {
 		return;
 	}
+	domain = dns_get_domain(name);
+	if (domain != NULL) {
+		strncpy(m_data->c_host_manager->lw_domain, domain, DNS_MAX_FQDN_LENGTH);
+	}
+	g_free(name);
 	gui_popup_dns_enum_network(m_data, c_host->whois_data->cidr_s);
 	return;
 }
