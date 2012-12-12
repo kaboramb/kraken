@@ -32,13 +32,20 @@ void callback_thread_view_popup_menu_plugins(gui_data_menu_plugin *gp_data) {
 	char error_msg[64];
 	kstatus_plugin ret_val;
 
+	gdk_threads_enter();
 	gui_model_update_marquee(gp_data->m_data, "Running Plugin");
+	gdk_threads_leave();
+
 	ret_val = plugins_plugin_run_callback(gp_data->c_plugin, gp_data->callback_id, gp_data->plugin_data, error_msg, sizeof(error_msg));
+
+	gdk_threads_enter();
 	if (KSTATUS_PLUGIN_IS_ERROR(ret_val)) {
 		gui_popup_error_dialog_plugin(gp_data->m_data->main_window, ret_val, error_msg);
 	}
 	gui_model_update_tree_and_marquee(gp_data->m_data, NULL);
 	gui_model_update_marquee(gp_data->m_data, NULL);
+	gdk_threads_leave();
+
 	kraken_thread_mutex_unlock(&gp_data->m_data->plugin_mutex);
 	free(gp_data);
 	return;
