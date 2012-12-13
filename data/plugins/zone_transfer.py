@@ -1,11 +1,15 @@
 import kraken
 
-import dns.resolver
-import dns.query
-import dns.zone
-from dns.exception import DNSException
-from dns.rdataclass import *
-from dns.rdatatype import *
+try:
+	import dns.resolver
+	import dns.query
+	import dns.zone
+	from dns.exception import DNSException
+	from dns.rdataclass import *
+	from dns.rdatatype import *
+except ImportError as err:
+	kraken.log(kraken.LOG_LVL_WARNING, "could not import dnspython, can't load zone_transfer plugin")
+	raise err
 
 def check_for_zone_transfer(host):
 	domains_done = []

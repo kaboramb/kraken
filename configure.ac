@@ -27,6 +27,8 @@ AS_IF([test -z "$PYTHON_INCLUDE"], [
 	PYTHON_SITE_PACKAGES=`python$PYTHON_VERSION -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())"`
 	AS_IF([test -n "$PYTHON_SITE_PACKAGES"], [
 		AC_DEFINE_UNQUOTED([PYTHON_SITE_PACKAGES], ["$PYTHON_SITE_PACKAGES"])
+	], [
+		AC_MSG_ERROR([cannot find the python library directory.])
 	])
 	AC_MSG_RESULT([$PYTHON_INCLUDE])
 ])
