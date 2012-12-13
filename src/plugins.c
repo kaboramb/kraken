@@ -672,18 +672,9 @@ PyObject *plugins_pymod_kraken_init(void) {
 	return pymod_kraken;
 }
 
-void plugins_python_sys_path_append(char *path) {
-	char tmppath[512];
-	if (snprintf(tmppath, sizeof(tmppath), "%s:%s", Py_GetPath(), path) >= sizeof(tmppath)) {
-		logging_log("kraken.plugins", LOGGING_ERROR, "the Python path is to large for the buffer and could not be set");
-		return;
-	}
-	PySys_SetPath(tmppath);
-	return;
-}
-
 void plugins_python_sys_path_prepend(char *path) {
-	char tmppath[512];
+	char tmppath[1024];
+
 	if (snprintf(tmppath, sizeof(tmppath), "%s:%s", path, Py_GetPath()) >= sizeof(tmppath)) {
 		logging_log("kraken.plugins", LOGGING_ERROR, "the Python path is to large for the buffer and could not be set");
 		return;
@@ -706,6 +697,9 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 	PyObject *pInitFunc;
 	PyObject *pReturnValue;
 	char plugin_path[128];
+#ifdef PYTHON_SITE_PACKAGES
+	char pymod_search_path[256];
+#endif
 	char plugin_name[PLUGIN_SZ_NAME + 1];
 
 	if (c_plugin_manager != NULL) {
@@ -725,7 +719,12 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 	Py_Initialize();
 	PyEval_InitThreads();
 	pymod_kraken = plugins_pymod_kraken_init();
+#ifdef PYTHON_SITE_PACKAGES
+	snprintf(pymod_search_path, sizeof(pymod_search_path), "%s:%s", plugin_path, PYTHON_SITE_PACKAGES);
+	plugins_python_sys_path_prepend(pymod_search_path);
+#else
 	plugins_python_sys_path_prepend(plugin_path);
+#endif
 
 	dp = opendir(plugin_path);
 	if (dp == NULL) {
@@ -781,6 +780,7 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 		pPluginObj = PyImport_Import(pName);
 		Py_DECREF(pName);
 		if (pPluginObj == NULL) {
+			PyErr_Clear();
 			logging_log("kraken.plugins", LOGGING_WARNING, "could not load plugin %s", plugin_name);
 			continue;
 		}
