@@ -70,6 +70,17 @@ gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, cons
 	return response;
 }
 
+gint gui_popup_question_yes_no_cancel_dialog(gpointer window, const char *message, const char *title) {
+	GtkWidget *dialog;
+	gint response;
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, "%s", message);
+	gtk_dialog_add_button(GTK_DIALOG(dialog), GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
+	gtk_window_set_title(GTK_WINDOW(dialog), title);
+	response = gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
+	return response;
+}
+
 void callback_destroy(GtkWidget *widget, popup_data *p_data) {
 	if (p_data != NULL) {
 		free(p_data);

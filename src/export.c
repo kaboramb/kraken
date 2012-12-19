@@ -181,7 +181,7 @@ int export_host_manager_to_xml(host_manager *c_host_manager, const char *dest_fi
 	writer = xmlNewTextWriterFilename(dest_file, 0);
 	if (writer == NULL) {
 		LOGGING_QUICK_ERROR("kraken.export", "could not create the XML writer")
-		return 1;
+		return -1;
 	}
 	xmlTextWriterStartDocument(writer, NULL, KRAKEN_XML_ENCODING, NULL);
 	xmlTextWriterStartElement(writer, BAD_CAST "kraken");

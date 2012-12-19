@@ -41,6 +41,7 @@ void gui_popup_error_dialog(gpointer window, const char *message, const char *ti
 void gui_popup_error_dialog_plugin(gpointer window, kstatus_plugin status, const char *message);
 void gui_popup_info_dialog(gpointer window, const char *message, const char *title);
 gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title);
+gint gui_popup_question_yes_no_cancel_dialog(gpointer window, const char *message, const char *title);
 gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data);
 gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_str);
 gboolean gui_popup_http_search_engine_bing(main_gui_data *m_data);
