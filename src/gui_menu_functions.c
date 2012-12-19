@@ -273,6 +273,15 @@ void gui_menu_view_collapse_all(main_gui_data *m_data, guint action, GtkWidget *
 	return;
 }
 
+#ifdef KRAKEN_URI_WIKI
+void gui_menu_help_wiki(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	GError *error;
+
+	gtk_show_uri(NULL, KRAKEN_URI_WIKI, GDK_CURRENT_TIME, &error);
+	return;
+}
+#endif
+
 void gui_menu_help_about(main_gui_data *m_data, guint action, GtkWidget *widget) {
 	gui_popup_help_about(m_data);
 	return;
@@ -307,6 +316,9 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/View/Expand All",						NULL,		gui_menu_view_expand_all,		0,	NULL	},
 	{ "/View/Collapse All",						NULL,		gui_menu_view_collapse_all,		0,	NULL	},
 	{ "/Help",									NULL,		NULL,							0,	"<Branch>"	},
+#ifdef KRAKEN_URI_WIKI
+	{ "/Help/Wiki",								NULL,		gui_menu_help_wiki,				0,	NULL	},
+#endif
 	{ "/Help/About",							NULL,		gui_menu_help_about,			0, 	NULL	},
 };
 

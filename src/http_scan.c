@@ -327,7 +327,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 		return 6;
 	}
 
-	logging_log("kraken.http_scan", LOGGING_DEBUG, "%lu bytes were read from the page", webpage_sz);
+	logging_log("kraken.http_scan", LOGGING_DEBUG, "%lu bytes were read from the http response", webpage_sz);
 	if (redirected_url == NULL) {
 		curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &content_type);
 	} else {
@@ -364,8 +364,6 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	/* link_anchor should either be NULL or an existing list returned by
 	 * a previous call to this or a similar function */
-	/* this function will follow redirects but only when on the same
-	 * server in the future I may change this to on the same domain */
 	size_t webpage_sz;
 	FILE *webpage_f = NULL;
 	char *webpage_b = NULL;
@@ -780,6 +778,7 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 			}
 			return -2;
 		}
+		logging_log("kraken.http_scan", LOGGING_DEBUG, "%lu bytes were read from the http response", webpage_sz);
 		num_queries++;
 		num_entries = http_add_hosts_from_bing_xml(c_host_manager, target_domain, webpage_b);
 		num_entries_total += num_entries;
