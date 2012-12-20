@@ -41,9 +41,17 @@
 #include "http_scan.h"
 
 void http_enum_opts_init(http_enum_opts *h_opts) {
+	curl_version_info_data *curl_info;
+
+	curl_info = curl_version_info(CURLVERSION_NOW);
 	memset(h_opts, '\0', sizeof(struct http_enum_opts));
 	h_opts->timeout = HTTP_DEFAULT_TIMEOUT;
 	h_opts->timeout_ms = HTTP_DEFAULT_TIMEOUT_MS;
+	if ((curl_info->features & CURL_VERSION_ASYNCHDNS)) {
+		h_opts->no_signal = 0;
+	} else {
+		h_opts->no_signal = 1;
+	}
 	h_opts->bing_api_key = NULL;
 	h_opts->progress_update = NULL;
 	h_opts->progress_update_data = NULL;
@@ -57,6 +65,17 @@ void http_enum_opts_destroy(http_enum_opts *h_opts) {
 		free(h_opts->bing_api_key);
 	}
 	memset(h_opts, '\0', sizeof(struct http_enum_opts));
+	return;
+}
+
+void http_enum_opts_config_curl_easy(http_enum_opts *h_opts, CURL *curl_h) {
+	curl_easy_setopt(curl_h, CURLOPT_TIMEOUT, h_opts->timeout);
+	if (h_opts->timeout_ms != 0) {
+		curl_easy_setopt(curl_h, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
+	}
+	if (h_opts->no_signal != 0) {
+		curl_easy_setopt(curl_h, CURLOPT_NOSIGNAL, 1);
+	}
 	return;
 }
 
@@ -329,14 +348,13 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 			}
 			curl_redir = curl_easy_init();
 			assert(curl_redir != NULL);
-			curl_easy_setopt(curl_redir, CURLOPT_TIMEOUT, h_opts->timeout);
-			if (h_opts->timeout_ms != 0) {
-				curl_easy_setopt(curl_redir, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
-			}
+			http_enum_opts_config_curl_easy(h_opts, curl_redir);
 			curl_easy_setopt(curl_redir, CURLOPT_URL, redirected_url);
 			curl_easy_setopt(curl_redir, CURLOPT_WRITEDATA, webpage_f);
+
 			curl_res = curl_easy_perform(curl_redir);
 			fclose(webpage_f);
+
 			if (curl_res != 0) {
 				LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
 				curl_easy_cleanup(curl_redir);
@@ -416,14 +434,13 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	http_enum_opts_init(&h_opts);
 	curl = curl_easy_init();
 	assert(curl != NULL);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, h_opts.timeout);
-	if (h_opts.timeout_ms != 0) {
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts.timeout_ms);
-	}
+	http_enum_opts_config_curl_easy(&h_opts, curl);
 	curl_easy_setopt(curl, CURLOPT_URL, target_url);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
+
 	curl_res = curl_easy_perform(curl);
 	fclose(webpage_f);
+
 	assert(webpage_b != NULL);
 	if (curl_res != 0) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
@@ -495,22 +512,15 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 
 	curl = curl_easy_init();
 	assert(curl != NULL);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, h_opts->timeout);
-	if (h_opts->timeout_ms != 0) {
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
-	}
+	http_enum_opts_config_curl_easy(h_opts, curl);
 	curl_easy_setopt(curl, CURLOPT_URL, target_url);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
 	headers = curl_slist_append(headers, hoststr);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, h_opts->timeout);
-	if (h_opts->timeout_ms != 0) {
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
-	}
 
 	curl_res = curl_easy_perform(curl);
-
 	free(target_url);
+
 	target_url = malloc(strlen(hostname) + strlen(resource) + 9);
 	assert(target_url != NULL);
 	snprintf(target_url, (strlen(hostname) + strlen(resource) + 9), "http://%s%s", hostname, resource);
@@ -731,7 +741,7 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 	size_t webpage_sz;
 	FILE *webpage_f = NULL;
 	char *webpage_b = NULL;
-	CURL *curl;
+	CURL *curl = NULL;
 	CURLcode curl_res;
 	char request_url[512];
 	long http_code;
@@ -761,23 +771,25 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		memset(request_url, '\0', sizeof(request_url));
 		snprintf(request_url, sizeof(request_url), "https://api.datamarket.azure.com/Bing/Search/Web?Query=%%27site:%%20%s%%27&$top=%u&$skip=%u&$format=ATOM&Market=%%27en-US%%27", target_domain, HTTP_BING_NUM_RESULTS, (num_queries * HTTP_BING_NUM_RESULTS));
 
+		if (curl != NULL) {
+			curl_easy_cleanup(curl);
+		}
 		curl = curl_easy_init();
 		assert(curl != NULL);
+		http_enum_opts_config_curl_easy(h_opts, curl);
 		curl_easy_setopt(curl, CURLOPT_URL, request_url);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
 		curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 		curl_easy_setopt(curl, CURLOPT_USERNAME, "");
 		curl_easy_setopt(curl, CURLOPT_PASSWORD, h_opts->bing_api_key);
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT, h_opts->timeout);
-		if (h_opts->timeout_ms != 0) {
-			curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
-		}
+
 		curl_res = curl_easy_perform(curl);
 		fclose(webpage_f);
+
 		assert(webpage_b != NULL);
 		if (curl_res != 0) {
 			if (curl_res == CURLE_OPERATION_TIMEDOUT) {
-				LOGGING_QUICK_WARNING("kraken.http_scan", "the HTTP request timedout")
+				LOGGING_QUICK_WARNING("kraken.http_scan", "the HTTP request timed out")
 				num_timeouts++;
 				if (num_timeouts == HTTP_MAX_TIMEOUTS) {
 					LOGGING_QUICK_ERROR("kraken.http_scan", "the maximum number of permissable timeouts has occured")
@@ -813,7 +825,6 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		num_entries_total += num_entries;
 
 		free(webpage_b);
-		curl_easy_cleanup(curl);
 		if (h_opts->progress_update != NULL) {
 			h_opts->progress_update((((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries), HTTP_BING_MAX_RESULTS, h_opts->progress_update_data);
 		}

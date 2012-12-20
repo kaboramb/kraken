@@ -32,8 +32,8 @@
 
 #include "dns_enum.h"
 
-#define HTTP_DEFAULT_TIMEOUT 5
-#define HTTP_DEFAULT_TIMEOUT_MS 0
+#define HTTP_DEFAULT_TIMEOUT 7
+#define HTTP_DEFAULT_TIMEOUT_MS 500
 #define HTTP_MAX_REDIRECTS 3
 #define HTTP_MAX_TIMEOUTS 3
 #define HTTP_SCHEME_SZ 5
@@ -57,6 +57,7 @@ typedef struct http_enum_opts {
 	int *action_status;
 	long timeout;
 	long timeout_ms;
+	long no_signal;
 	char *bing_api_key;
 	int use_ssl;
 } http_enum_opts;

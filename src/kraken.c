@@ -35,6 +35,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <ares.h>
+#include <curl/curl.h>
 #include <gtk/gtk.h>
 #include <argp.h>
 #ifndef WITHOUT_LOG4C
@@ -122,6 +123,7 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 
 int main(int argc, char **argv) {
 	struct arguments arguments;
+	curl_version_info_data *curl_info;
 	kraken_opts k_opts;
 	host_manager c_host_manager;
 	main_gui_data m_data;
@@ -161,6 +163,11 @@ int main(int argc, char **argv) {
 	log4c_category_set_priority(logcat, arguments.loglvl);
 	log4c_category_set_appender(logcat, log4c_appender_get("stdout"));
 #endif
+
+	curl_info = curl_version_info(CURLVERSION_NOW);
+	if (!(curl_info->features & CURL_VERSION_ASYNCHDNS)) {
+		LOGGING_QUICK_WARNING("kraken", "libcurl was not compiled with asynchronous dns support")
+	}
 
 	if (host_manager_init(&c_host_manager) != 0) {
 		LOGGING_QUICK_FATAL("kraken", "could not initialize the host manager, it is likely that there is not enough memory")
