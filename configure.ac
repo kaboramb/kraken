@@ -11,6 +11,7 @@ AC_ARG_WITH([log4c], AS_HELP_STRING([--without-log4c], [do not use log4c]))
 AC_PROG_CC
 AM_PROG_CC_C_O
 
+# Checks for Python related things.
 AM_PATH_PYTHON
 AC_ARG_VAR([PYTHON_INCLUDE], [Include flags for python, bypassing python-config])
 AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
@@ -61,25 +62,29 @@ AC_CHECK_LIB([xml2], [xmlDocGetRootElement], [], [
 ])
 
 # Checks libraries for optional features.
-AC_CHECK_LIB([cares], [ares_set_servers], [], [
+AC_CHECK_LIB([cares], [ares_set_servers], [
+	AC_MSG_NOTICE([ares_set_servers support has been enabled])
+	AC_DEFINE([HAVE_ARES_SET_SERVERS], [1])
+], [
 	AC_MSG_NOTICE([old ares library detected])
-	AC_MSG_NOTICE([switching DNS servers has been disabled])
-	AC_DEFINE([WITHOUT_ARES_SET_SERVERS], [1])
+	AC_MSG_NOTICE([ares_set_servers support has been disabled])
 ])
 
-AC_CHECK_LIB([gthread-2.0], [g_thread_init], [], [
-	AC_MSG_NOTICE([disabling g_thread_init])
-	AC_DEFINE([WITHOUT_GTK_G_THREAD_INIT], [1])
+AC_CHECK_LIB([gthread-2.0], [g_thread_init], [
+	AC_MSG_NOTICE([g_thread_init support has been enabled])
+	AC_DEFINE([HAVE_GTK_G_THREAD_INIT], [1])
+], [
+	AC_MSG_NOTICE([g_thread_init support has been disabled])
 ])
 
 # Checks for optional libraries.
 AS_IF([test "x$with_log4c" != "xno"], [
-	AC_MSG_NOTICE([log4c support has been enabled])
 	AC_CHECK_LIB([log4c], [log4c_init], [], [
 		AC_MSG_NOTICE([could not find the log4c library])
 		AC_MSG_NOTICE([please install log4c or use the --without-log4c option])
 		exit 1
 	])
+	AC_MSG_NOTICE([log4c support has been enabled])
 ], [
 	AC_MSG_NOTICE([log4c support has been disabled])
 	AC_DEFINE([WITHOUT_LOG4C], [1])
@@ -93,15 +98,58 @@ PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.20.0, [], [
 	exit 1
 ])
 
-# Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h pthread.h signal.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
+# Checks for standard header files.
+AC_CHECK_HEADER([assert.h], [], [
+	AC_MSG_NOTICE([could not find assert.h])
+	exit 1
+])
+AC_CHECK_HEADER([arpa/inet.h], [], [
+	AC_MSG_NOTICE([could not find arpa/inet.h])
+	exit 1
+])
+AC_CHECK_HEADER([netdb.h], [], [
+	AC_MSG_NOTICE([could not find netdb.h])
+	exit 1
+])
+AC_CHECK_HEADER([netinet/in.h], [], [
+	AC_MSG_NOTICE([could not find netinet/in.h])
+	exit 1
+])
+AC_CHECK_HEADER([pthread.h], [], [
+	AC_MSG_NOTICE([could not find pthread.h])
+	exit 1
+])
+AC_CHECK_HEADER([signal.h], [], [
+	AC_MSG_NOTICE([could not find signal.h])
+	exit 1
+])
+AC_CHECK_HEADER([stdlib.h], [], [
+	AC_MSG_NOTICE([could not find stdlib.h])
+	exit 1
+])
+AC_CHECK_HEADER([string.h], [], [
+	AC_MSG_NOTICE([could not find string.h])
+	exit 1
+])
+AC_CHECK_HEADER([sys/socket.h], [], [
+	AC_MSG_NOTICE([could not find sys/socket.h])
+	exit 1
+])
+AC_CHECK_HEADER([sys/time.h], [], [
+	AC_MSG_NOTICE([could not find sys/time.h])
+	exit 1
+])
+AC_CHECK_HEADER([unistd.h], [], [
+	AC_MSG_NOTICE([could not find unistd.h])
+	exit 1
+])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 
 # Checks for library functions.
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([gethostbyname select socket strchr strncasecmp strstr])
+# AC_CHECK_FUNCS([])
 
 AC_CONFIG_FILES([Makefile src/Makefile data/Makefile])
 AC_OUTPUT

@@ -256,7 +256,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		return 1;
 	}
 
-#ifndef WITHOUT_ARES_SET_SERVERS
+#ifdef HAVE_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
 		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")
@@ -341,7 +341,7 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 		return 1;
 	}
 
-#ifndef WITHOUT_ARES_SET_SERVERS
+#ifdef HAVE_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
 		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")

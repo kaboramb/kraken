@@ -156,7 +156,7 @@ int gui_show_main_window(main_gui_data *m_data) {
 	GtkWidget *view;
 	GtkWidget *txt_entry;
 
-#ifndef WITHOUT_GTK_G_THREAD_INIT
+#ifdef HAVE_GTK_G_THREAD_INIT
 	g_thread_init(NULL);
 #endif
 	gdk_threads_init();
