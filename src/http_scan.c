@@ -45,7 +45,6 @@ void http_enum_opts_init(http_enum_opts *h_opts) {
 
 	curl_info = curl_version_info(CURLVERSION_NOW);
 	memset(h_opts, '\0', sizeof(struct http_enum_opts));
-	h_opts->timeout = HTTP_DEFAULT_TIMEOUT;
 	h_opts->timeout_ms = HTTP_DEFAULT_TIMEOUT_MS;
 	if ((curl_info->features & CURL_VERSION_ASYNCHDNS)) {
 		h_opts->no_signal = 0;
@@ -69,10 +68,8 @@ void http_enum_opts_destroy(http_enum_opts *h_opts) {
 }
 
 void http_enum_opts_config_curl_easy(http_enum_opts *h_opts, CURL *curl_h) {
-	curl_easy_setopt(curl_h, CURLOPT_TIMEOUT, h_opts->timeout);
-	if (h_opts->timeout_ms != 0) {
-		curl_easy_setopt(curl_h, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
-	}
+	curl_easy_setopt(curl_h, CURLOPT_TIMEOUT_MS, h_opts->timeout_ms);
+
 	if (h_opts->no_signal != 0) {
 		curl_easy_setopt(curl_h, CURLOPT_NOSIGNAL, 1);
 	}

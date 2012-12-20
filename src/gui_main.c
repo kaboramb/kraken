@@ -98,9 +98,10 @@ void callback_thread_main_command_submit(main_gui_data *m_data) {
 	while (gtk_events_pending()) {
 		gtk_main_iteration();
 	}
-
 	gdk_threads_leave();
+
 	ret_val = plugins_run_plugin_method_arg_str(plugin, PLUGIN_METHOD_MAIN, args, error_msg, sizeof(error_msg));
+	whois_fill_host_manager(m_data->c_host_manager);
 
 	if (m_data->gui_is_active) {
 		gdk_threads_enter();

@@ -563,6 +563,7 @@ int host_manager_get_whois_by_addr(host_manager *c_host_manager, struct in_addr 
 }
 
 void host_manager_sync_whois_data(host_manager *c_host_manager) {
+	/* Sync with existing data (don't get unknown records)*/
 	host_iter host_i;
 	single_host_info *c_host;
 	whois_record *cur_who_resp = NULL;

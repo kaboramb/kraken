@@ -66,6 +66,7 @@ void callback_thread_view_popup_menu_plugins(gui_data_menu_plugin *gp_data) {
 	gdk_threads_leave();
 
 	ret_val = plugins_plugin_run_callback(gp_data->c_plugin, gp_data->callback_id, gp_data->plugin_data, error_msg, sizeof(error_msg));
+	whois_fill_host_manager(gp_data->m_data->c_host_manager);
 
 	gdk_threads_enter();
 	if (KSTATUS_PLUGIN_IS_ERROR(ret_val)) {

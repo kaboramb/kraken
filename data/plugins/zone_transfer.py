@@ -28,6 +28,7 @@
 #
 
 import kraken
+import socket
 
 try:
 	import dns.resolver
@@ -56,6 +57,8 @@ def check_domain_for_zone_transfer(domain):
 			continue
 	if zone == None:
 		return
+
+	names_to_ips = {}
 	for (name, ttl, rdata) in zone.iterate_rdatas('A'):
 		if name.is_wild():
 			continue
@@ -64,6 +67,30 @@ def check_domain_for_zone_transfer(domain):
 		name = name.to_text().rstrip('.')
 		ip = str(rdata)
 		kraken.host_manager.set_host_details({'ipv4_addr':ip, 'names':name})
+		if not name in names_to_ips:
+			names_to_ips[name] = []
+		names_to_ips[name].append(ip)
+
+	for (name, ttl, rdata) in zone.iterate_rdatas('CNAME'):
+		if name.is_wild():
+			continue
+		if not name.is_absolute():
+			name = name.concatenate(zone.origin)
+		cname = name.to_text().rstrip('.')
+		if rdata.target.is_absolute():
+			target = rdata.target.to_text().rstrip('.')
+		else:
+			target = rdata.target.concatenate(zone.origin).to_text().rstrip('.')
+		if target in names_to_ips:
+			for ip in names_to_ips[target]:
+				kraken.host_manager.set_host_details({'ipv4_addr':ip, 'names':[target, cname]})
+		else:
+			try:
+				dnsresp = socket.gethostbyname_ex(target)
+			except:
+				continue	# probably a "herror: [Errno 4] No address associated with name" error
+			if ip in dnsresp[2]:
+				kraken.host_manager.add_hostname(ip, [target, cname])
 	return
 
 def check_hostnames_for_zone_transfer(host):

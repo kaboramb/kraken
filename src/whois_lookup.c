@@ -363,6 +363,7 @@ int whois_raw_lookup(int req_type, int target_server, char *request, char *respo
 }
 
 int whois_fill_host_manager(host_manager *c_host_manager) {
+	/* Sync data (get unknown records)*/
 	host_iter host_i;
 	single_host_info *c_host;
 	whois_record tmp_who_resp;
@@ -372,6 +373,9 @@ int whois_fill_host_manager(host_manager *c_host_manager) {
 
 	host_manager_iter_host_init(c_host_manager, &host_i);
 	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
+		if (c_host->whois_data != NULL) {
+			continue;
+		}
 		host_manager_get_whois_by_addr(c_host_manager, &c_host->ipv4_addr, &cur_who_resp);
 		if (cur_who_resp != NULL) {
 			c_host->whois_data = cur_who_resp;

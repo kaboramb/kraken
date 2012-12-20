@@ -33,5 +33,8 @@ def main(args):
 	if not len(args):
 		return 0
 	for name in args.split(' '):
-		kraken.host_manager.quick_add_by_name(name)
+		try:
+			kraken.host_manager.quick_add_by_name(name)
+		except ValueError as err:
+			raise kraken.error(err.message)
 	return 0
