@@ -179,6 +179,26 @@ GtkWidget *gui_popup_get_button(int type, popup_data *p_data, const char* text) 
 	return button;
 }
 
+GtkWidget *gui_popup_get_window(main_gui_data *m_data, popup_data *p_data, const gchar *title) {
+	GtkWidget *window;
+
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	assert(window != NULL);
+
+	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
+	gtk_window_set_transient_for(GTK_WINDOW(window), GTK_WINDOW(m_data->main_window));
+	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER_ON_PARENT);
+	gtk_window_set_destroy_with_parent(GTK_WINDOW(window), TRUE);
+	gtk_window_set_title(GTK_WINDOW(window), title);
+
+	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
+
+	if (p_data != NULL) {
+		g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	}
+	return window;
+}
+
 gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_str) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
@@ -796,11 +816,8 @@ gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
 	}
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	window = window = gui_popup_get_window(m_data, p_data, "Preferences");
 	gtk_widget_set_size_request(window, 350, 295);
-	gtk_window_set_title(GTK_WINDOW(window), "Settings");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
-	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
 
 	main_vbox = gtk_vbox_new(FALSE, 3);
 	gtk_container_add(GTK_CONTAINER(window), main_vbox);
@@ -911,9 +928,10 @@ gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
 
 gboolean gui_popup_help_about(main_gui_data *m_data) {
 	GtkWidget *window;
-	GtkWidget *main_vbox, *vbox, *main_hbox;
+	GtkWidget *main_vbox, *vbox, *main_hbox, *hbox;
 	GtkWidget *label;
 	GtkWidget *button;
+	GtkStyle *style;
 	char version[32];
 	char revision[32];
 	popup_data *p_data;
@@ -923,11 +941,8 @@ gboolean gui_popup_help_about(main_gui_data *m_data) {
 		return TRUE;
 	}
 
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_widget_set_size_request(window, 250, 180);
-	gtk_window_set_title(GTK_WINDOW(window), "About Kraken");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
-	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, p_data, "About Kraken");
+	gtk_widget_set_size_request(window, 250, 220);
 
 	main_vbox = gtk_vbox_new(FALSE, 3);
 	gtk_container_add(GTK_CONTAINER(window), main_vbox);
@@ -945,7 +960,7 @@ gboolean gui_popup_help_about(main_gui_data *m_data) {
 	gtk_container_add(GTK_CONTAINER(vbox), label);
 
 	if (strlen(KRAKEN_REVISION_STRING)) {
-		gtk_widget_set_size_request(window, 250, 200);
+		gtk_widget_set_size_request(window, 250, 240);
 		snprintf(version, sizeof(version), "Revision: %s", KRAKEN_REVISION_STRING);
 		label = gtk_label_new(version);
 		gtk_container_add(GTK_CONTAINER(vbox), label);
@@ -954,6 +969,18 @@ gboolean gui_popup_help_about(main_gui_data *m_data) {
 	vbox = gtk_vbox_new(FALSE, 0);
 	gtk_container_set_border_width(GTK_CONTAINER(vbox), 5);
 	gtk_container_add(GTK_CONTAINER(main_vbox), vbox);
+
+	hbox = gtk_hbox_new(FALSE, 3);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+
+	button = gtk_link_button_new_with_label("http://www.securestate.com/", "SecureState");
+	gtk_widget_set_can_focus(GTK_WIDGET(button), FALSE);
+	style = gtk_widget_get_style(button);
+	gtk_widget_set_style(button, style);
+
+	gtk_box_pack_start(GTK_BOX(hbox), gtk_label_new(NULL), TRUE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), button, TRUE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), gtk_label_new(NULL), TRUE, FALSE, 0);
 
 	label = gtk_label_new("Copyright (c) 2012");
 	gtk_container_add(GTK_CONTAINER(vbox), label);

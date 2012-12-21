@@ -55,7 +55,7 @@ int gui_menu_file_save_as_ex(main_gui_data *m_data, guint action, GtkWidget *wid
 	int ret_val = 0;
 
 	if ((m_data->c_host_manager->known_hosts == 0) && (m_data->c_host_manager->known_whois_records == 0)) {
-		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
+		gui_popup_error_dialog(GTK_WINDOW(m_data->main_window), "There Is No Data To Save", "Error: No Data");
 		return 0;
 	}
 	dialog = gtk_file_chooser_dialog_new("Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL),
@@ -83,7 +83,7 @@ int gui_menu_file_save_as_ex(main_gui_data *m_data, guint action, GtkWidget *wid
 		m_data->c_host_manager->save_file_path[strlen(filename)] = '\0';
 		response = export_host_manager_to_xml(m_data->c_host_manager, filename);
 		if (response != 0) {
-			GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
+			GUI_POPUP_ERROR_EXPORT_FAILED(GTK_WINDOW(m_data->main_window));
 			ret_val = -1;
 		} else {
 			ret_val = 1;
@@ -101,7 +101,7 @@ void gui_menu_file_new_project(main_gui_data *m_data, guint action, GtkWidget *w
 	if ((m_data->c_host_manager->known_hosts == 0) && (m_data->c_host_manager->known_whois_records == 0)) {
 		return;
 	}
-	response = gui_popup_question_yes_no_cancel_dialog(NULL, "Save Current Project?", "Save Current Project?");
+	response = gui_popup_question_yes_no_cancel_dialog(GTK_WINDOW(m_data->main_window), "Save Current Project?", "Save Current Project?");
 	if (response == GTK_RESPONSE_CANCEL) {
 		return;
 	} else if (response == GTK_RESPONSE_YES) {
@@ -112,7 +112,7 @@ void gui_menu_file_new_project(main_gui_data *m_data, guint action, GtkWidget *w
 		}
 		response = export_host_manager_to_xml(m_data->c_host_manager, m_data->c_host_manager->save_file_path);
 		if (response != 0) {
-			GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
+			GUI_POPUP_ERROR_EXPORT_FAILED(GTK_WINDOW(m_data->main_window));
 		}
 	}
 
@@ -129,7 +129,7 @@ void gui_export_csv(main_gui_data *m_data, guint action, GtkWidget *widget, cons
 	gint response;
 
 	if ((m_data->c_host_manager->known_hosts == 0) && (m_data->c_host_manager->known_whois_records == 0)) {
-		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
+		gui_popup_error_dialog(GTK_WINDOW(m_data->main_window), "There Is No Data To Save", "Error: No Data");
 		return;
 	}
 	dialog = gtk_file_chooser_dialog_new("Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT, NULL),
@@ -146,9 +146,9 @@ void gui_export_csv(main_gui_data *m_data, guint action, GtkWidget *widget, cons
 		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
 		response = export_host_manager_to_csv_ex(m_data->c_host_manager, filename, e_opts);
 		if (response != 0) {
-			GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
+			GUI_POPUP_ERROR_EXPORT_FAILED(GTK_WINDOW(m_data->main_window));
 		} else {
-			gui_popup_info_dialog(NULL, "Successfully Exported Data", "Info: Export Successful");
+			gui_popup_info_dialog(GTK_WINDOW(m_data->main_window), "Successfully Exported Data", "Info: Export Successful");
 		}
 		g_free(filename);
 	}
@@ -201,7 +201,7 @@ void gui_menu_file_open(main_gui_data *m_data, guint action, GtkWidget *widget) 
 	gboolean merge = FALSE;
 
 	if ((m_data->c_host_manager->known_hosts > 0) || (m_data->c_host_manager->known_whois_records > 0)) {
-		response = gui_popup_question_yes_no_dialog(NULL, "Merge With Existing Data?", "Merge?");
+		response = gui_popup_question_yes_no_dialog(GTK_WINDOW(m_data->main_window), "Merge With Existing Data?", "Merge?");
 		if (response == GTK_RESPONSE_YES) {
 			merge = TRUE;
 		}
@@ -216,7 +216,7 @@ void gui_menu_file_open(main_gui_data *m_data, guint action, GtkWidget *widget) 
 		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
 		response = import_host_manager_from_xml(m_data->c_host_manager, filename);
 		if (response != 0) {
-			GUI_POPUP_ERROR_IMPORT_FAILED(NULL);
+			GUI_POPUP_ERROR_IMPORT_FAILED(GTK_WINDOW(m_data->main_window));
 		}
 		gui_model_update_tree_and_marquee(m_data, NULL);
 		if (m_data->c_host_manager->save_file_path != NULL) {
@@ -240,7 +240,7 @@ void gui_menu_file_save(main_gui_data *m_data, guint action, GtkWidget *widget) 
 	gint response;
 
 	if ((m_data->c_host_manager->known_hosts == 0) && (m_data->c_host_manager->known_whois_records == 0)) {
-		gui_popup_error_dialog(NULL, "There Is No Data To Save", "Error: No Data");
+		gui_popup_error_dialog(GTK_WINDOW(m_data->main_window), "There Is No Data To Save", "Error: No Data");
 		return;
 	}
 
@@ -250,7 +250,7 @@ void gui_menu_file_save(main_gui_data *m_data, guint action, GtkWidget *widget) 
 	}
 	response = export_host_manager_to_xml(m_data->c_host_manager, m_data->c_host_manager->save_file_path);
 	if (response != 0) {
-		GUI_POPUP_ERROR_EXPORT_FAILED(NULL);
+		GUI_POPUP_ERROR_EXPORT_FAILED(GTK_WINDOW(m_data->main_window));
 	}
 	return;
 }
