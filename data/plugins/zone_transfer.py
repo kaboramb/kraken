@@ -38,12 +38,23 @@ try:
 	from dns.rdataclass import *
 	from dns.rdatatype import *
 except ImportError as err:
-	kraken.log(kraken.LOG_LVL_WARNING, "could not import dnspython, can't load zone_transfer plugin")
+	kraken.log(kraken.LOG_LVL_ERROR, "could not import python module dnspython, can't load zone_transfer plugin")
 	raise err
+
+try:
+	import tldextract
+	has_tldextract = True
+except ImportError:
+	kraken.log(kraken.LOG_LVL_WARNING, "could not import python module tldextract")
+	tldextract = None
+	has_tldextract = False
 
 def check_domain_for_zone_transfer(domain):
 	kraken.log(kraken.LOG_LVL_INFO, "getting NS records for " + domain)
-	answers = dns.resolver.query(domain, 'NS')
+	try:
+		answers = dns.resolver.query(domain, 'NS')
+	except dns.resolver.NoAnswer:
+		return
 	nameservers = map(str, answers)
 
 	zone = None
@@ -52,7 +63,7 @@ def check_domain_for_zone_transfer(domain):
 		try:
 			zone = dns.zone.from_xfr(dns.query.xfr(nameserver, domain))
 			kraken.log(kraken.LOG_LVL_INFO, "successful tranfser for " + domain + " on server " + nameserver)
-		except (DNSException, EOFError):
+		except (DNSException, socket.error, EOFError):
 			kraken.log(kraken.LOG_LVL_INFO, "transfer failed on server: " + nameserver)
 			continue
 	if zone == None:
@@ -97,7 +108,15 @@ def check_hostnames_for_zone_transfer(host):
 	domains_done = []
 
 	for hostname in host['names']:
-		domain = '.'.join(hostname.split('.')[-2:])
+		if has_tldextract:
+			ext = tldextract.extract(hostname)
+			domain = ext.domain + '.' + ext.tld
+			if domain.startswith('.'):
+				continue # don't touch TLDs
+		else:
+			domain = '.'.join(hostname.split('.')[1:])
+			if domain.count('.') == 0:
+				continue # don't touch TLDs
 		if domain in domains_done:
 			continue
 		domains_done.append(domain)
