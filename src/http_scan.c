@@ -425,7 +425,7 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	webpage_f = open_memstream(&webpage_b, &webpage_sz);
 	if (webpage_f == NULL) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
-		return 1;
+		return -1;
 	}
 
 	http_enum_opts_init(&h_opts);
@@ -444,7 +444,7 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 		free(webpage_b);
 		curl_easy_cleanup(curl);
 		http_enum_opts_destroy(&h_opts);
-		return 2;
+		return -2;
 	}
 
 	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &pvt_link_anchor, &h_opts);

@@ -208,6 +208,7 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 void gui_popup_thread_http_scrape_url_for_links(popup_data *p_data) {
 	const gchar *text_entry;
 	http_link *link_anchor = NULL;
+	single_host_info *c_host;
 	int tmp_val = 0;
 	char target_host[DNS_MAX_FQDN_LENGTH + 1];
 	char target_url[DNS_MAX_FQDN_LENGTH + 10];
@@ -234,9 +235,22 @@ void gui_popup_thread_http_scrape_url_for_links(popup_data *p_data) {
 	}
 	snprintf(target_url, DNS_MAX_FQDN_LENGTH + 10, "http://%s/", target_host);
 	tmp_val = http_scrape_url_for_links(target_url, &link_anchor);
-	if (tmp_val) {
+	if (tmp_val < 0) {
 		LOGGING_QUICK_ERROR("kraken.gui.popup", "there was an error requesting the page")
+	} else {
+		if (strlen(target_url) <= INET_ADDRSTRLEN) {
+			struct in_addr ip;
+			if (inet_pton(AF_INET, target_url, &ip)) {
+				if (host_manager_get_host_by_addr(p_data->m_data->c_host_manager, &ip, &c_host)) {
+					single_host_set_status(c_host, KRAKEN_HOST_STATUS_UP);
+				}
+			}
+		}
+		if (host_manager_get_host_by_name(p_data->m_data->c_host_manager, target_url, &c_host)) {
+			single_host_set_status(c_host, KRAKEN_HOST_STATUS_UP);
+		}
 	}
+
 	gdk_threads_enter();
 	gui_popup_select_hosts_from_http_links(p_data->m_data, link_anchor);
 	g_signal_handler_disconnect(p_data->popup_window, delete_handler);

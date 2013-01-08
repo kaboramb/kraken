@@ -325,7 +325,7 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/File/Export/IPs List",					NULL,		gui_menu_file_export_ips_list,	0,	NULL		},
 	{ "/File/Export/Hostnames List",			NULL,		gui_menu_file_export_hostnames_list,	0,	NULL		},
 	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/File/Open",								NULL,		gui_menu_file_open,				0,	NULL	},
+	{ "/File/Open",								"<CTRL>O",	gui_menu_file_open,				0,	NULL	},
 	{ "/File/Save",								"<CTRL>S",	gui_menu_file_save,				0,	NULL	},
 	{ "/File/Save As",							NULL,		gui_menu_file_save_as,			0,	NULL	},
 	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},

@@ -242,7 +242,6 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 	FILE *hostlist;
 	char line[MAX_LINE];
 	char hostname[MAX_LINE];
-	int i;
 
 	status = ares_library_init(ARES_LIB_INIT_ALL);
 	if (status != ARES_SUCCESS){
@@ -259,6 +258,7 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 #ifdef HAVE_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
+		int i;
 		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")
 		struct ares_addr_node servers_addr_node[DNS_MAX_NS_HOSTS];
 		struct in_addr blank_address;
@@ -324,7 +324,6 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 	int status;
 	unsigned int num_of_hosts = 0;
 	unsigned int query_counter = 0;
-	int i;
 	struct in_addr c_ip;
 	char ipstr[INET6_ADDRSTRLEN];
 	char netstr[INET6_ADDRSTRLEN];
@@ -344,6 +343,7 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 #ifdef HAVE_ARES_SET_SERVERS
 	if (nameservers != NULL) {
 		// set the name servers //
+		int i;
 		LOGGING_QUICK_INFO("kraken.dns_enum", "switching to use supplied name servers")
 		struct ares_addr_node servers_addr_node[DNS_MAX_NS_HOSTS];
 		struct in_addr blank_address;
