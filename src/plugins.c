@@ -761,9 +761,6 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 	PyEval_InitThreads();
 	pymod_kraken = plugins_pymod_kraken_init();
 	plugins_python_sys_path_prepend(plugin_path);
-#ifdef PYTHON_SITE_PACKAGES
-	plugins_python_sys_path_prepend(PYTHON_SITE_PACKAGES);
-#endif
 
 	dp = opendir(plugin_path);
 	if (dp == NULL) {
