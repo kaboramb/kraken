@@ -701,15 +701,30 @@ PyObject *plugins_pymod_kraken_init(void) {
 	return pymod_kraken;
 }
 
-void plugins_python_sys_path_prepend(char *path) {
-	char tmppath[1024];
+int plugins_python_sys_path_append(char *path) {
+	PyObject *sys_path = NULL;
+	PyObject *new_path = NULL;
+	int status;
 
-	if (snprintf(tmppath, sizeof(tmppath), "%s:%s", path, Py_GetPath()) >= sizeof(tmppath)) {
-		logging_log("kraken.plugins", LOGGING_ERROR, "the Python path is to large for the buffer and could not be set");
-		return;
-	}
-	PySys_SetPath(tmppath);
-	return;
+	new_path = PyString_FromString(path);
+	sys_path = PySys_GetObject((char *)"path");
+	logging_log("kraken.plugin", LOGGING_DEBUG, "appending %s to python's sys.path", path);
+	status = PyList_Append(sys_path, new_path);
+	Py_DECREF(new_path);
+	return status;
+}
+
+int plugins_python_sys_path_prepend(char *path) {
+	PyObject *sys_path = NULL;
+	PyObject *new_path = NULL;
+	int status;
+
+	new_path = PyString_FromString(path);
+	sys_path = PySys_GetObject((char *)"path");
+	logging_log("kraken.plugin", LOGGING_DEBUG, "prepending %s to python's sys.path", path);
+	status = PyList_Insert(sys_path, 0, new_path);
+	Py_DECREF(new_path);
+	return status;
 }
 
 int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) {
@@ -726,9 +741,6 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 	PyObject *pInitFunc;
 	PyObject *pReturnValue;
 	char plugin_path[128];
-#ifdef PYTHON_SITE_PACKAGES
-	char pymod_search_path[256];
-#endif
 	char plugin_name[PLUGIN_SZ_NAME + 1];
 
 	if (c_plugin_manager != NULL) {
@@ -748,11 +760,9 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 	Py_Initialize();
 	PyEval_InitThreads();
 	pymod_kraken = plugins_pymod_kraken_init();
-#ifdef PYTHON_SITE_PACKAGES
-	snprintf(pymod_search_path, sizeof(pymod_search_path), "%s:%s", plugin_path, PYTHON_SITE_PACKAGES);
-	plugins_python_sys_path_prepend(pymod_search_path);
-#else
 	plugins_python_sys_path_prepend(plugin_path);
+#ifdef PYTHON_SITE_PACKAGES
+	plugins_python_sys_path_prepend(PYTHON_SITE_PACKAGES);
 #endif
 
 	dp = opendir(plugin_path);
