@@ -45,10 +45,30 @@
 int whois_parse_response_arin(char *raw_resp, whois_response *who_resp) {
 	int szResp = 0;
 	int szData = 0;
+	char *start_tag = NULL;
 	char *pCur = NULL;
 
 	szResp = strlen(raw_resp);
 	pCur = raw_resp;
+
+	/* first we need to check for # start and # end directives so we can skip to the last one */
+	while (pCur < (raw_resp + szResp)) {
+		if (strncasecmp(pCur, "# start", 7) == 0) {
+			 start_tag = pCur;
+		}
+		pCur = strchr(pCur, '\n');
+		if (pCur == NULL) {
+			break;
+		}
+		pCur += 1;
+	}
+
+	if (start_tag == NULL) {
+		pCur = raw_resp;
+	} else {
+		pCur = start_tag;
+	}
+
 	while (pCur < (raw_resp + szResp)) {
 		szData = 0;
 		pCur += 1;		/* advance the cursor once to skip the newline */
@@ -89,6 +109,22 @@ int whois_parse_response_arin(char *raw_resp, whois_response *who_resp) {
 			pCur += szData;
 		} else if (strncasecmp(pCur, "orgname: ", 9) == 0) {
 			pCur += 9;
+			while ((*pCur == ' ') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA)) {
+				pCur += 1;
+			}
+			while ((*(pCur + szData) != '\n') && (pCur < (raw_resp + szResp))) {
+				szData += 1;
+			}
+			if (*who_resp->orgname == '\0') {
+				if (szData < WHOIS_SZ_DATA) {
+					strncpy(who_resp->orgname, pCur, szData);
+				} else {
+					strncpy(who_resp->orgname, pCur, WHOIS_SZ_DATA);
+				}
+			}
+			pCur += szData;
+		} else if (strncasecmp(pCur, "custname: ", 10) == 0) {
+			pCur += 10;
 			while ((*pCur == ' ') && (pCur < (raw_resp + szResp)) && (szData <= WHOIS_SZ_DATA)) {
 				pCur += 1;
 			}
