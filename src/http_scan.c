@@ -377,9 +377,6 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 	} else {
 		curl_easy_getinfo(curl_redir, CURLINFO_CONTENT_TYPE, &content_type);
 	}
-	if (curl_redir != NULL) {
-		curl_easy_cleanup(curl_redir);
-	}
 	if (content_type == NULL) {
 		LOGGING_QUICK_WARNING("kraken.http_scan", "the content type was not provided in the servers response")
 		return 4;
@@ -391,6 +388,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 		logging_log("kraken.http_scan", LOGGING_WARNING, "received an invalid content type from %s", target_url);
 		return 5;
 	}
+
 	if (link_current && (*pvt_link_anchor == NULL)) {
 		for (link_current = *link_anchor; link_current; link_current = link_current->next) {
 			link_counter++;
@@ -401,6 +399,9 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 		}
 	}
 
+	if (curl_redir != NULL) {
+		curl_easy_cleanup(curl_redir);
+	}
 	logging_log("kraken.http_scan", LOGGING_INFO, "gathered %u new links", link_counter);
 	return 0;
 }
