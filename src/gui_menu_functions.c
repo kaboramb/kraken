@@ -143,16 +143,19 @@ void gui_export_csv(main_gui_data *m_data, guint action, GtkWidget *widget, cons
 
 	if (response == GTK_RESPONSE_ACCEPT) {
 		char *filename;
+
 		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
 		response = export_host_manager_to_csv_ex(m_data->c_host_manager, filename, e_opts);
+		g_free(filename);
+		gtk_widget_destroy(dialog);
 		if (response != 0) {
 			GUI_POPUP_ERROR_EXPORT_FAILED(GTK_WINDOW(m_data->main_window));
 		} else {
 			gui_popup_info_dialog(GTK_WINDOW(m_data->main_window), "Successfully Exported Data", "Info: Export Successful");
 		}
-		g_free(filename);
+	} else {
+		gtk_widget_destroy(dialog);
 	}
-	gtk_widget_destroy(dialog);
 	return;
 }
 
@@ -191,6 +194,22 @@ void gui_menu_file_export_hostnames_list(main_gui_data *m_data, guint action, Gt
 	e_opts.whois_netname = 0;
 	e_opts.whois_orgname = 0;
 	gui_export_csv(m_data, action, widget, "kraken_export_hostnames.txt", &e_opts);
+	export_csv_opts_destroy(&e_opts);
+	return;
+}
+
+void gui_menu_file_export_network_ranges(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	export_csv_opts e_opts;
+
+	export_csv_opts_init(&e_opts);
+	strcpy((char *)&e_opts.secondary_delimiter, "\n");
+	e_opts.show_fields = 0;
+	e_opts.host_names = 0;
+	e_opts.host_ipv4_addr = 0;
+	e_opts.whois_cidr = 1;
+	e_opts.whois_netname = 0;
+	e_opts.whois_orgname = 0;
+	gui_export_csv(m_data, action, widget, "kraken_export_net_ranges.txt", &e_opts);
 	export_csv_opts_destroy(&e_opts);
 	return;
 }
@@ -324,6 +343,7 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/File/Export/CSV",						NULL,		gui_menu_file_export_csv,		0,	NULL		},
 	{ "/File/Export/IPs List",					NULL,		gui_menu_file_export_ips_list,	0,	NULL		},
 	{ "/File/Export/Hostnames List",			NULL,		gui_menu_file_export_hostnames_list,	0,	NULL		},
+	{ "/File/Export/Network Ranges",			NULL,		gui_menu_file_export_network_ranges,	0,	NULL		},
 	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
 	{ "/File/Open",								"<CTRL>O",	gui_menu_file_open,				0,	NULL	},
 	{ "/File/Save",								"<CTRL>S",	gui_menu_file_save,				0,	NULL	},
