@@ -331,7 +331,7 @@ void gui_popup_thread_http_search_engine_bing(popup_data *p_data) {
 		http_enum_opts_set_bing_api_key(&h_opts, p_data->m_data->k_opts->bing_api_key);
 		h_opts.action_status = &p_data->action_status;
 		p_data->action_status = KRAKEN_ACTION_RUN;
-		response = http_search_engine_bing_ex(p_data->m_data->c_host_manager, target_domain, &h_opts);
+		response = http_search_engine_bing_site_ex(p_data->m_data->c_host_manager, target_domain, &h_opts);
 		gdk_threads_enter();
 		if (response < 0) {
 			if (response == -3) {

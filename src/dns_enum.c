@@ -177,12 +177,19 @@ char *dns_get_domain(char *originalname) {
 
 int dns_host_in_domain(char *hostname, char *domain) {
 	char *hdomain;
+
 	hdomain = dns_get_domain(hostname);
 	if (hdomain == NULL) {
 		return 0;
 	}
 	if (strlen(hdomain) == strlen(domain)) {
 		if (strncasecmp(hdomain, domain, strlen(domain)) == 0) {
+			return 1;
+		}
+	}
+
+	if (strlen(hostname) == strlen(domain)) {
+		if (strncasecmp(hostname, domain, strlen(domain)) == 0) {
 			return 1;
 		}
 	}

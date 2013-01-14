@@ -69,6 +69,6 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor);
 int http_scrape_ip_for_links(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor);
 int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr, const char *resource, http_link **link_anchor, http_enum_opts *h_opts);
 int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **link_anchor, http_enum_opts *h_opts);
-int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_domain, http_enum_opts *h_opts);
+int http_search_engine_bing_site_ex(host_manager *c_host_manager, const char *target_domain, http_enum_opts *h_opts);
 
 #endif

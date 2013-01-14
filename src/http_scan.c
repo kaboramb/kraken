@@ -716,12 +716,16 @@ int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *targe
 					}
 					memset(hostname, '\0', sizeof(hostname));
 					strncpy(hostname, uri.hostText.first, len);
-					if (dns_host_in_domain(hostname, (char *)target_domain) == 1) {
-						if (host_manager_quick_add_by_name(c_host_manager, hostname) != 0) {
-							logging_log("kraken.http_scan", LOGGING_ERROR, "failed to add host name %s from Bing XML", hostname);
+					if (target_domain != NULL) {
+						if (dns_host_in_domain(hostname, (char *)target_domain) == 1) {
+							if (host_manager_quick_add_by_name(c_host_manager, hostname) != 0) {
+								logging_log("kraken.http_scan", LOGGING_ERROR, "failed to add host name %s from Bing XML", hostname);
+							}
+						} else {
+							logging_log("kraken.http_scan", LOGGING_WARNING, "identified host: %s that is not in the target domain", hostname);
 						}
-					} else {
-						logging_log("kraken.http_scan", LOGGING_WARNING, "identified host: %s that is not in the target domain", hostname);
+					} else if (host_manager_quick_add_by_name(c_host_manager, hostname) != 0) {
+						logging_log("kraken.http_scan", LOGGING_ERROR, "failed to add host name %s from Bing XML", hostname);
 					}
 					uriFreeUriMembersA(&uri);
 					xmlFree(url);
@@ -735,7 +739,7 @@ int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *targe
 	return num_entries;
 }
 
-int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_domain, http_enum_opts *h_opts) {
+int http_search_engine_bing_all_ex(host_manager *c_host_manager, const char *query, const char *target_domain, http_enum_opts *h_opts) {
 	size_t webpage_sz;
 	FILE *webpage_f = NULL;
 	char *webpage_b = NULL;
@@ -752,8 +756,8 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 		logging_log("kraken.http_scan", LOGGING_WARNING, "bing app id was not set");
 		return -1;
 	}
-	if ((strlen(h_opts->bing_api_key) > HTTP_BING_API_KEY_SZ) || (strlen(target_domain) > DNS_MAX_FQDN_LENGTH)) {
-		logging_log("kraken.http_scan", LOGGING_ERROR, "bing app id or domain is too large");
+	if (strlen(h_opts->bing_api_key) > HTTP_BING_API_KEY_SZ) {
+		logging_log("kraken.http_scan", LOGGING_ERROR, "bing api key is too large");
 		return -1;
 	}
 
@@ -767,7 +771,7 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 			return -1;
 		}
 		memset(request_url, '\0', sizeof(request_url));
-		snprintf(request_url, sizeof(request_url), "https://api.datamarket.azure.com/Bing/Search/Web?Query=%%27site:%%20%s%%27&$top=%u&$skip=%u&$format=ATOM&Market=%%27en-US%%27", target_domain, HTTP_BING_NUM_RESULTS, (num_queries * HTTP_BING_NUM_RESULTS));
+		snprintf(request_url, sizeof(request_url), "https://api.datamarket.azure.com/Bing/Search/Web?Query=%s&$top=%u&$skip=%u&$format=ATOM&Market=%%27en-US%%27", query, HTTP_BING_NUM_RESULTS, (num_queries * HTTP_BING_NUM_RESULTS));
 
 		if (curl != NULL) {
 			curl_easy_cleanup(curl);
@@ -833,4 +837,16 @@ int http_search_engine_bing_ex(host_manager *c_host_manager, const char *target_
 	}
 	logging_log("kraken.http_scan", LOGGING_INFO, "bing enumeration complete, used %i queries and received %i results", num_queries, num_entries_total);
 	return (((num_queries - 1) * HTTP_BING_NUM_RESULTS) + num_entries);
+}
+
+int http_search_engine_bing_site_ex(host_manager *c_host_manager, const char *target_domain, http_enum_opts *h_opts) {
+	char query[128];
+
+	if ((strlen(h_opts->bing_api_key) > HTTP_BING_API_KEY_SZ) || (strlen(target_domain) > DNS_MAX_FQDN_LENGTH)) {
+		logging_log("kraken.http_scan", LOGGING_ERROR, "bing app id or domain is too large");
+		return -1;
+	}
+
+	snprintf(query, sizeof(query), "%%27site:%%20%s%%27", target_domain);
+	return http_search_engine_bing_all_ex(c_host_manager, query, target_domain, h_opts);
 }

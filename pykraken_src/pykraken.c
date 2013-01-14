@@ -385,7 +385,7 @@ static PyObject *pykraken_enumerate_bing(PyObject *self, PyObject *args) {
 	http_enum_opts_init(&h_opts);
 	http_enum_opts_set_bing_api_key(&h_opts, bing_api_key);
 
-	http_search_engine_bing_ex(&c_host_manager, target_domain, &h_opts);
+	http_search_engine_bing_site_ex(&c_host_manager, target_domain, &h_opts);
 
 	host_manager_iter_host_init(&c_host_manager, &host_i);
 	while (host_manager_iter_host_next(&c_host_manager, &host_i, &c_host)) {
