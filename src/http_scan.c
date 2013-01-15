@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netdb.h>
 #include <curl/curl.h>
 #include <libxml/tree.h>
 #include <libxml/parser.h>
@@ -405,47 +406,87 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 }
 
 int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
-	/* link_anchor should either be NULL or an existing list returned by
-	 * a previous call to this or a similar function */
-	size_t webpage_sz;
-	FILE *webpage_f = NULL;
-	char *webpage_b = NULL;
-	CURL *curl;
-	CURLcode curl_res;
+	/* parses the url, looks up the hostname
+	 * and then calls http_scrape_ip_for_links_ex
+	 * for each ip returned.
+	 */
+	UriParserStateA uri_state;
+	UriUriA uri;
+	UriPathSegmentA *resource_cursor = NULL;
+	size_t len;
 	http_enum_opts h_opts;
-
-
-	webpage_f = open_memstream(&webpage_b, &webpage_sz);
-	if (webpage_f == NULL) {
-		LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
-		return -1;
-	}
+	struct addrinfo hints;
+	struct addrinfo *result, *rp;
+	struct sockaddr_in *sin;
+	char ipstr[INET_ADDRSTRLEN + 1];
+	char hostname[DNS_MAX_FQDN_LENGTH + 1];
+	char resource[2048];
 
 	http_enum_opts_init(&h_opts);
-	curl = curl_easy_init();
-	assert(curl != NULL);
-	http_enum_opts_config_curl_easy(&h_opts, curl);
-	curl_easy_setopt(curl, CURLOPT_URL, target_url);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, webpage_f);
-
-	curl_res = curl_easy_perform(curl);
-	fclose(webpage_f);
-
-	assert(webpage_b != NULL);
-	if (curl_res != 0) {
-		LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
-		free(webpage_b);
-		curl_easy_cleanup(curl);
-		http_enum_opts_destroy(&h_opts);
+	uri_state.uri = &uri;
+	if (uriParseUriA(&uri_state, target_url) != URI_SUCCESS) {
+		logging_log("kraken.http_scan", LOGGING_ERROR, "could not parse url: %s", target_url);
+		return -1;
+	}
+	len = (uri.hostText.afterLast - uri.hostText.first);
+	if (len > DNS_MAX_FQDN_LENGTH) {
+		logging_log("kraken.http_scan", LOGGING_ERROR, "host name in url is too long");
+		uriFreeUriMembersA(&uri);
 		return -2;
 	}
+	memset(hostname, '\0', sizeof(hostname));
+	strncpy(hostname, uri.hostText.first, len);
 
-	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &h_opts);
-
-	if (webpage_b != NULL) {
-		free(webpage_b);
+	if (strncasecmp(uri.scheme.first, "http", 4) != 0) {
+		logging_log("kraken.http_scan", LOGGING_ERROR, "url %s contains unknown scheme (must be http or https)", target_url);
 	}
-	curl_easy_cleanup(curl);
+
+	if (strncasecmp(uri.scheme.first, "https", 5) == 0) {
+		h_opts.use_ssl = 1;
+	}
+
+	resource_cursor = uri.pathHead;
+	while (resource_cursor) {
+		if (resource_cursor == uri.pathTail) {
+			break;
+		}
+		strcat(resource, "/");
+		if ((strlen(resource) + strlen(resource_cursor->text.first) + 1) > sizeof(resource)) {
+			break;
+		}
+		strcat(resource, resource_cursor->text.first);
+		resource_cursor = resource_cursor->next;
+	}
+
+	uriFreeUriMembersA(&uri);
+
+	if (strlen(resource) == 0) {
+		strcat(resource, "/");
+	}
+
+	memset(&hints, '\0', sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+	hints.ai_protocol = 0;
+	hints.ai_canonname = NULL;
+	hints.ai_addr = NULL;
+	hints.ai_next = NULL;
+
+	if (getaddrinfo(hostname, NULL, &hints, &result) != 0) {
+		logging_log("kraken.http_scan", LOGGING_WARNING, "could not resolve the hostname: %s", hostname);
+		return -3;
+	}
+	for (rp = result; rp != NULL; rp = rp->ai_next) {
+		if (rp->ai_family != AF_INET) {
+			continue;
+		}
+		sin = (struct sockaddr_in *)rp->ai_addr;
+		inet_ntop(AF_INET, &sin->sin_addr, ipstr, INET_ADDRSTRLEN);
+		logging_log("kraken.http_scan", LOGGING_INFO, "url scan requesting resource from IP: %s Hostname: %s", ipstr, hostname);
+		http_scrape_ip_for_links_ex(hostname, &sin->sin_addr, resource, link_anchor, &h_opts);
+	}
+
 	http_enum_opts_destroy(&h_opts);
 	return 0;
 }

@@ -199,7 +199,7 @@ GtkWidget *gui_popup_get_window(main_gui_data *m_data, popup_data *p_data, const
 	return window;
 }
 
-gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_str) {
+gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *target_url) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
@@ -232,14 +232,16 @@ gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_s
 	gtk_container_add(GTK_CONTAINER(vbox), hbox);
 	gtk_widget_show(hbox);
 
-	label = gtk_label_new("Target Host: http://");
+	label = gtk_label_new("Target Host: ");
 	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, TRUE, 0);
 	gtk_widget_show(label);
 
 	entry = gtk_entry_new();
 	gtk_entry_set_max_length(GTK_ENTRY(entry), DNS_MAX_FQDN_LENGTH);
-	if (strlen(m_data->c_host_manager->lw_domain) > 0) {
-		gtk_entry_set_text(GTK_ENTRY(entry), m_data->c_host_manager->lw_domain);
+	if (target_url == NULL) {
+		gtk_entry_set_text(GTK_ENTRY(entry), "http://");
+	} else {
+		gtk_entry_set_text(GTK_ENTRY(entry), target_url);
 	}
 
 	gui_popup_data_init(p_data, m_data);

@@ -210,15 +210,14 @@ void gui_popup_thread_http_scrape_url_for_links(popup_data *p_data) {
 	http_link *link_anchor = NULL;
 	single_host_info *c_host;
 	int tmp_val = 0;
-	char target_host[DNS_MAX_FQDN_LENGTH + 1];
-	char target_url[DNS_MAX_FQDN_LENGTH + 10];
+	char target_url[2048];
 	gulong delete_handler;
 
-	memset(target_host, '\0', sizeof(target_host));
+	memset(target_url, '\0', sizeof(target_url));
 	gdk_threads_enter();
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
-	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
-		GUI_POPUP_ERROR_INVALID_HOST_NAME(p_data->popup_window);
+	if ((strlen(text_entry) >= sizeof(target_url)) || (strlen(text_entry) == 0)) {
+		GUI_POPUP_ERROR_INVALID_URL(p_data->popup_window);
 		gtk_widget_destroy(p_data->popup_window);
 		gdk_threads_leave();
 		return;
@@ -226,14 +225,7 @@ void gui_popup_thread_http_scrape_url_for_links(popup_data *p_data) {
 	delete_handler = g_signal_connect(p_data->popup_window, "delete-event", G_CALLBACK(callback_thread_window_destroy), p_data);
 	gdk_threads_leave();
 
-	strncpy(target_host, text_entry, DNS_MAX_FQDN_LENGTH);
-	for (tmp_val = 0; tmp_val < strlen(target_host); tmp_val++) {
-		if (*(char *)&target_host[tmp_val] == '/') {
-			target_host[tmp_val] = '\0';
-			break;
-		}
-	}
-	snprintf(target_url, DNS_MAX_FQDN_LENGTH + 10, "http://%s/", target_host);
+	strncpy(target_url, text_entry, sizeof(target_url) - 1);
 	tmp_val = http_scrape_url_for_links(target_url, &link_anchor);
 	if (tmp_val < 0) {
 		LOGGING_QUICK_ERROR("kraken.gui.popup", "there was an error requesting the page")

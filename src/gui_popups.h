@@ -40,6 +40,7 @@
 #define GUI_POPUP_ERROR_INVALID_CIDR_NETWORK(window) gui_popup_error_dialog(window, "Invalid CIDR Network", "Error: Invalid Network")
 #define GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(window) gui_popup_error_dialog(window, "Invalid Domain Name", "Error: Invalid Domain")
 #define GUI_POPUP_ERROR_INVALID_HOST_NAME(window) gui_popup_error_dialog(window, "Invalid Host Name", "Error: Invalid Host")
+#define GUI_POPUP_ERROR_INVALID_URL(window) gui_popup_error_dialog(window, "Invalid URL", "Error: Invalid URL");
 #define GUI_POPUP_ERROR_INVALID_IP_ADDRESS(window) gui_popup_error_dialog(window, "Invalid IP Address", "Error: Invalid IP")
 #define GUI_POPUP_ERROR_INVALID_NO_HOSTS_FOUND_IN_LINKS(window) gui_popup_error_dialog(window, "No Links Were Found", "Error: No Links")
 #define GUI_POPUP_ERROR_PLUGIN_RUNNING(window) gui_popup_error_dialog_plugin(window, KSTATUS_PLUGIN_OK, "A plugin is already running")
