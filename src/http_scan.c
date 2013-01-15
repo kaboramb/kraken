@@ -93,6 +93,69 @@ int http_enum_opts_set_bing_api_key(http_enum_opts *h_opts, const char *bing_api
 	return 0;
 }
 
+int http_link_append_uri(http_link **link_anchor, UriUriA *uri) {
+	http_link *current_link = NULL;
+	http_link *pvt_link_anchor = *link_anchor;
+	current_link = *link_anchor;
+	int process_link = 1;
+	size_t len;
+
+	if (pvt_link_anchor != NULL) {
+		for (current_link = pvt_link_anchor; current_link; current_link = current_link->next) {
+			if (strncmp(current_link->scheme, uri->scheme.first, strlen(current_link->scheme)) == 0) {
+				if (strncmp(current_link->hostname, uri->hostText.first, strlen(current_link->hostname)) == 0) {
+					if ((uri->pathHead == NULL) && (strlen(current_link->path) == 0)) {
+						process_link = 0;
+						break;
+					} else if ((uri->pathHead == NULL) && (strlen(current_link->path) != 0)) {
+						continue;
+					}
+					if ((strlen(uri->pathHead->text.first) < 2) || (strncmp(current_link->path, uri->pathHead->text.first, strlen(current_link->path)) == 0)) {
+						process_link = 0;
+						break; /* got a duplicate link, ignore it */
+					}
+				}
+			}
+		}
+		if (process_link == 0) {
+			return 0;
+		}
+	}
+
+	if (pvt_link_anchor == NULL) {
+		*link_anchor = malloc(sizeof(http_link));
+		current_link = *link_anchor;
+	} else if (pvt_link_anchor->next == NULL) {
+		pvt_link_anchor->next = malloc(sizeof(http_link));
+		current_link = pvt_link_anchor->next;
+	} else {
+		current_link = pvt_link_anchor->next;
+		while (current_link->next != NULL) {
+			current_link = current_link->next;
+		}
+		current_link->next = malloc(sizeof(http_link));
+		current_link = current_link->next;
+	}
+
+	memset(current_link, '\0', sizeof(http_link));
+	len = (uri->scheme.afterLast - uri->scheme.first);
+	if (len < HTTP_SCHEME_SZ) {
+		strncpy(current_link->scheme, uri->scheme.first, len);
+	} else {
+		strncpy(current_link->scheme, uri->scheme.first, HTTP_SCHEME_SZ);
+	}
+	len = (uri->hostText.afterLast - uri->hostText.first);
+	if (len < DNS_MAX_FQDN_LENGTH) {
+		strncpy(current_link->hostname, uri->hostText.first, len);
+	} else {
+		strncpy(current_link->hostname, uri->hostText.first, DNS_MAX_FQDN_LENGTH);
+	}
+	if ((uri->pathHead != NULL) && (strlen(uri->pathHead->text.first) > 1)) {
+		strncpy(current_link->path, uri->pathHead->text.first, HTTP_RESOURCE_SZ);
+	}
+	return 1;
+}
+
 int http_redirect_in_same_domain(const char *original_url, const char *redirect_url) {
 	/*
 	 * Returns 0 on "No, the redirect url is to a different server"
@@ -164,48 +227,46 @@ void http_free_link(http_link *current_link) {
 	return;
 }
 
-static void process_html_nodes_for_links(xmlNode *a_node, http_link **tmp_link) {
+int process_html_nodes_for_links(xmlNode *a_node, http_link **link_anchor) {
 	xmlNode *cur_node = NULL;
 	xmlAttr *attribute = NULL;
 	UriParserStateA uri_state;
 	UriUriA uri;
-	int processTag = 0;
-	int processLink = 1;
-	unsigned int len;
+	int process_tag = 0;
+	int link_add_result = 0;
+	int links_added = 0;
 	char targetHtmlAttribute[7]; /* largest is form's action */
-	http_link *current_link = NULL;
-	http_link *anchor_link = *tmp_link;
 
 	for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
-			processTag = 0;
+			process_tag = 0;
 			if (strncasecmp((char *)cur_node->name, "a", 1) == 0) {
-				processTag = 1;
+				process_tag = 1;
 				strcpy(targetHtmlAttribute, "href");
 			} else if (strncasecmp((char *)cur_node->name, "img", 3) == 0) {
-				processTag = 1;
+				process_tag = 1;
 				strcpy(targetHtmlAttribute, "src");
 			} else if (strncasecmp((char *)cur_node->name, "form", 4) == 0) {
-				processTag = 1;
+				process_tag = 1;
 				strcpy(targetHtmlAttribute, "action");
 			} else if (strncasecmp((char *)cur_node->name, "script", 6) == 0) {
-				processTag = 1;
+				process_tag = 1;
 				strcpy(targetHtmlAttribute, "src");
 			} else if (strncasecmp((char *)cur_node->name, "iframe", 6) == 0) {
-				processTag = 1;
+				process_tag = 1;
 				strcpy(targetHtmlAttribute, "src");
 			} else if (strncasecmp((char *)cur_node->name, "div", 3) == 0) {
-				processTag = 1;
+				process_tag = 1;
 				strcpy(targetHtmlAttribute, "src");
 			} else if (strncasecmp((char *)cur_node->name, "frame", 5) == 0) {
-				processTag = 1;
+				process_tag = 1;
 				strcpy(targetHtmlAttribute, "src");
 			} else if (strncasecmp((char *)cur_node->name, "embed", 5) == 0) {
-				processTag = 1;
+				process_tag = 1;
 				strcpy(targetHtmlAttribute, "src");
 			}
 
-			if (processTag) {
+			if (process_tag) {
 				for (attribute = cur_node->properties; attribute != NULL; attribute = attribute->next) {
 					if (strncasecmp((char *)attribute->name, targetHtmlAttribute, sizeof(targetHtmlAttribute)) != 0) {
 						continue;
@@ -221,57 +282,10 @@ static void process_html_nodes_for_links(xmlNode *a_node, http_link **tmp_link) 
 							uriFreeUriMembersA(&uri);
 							continue;
 						}
-						processLink = 1;
-						if (anchor_link != NULL) {
-							for (current_link = anchor_link; current_link; current_link = current_link->next) {
-								if (strncmp(current_link->scheme, uri.scheme.first, strlen(current_link->scheme)) == 0) {
-									if (strncmp(current_link->hostname, uri.hostText.first, strlen(current_link->hostname)) == 0) {
-										if ((uri.pathHead == NULL) && (strlen(current_link->path) == 0)) {
-											processLink = 0;
-											break;
-										} else if ((uri.pathHead == NULL) && (strlen(current_link->path) != 0)) {
-											continue;
-										}
-										if ((strlen(uri.pathHead->text.first) < 2) || (strncmp(current_link->path, uri.pathHead->text.first, strlen(current_link->path)) == 0)) {
-											processLink = 0;
-											break; /* got a duplicate link, ignore it */
-										}
-									}
-								}
-							}
-							if (processLink == 0) {
-								continue;
-							}
-						}
-						if (anchor_link == NULL) {
-							anchor_link = malloc(sizeof(http_link));
-							current_link = anchor_link;
-						} else if (anchor_link->next == NULL) {
-							anchor_link->next = malloc(sizeof(http_link));
-							current_link = anchor_link->next;
-						} else {
-							current_link = anchor_link->next;
-							while (current_link->next != NULL) {
-								current_link = current_link->next;
-							}
-							current_link->next = malloc(sizeof(http_link));
-							current_link = current_link->next;
-						}
-						memset(current_link, '\0', sizeof(http_link));
-						len = (uri.scheme.afterLast - uri.scheme.first);
-						if (len < HTTP_SCHEME_SZ) {
-							strncpy(current_link->scheme, uri.scheme.first, len);
-						} else {
-							strncpy(current_link->scheme, uri.scheme.first, HTTP_SCHEME_SZ);
-						}
-						len = (uri.hostText.afterLast - uri.hostText.first);
-						if (len < DNS_MAX_FQDN_LENGTH) {
-							strncpy(current_link->hostname, uri.hostText.first, len);
-						} else {
-							strncpy(current_link->hostname, uri.hostText.first, DNS_MAX_FQDN_LENGTH);
-						}
-						if ((uri.pathHead != NULL) && (strlen(uri.pathHead->text.first) > 1)) {
-							strncpy(current_link->path, uri.pathHead->text.first, HTTP_RESOURCE_SZ);
+
+						link_add_result = http_link_append_uri(link_anchor, &uri);
+						if (link_add_result > 0) {
+							links_added += link_add_result;
 						}
 						uriFreeUriMembersA(&uri);
 					}
@@ -279,17 +293,15 @@ static void process_html_nodes_for_links(xmlNode *a_node, http_link **tmp_link) 
 				}
 			}
 		}
-		if (*tmp_link == NULL && anchor_link != NULL) {
-			*tmp_link = anchor_link;
-		}
-		process_html_nodes_for_links(cur_node->children, tmp_link);
+		links_added += process_html_nodes_for_links(cur_node->children, link_anchor);
 	}
+	return links_added;
 }
 
 int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 	xmlDoc *page;
 	xmlNode *root_element = NULL;
-	http_link *link_current = *link_anchor;
+	int links_added = 0;
 
 	page = xmlReadMemory(tPage, strlen(tPage), "noname.xml", NULL, (XML_PARSE_RECOVER | XML_PARSE_NOERROR));
 	if (page == NULL) {
@@ -302,26 +314,23 @@ int http_get_links_from_html(char *tPage, http_link **link_anchor) {
 		xmlFreeDoc(page);
 		return -1;
 	}
-	process_html_nodes_for_links(root_element, &link_current);
-	*link_anchor = link_current;
-	if (*link_anchor == NULL) {
+
+	links_added = process_html_nodes_for_links(root_element, link_anchor);
+	if (links_added == 0) {
 		LOGGING_QUICK_INFO("kraken.http_scan", "processed html and got no links")
-		xmlFreeDoc(page);
-		return 0;
 	}
 	xmlFreeDoc(page);
-	return 0;
+	return links_added;
 }
 
-int http_process_request_for_links(CURL *curl, const char *target_url, char **webpage_b, http_link **link_anchor, http_link **pvt_link_anchor, http_enum_opts *h_opts) {
+int http_process_request_for_links(CURL *curl, const char *target_url, char **webpage_b, http_link **link_anchor, http_enum_opts *h_opts) {
 	CURLcode curl_res;
 	CURL *curl_redir = NULL;
 	size_t webpage_sz = 0;
-	http_link *link_current = *link_anchor;
 	FILE *webpage_f = NULL;
 	long http_code = 0;
 	int redirect_count = 0;
-	unsigned int link_counter = 0;
+	int links_added = 0;
 	char *content_type;
 	char *redirected_url = NULL;
 
@@ -341,7 +350,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 			webpage_f = open_memstream(webpage_b, &webpage_sz);
 			if (webpage_f == NULL) {
 				LOGGING_QUICK_ERROR("kraken.http_scan", "could not open a memory stream")
-				return 1;
+				return -1;
 			}
 			curl_redir = curl_easy_init();
 			assert(curl_redir != NULL);
@@ -355,7 +364,7 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 			if (curl_res != 0) {
 				LOGGING_QUICK_ERROR("kraken.http_scan", "the HTTP request failed")
 				curl_easy_cleanup(curl_redir);
-				return 2;
+				return -2;
 			}
 			curl_easy_getinfo(curl_redir, CURLINFO_RESPONSE_CODE, &http_code);
 			if (http_code != 200) {
@@ -363,12 +372,12 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 			}
 		} else {
 			logging_log("kraken.http_scan", LOGGING_ERROR, "web server attempted to redirect us off site to: %s", redirected_url);
-			return 3;
+			return -3;
 		}
 	}
 	if (redirect_count == HTTP_MAX_REDIRECTS) {
 		LOGGING_QUICK_WARNING("kraken.http_scan", "received too many redirects")
-		return 6;
+		return -6;
 	}
 
 	logging_log("kraken.http_scan", LOGGING_DEBUG, "%lu bytes were read from the http response", webpage_sz);
@@ -379,31 +388,20 @@ int http_process_request_for_links(CURL *curl, const char *target_url, char **we
 	}
 	if (content_type == NULL) {
 		LOGGING_QUICK_WARNING("kraken.http_scan", "the content type was not provided in the servers response")
-		return 4;
+		return -4;
 	}
 	if (strstr(content_type, "text/html")) {
-		http_get_links_from_html(*webpage_b, &link_current);
-		*link_anchor = link_current;
+		links_added = http_get_links_from_html(*webpage_b, link_anchor);
 	} else {
 		logging_log("kraken.http_scan", LOGGING_WARNING, "received an invalid content type from %s", target_url);
-		return 5;
-	}
-
-	if (link_current && (*pvt_link_anchor == NULL)) {
-		for (link_current = *link_anchor; link_current; link_current = link_current->next) {
-			link_counter++;
-		}
-	} else if (*pvt_link_anchor) {
-		for (link_current = *pvt_link_anchor; link_current; link_current = link_current->next) {
-			link_counter++;
-		}
+		return -5;
 	}
 
 	if (curl_redir != NULL) {
 		curl_easy_cleanup(curl_redir);
 	}
-	logging_log("kraken.http_scan", LOGGING_INFO, "gathered %u new links", link_counter);
-	return 0;
+	logging_log("kraken.http_scan", LOGGING_INFO, "gathered %i new links", links_added);
+	return links_added;
 }
 
 int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
@@ -414,14 +412,8 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	char *webpage_b = NULL;
 	CURL *curl;
 	CURLcode curl_res;
-	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
 	http_enum_opts h_opts;
 
-	if (pvt_link_anchor) {
-		while (pvt_link_anchor->next) {
-			pvt_link_anchor = pvt_link_anchor->next;
-		}
-	}
 
 	webpage_f = open_memstream(&webpage_b, &webpage_sz);
 	if (webpage_f == NULL) {
@@ -448,7 +440,7 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 		return -2;
 	}
 
-	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &pvt_link_anchor, &h_opts);
+	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &h_opts);
 
 	if (webpage_b != NULL) {
 		free(webpage_b);
@@ -484,13 +476,6 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 	char ipstr[INET_ADDRSTRLEN];
 	char hoststr[DNS_MAX_FQDN_LENGTH + 7];
 	char *target_url = NULL;
-	http_link *pvt_link_anchor = *link_anchor; /* used for calculating differences */
-
-	if (pvt_link_anchor) {
-		while (pvt_link_anchor->next) {
-			pvt_link_anchor = pvt_link_anchor->next;
-		}
-	}
 
 	inet_ntop(AF_INET, addr, ipstr, sizeof(ipstr));
 	target_url = malloc(strlen(ipstr) + strlen(resource) + 9);
@@ -533,7 +518,7 @@ int http_scrape_ip_for_links_ex(const char *hostname, const struct in_addr *addr
 		return -2;
 	}
 
-	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, &pvt_link_anchor, h_opts);
+	http_process_request_for_links(curl, target_url, &webpage_b, link_anchor, h_opts);
 
 	free(target_url);
 	if (webpage_b != NULL) {
@@ -646,6 +631,7 @@ int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *targe
 	size_t len;
 	int num_entries = 0;
 	char hostname[DNS_MAX_FQDN_LENGTH + 1];
+
 
 	page = xmlReadMemory(tPage, strlen(tPage), "noname.xml", NULL, (XML_PARSE_RECOVER | XML_PARSE_NOERROR));
 	if (page == NULL) {
@@ -761,9 +747,6 @@ int http_search_engine_bing_all_ex(host_manager *c_host_manager, const char *que
 		return -1;
 	}
 
-	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
-	logging_log("kraken.http_scan", LOGGING_INFO, "enumerating domain: %s", target_domain);
-
 	do {
 		webpage_f = open_memstream(&webpage_b, &webpage_sz);
 		if (webpage_f == NULL) {
@@ -847,6 +830,21 @@ int http_search_engine_bing_site_ex(host_manager *c_host_manager, const char *ta
 		return -1;
 	}
 
+	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
+	logging_log("kraken.http_scan", LOGGING_INFO, "enumerating domain: %s", target_domain);
+
 	snprintf(query, sizeof(query), "%%27site:%%20%s%%27", target_domain);
+	return http_search_engine_bing_all_ex(c_host_manager, query, target_domain, h_opts);
+}
+
+int http_search_engine_bing_ip_ex(host_manager *c_host_manager, const char *target_ip, const char *target_domain, http_enum_opts *h_opts) {
+	char query[128];
+
+	if ((strlen(h_opts->bing_api_key) > HTTP_BING_API_KEY_SZ) || (strlen(target_ip) > INET_ADDRSTRLEN)) {
+		logging_log("kraken.http_scan", LOGGING_ERROR, "bing app id or ip address is too large");
+		return -1;
+	}
+
+	snprintf(query, sizeof(query), "ip:%%20%s", target_ip);
 	return http_search_engine_bing_all_ex(c_host_manager, query, target_domain, h_opts);
 }
