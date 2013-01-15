@@ -93,7 +93,17 @@ int http_enum_opts_set_bing_api_key(http_enum_opts *h_opts, const char *bing_api
 	return 0;
 }
 
-int http_link_append_uri(http_link **link_anchor, UriUriA *uri) {
+void http_link_list_free(http_link *current_link) {
+	http_link *next_link = NULL;
+	while (current_link != NULL) {
+		next_link = current_link->next;
+		free(current_link);
+		current_link = next_link;
+	}
+	return;
+}
+
+int http_link_list_append_uri(http_link **link_anchor, UriUriA *uri) {
 	http_link *current_link = NULL;
 	http_link *pvt_link_anchor = *link_anchor;
 	current_link = *link_anchor;
@@ -217,16 +227,6 @@ int http_redirect_in_same_domain(const char *original_url, const char *redirect_
 	return 0;
 }
 
-void http_free_link(http_link *current_link) {
-	http_link *next_link = NULL;
-	while (current_link != NULL) {
-		next_link = current_link->next;
-		free(current_link);
-		current_link = next_link;
-	}
-	return;
-}
-
 int process_html_nodes_for_links(xmlNode *a_node, http_link **link_anchor) {
 	xmlNode *cur_node = NULL;
 	xmlAttr *attribute = NULL;
@@ -283,7 +283,7 @@ int process_html_nodes_for_links(xmlNode *a_node, http_link **link_anchor) {
 							continue;
 						}
 
-						link_add_result = http_link_append_uri(link_anchor, &uri);
+						link_add_result = http_link_list_append_uri(link_anchor, &uri);
 						if (link_add_result > 0) {
 							links_added += link_add_result;
 						}
@@ -618,7 +618,7 @@ int http_scrape_hosts_for_links_ex(host_manager *c_host_manager, http_link **lin
 	return 0;
 }
 
-int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *target_domain, char *tPage) {
+int http_add_hosts_from_bing_xml(host_manager *c_host_manager, http_link **link_anchor, const char *target_domain, char *tPage) {
 	xmlDoc *page;
 	xmlNode *root_element = NULL;
 	xmlNode *cur_node = NULL;
@@ -632,8 +632,7 @@ int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *targe
 	int num_entries = 0;
 	char hostname[DNS_MAX_FQDN_LENGTH + 1];
 
-
-	page = xmlReadMemory(tPage, strlen(tPage), "noname.xml", NULL, (XML_PARSE_RECOVER | XML_PARSE_NOERROR));
+	page = xmlReadMemory(tPage, strlen(tPage), "bing.xml", NULL, (XML_PARSE_RECOVER | XML_PARSE_NOERROR));
 	if (page == NULL) {
 		LOGGING_QUICK_ERROR("kraken.http_scan", "libxml2 failed to parse provided data")
 		return -1;
@@ -703,16 +702,22 @@ int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *targe
 					memset(hostname, '\0', sizeof(hostname));
 					strncpy(hostname, uri.hostText.first, len);
 					if (target_domain != NULL) {
-						if (dns_host_in_domain(hostname, (char *)target_domain) == 1) {
-							if (host_manager_quick_add_by_name(c_host_manager, hostname) != 0) {
-								logging_log("kraken.http_scan", LOGGING_ERROR, "failed to add host name %s from Bing XML", hostname);
-							}
-						} else {
+						if (dns_host_in_domain(hostname, (char *)target_domain) != 1) {
 							logging_log("kraken.http_scan", LOGGING_WARNING, "identified host: %s that is not in the target domain", hostname);
+							uriFreeUriMembersA(&uri);
+							xmlFree(url);
+							break;
 						}
-					} else if (host_manager_quick_add_by_name(c_host_manager, hostname) != 0) {
-						logging_log("kraken.http_scan", LOGGING_ERROR, "failed to add host name %s from Bing XML", hostname);
 					}
+					if (c_host_manager != NULL) {
+						if (host_manager_quick_add_by_name(c_host_manager, hostname) != 0) {
+							logging_log("kraken.http_scan", LOGGING_ERROR, "failed to add host name %s from Bing XML", hostname);
+						}
+					}
+					if (link_anchor != NULL) {
+						http_link_list_append_uri(link_anchor, &uri);
+					}
+
 					uriFreeUriMembersA(&uri);
 					xmlFree(url);
 					break;
@@ -725,7 +730,7 @@ int http_add_hosts_from_bing_xml(host_manager *c_host_manager, const char *targe
 	return num_entries;
 }
 
-int http_search_engine_bing_all_ex(host_manager *c_host_manager, const char *query, const char *target_domain, http_enum_opts *h_opts) {
+int http_search_engine_bing_all_ex(host_manager *c_host_manager, http_link **link_anchor, const char *query, const char *target_domain, http_enum_opts *h_opts) {
 	size_t webpage_sz;
 	FILE *webpage_f = NULL;
 	char *webpage_b = NULL;
@@ -806,7 +811,7 @@ int http_search_engine_bing_all_ex(host_manager *c_host_manager, const char *que
 		}
 		logging_log("kraken.http_scan", LOGGING_DEBUG, "%lu bytes were read from the http response", webpage_sz);
 		num_queries++;
-		num_entries = http_add_hosts_from_bing_xml(c_host_manager, target_domain, webpage_b);
+		num_entries = http_add_hosts_from_bing_xml(c_host_manager, link_anchor, target_domain, webpage_b);
 		num_entries_total += num_entries;
 
 		free(webpage_b);
@@ -834,10 +839,10 @@ int http_search_engine_bing_site_ex(host_manager *c_host_manager, const char *ta
 	logging_log("kraken.http_scan", LOGGING_INFO, "enumerating domain: %s", target_domain);
 
 	snprintf(query, sizeof(query), "%%27site:%%20%s%%27", target_domain);
-	return http_search_engine_bing_all_ex(c_host_manager, query, target_domain, h_opts);
+	return http_search_engine_bing_all_ex(c_host_manager, NULL, query, target_domain, h_opts);
 }
 
-int http_search_engine_bing_ip_ex(host_manager *c_host_manager, const char *target_ip, const char *target_domain, http_enum_opts *h_opts) {
+int http_search_engine_bing_ip_ex(http_link **link_anchor, const char *target_ip, const char *target_domain, http_enum_opts *h_opts) {
 	char query[128];
 
 	if ((strlen(h_opts->bing_api_key) > HTTP_BING_API_KEY_SZ) || (strlen(target_ip) > INET_ADDRSTRLEN)) {
@@ -845,6 +850,6 @@ int http_search_engine_bing_ip_ex(host_manager *c_host_manager, const char *targ
 		return -1;
 	}
 
-	snprintf(query, sizeof(query), "ip:%%20%s", target_ip);
-	return http_search_engine_bing_all_ex(c_host_manager, query, target_domain, h_opts);
+	snprintf(query, sizeof(query), "%%27ip:%%20%s%%27", target_ip);
+	return http_search_engine_bing_all_ex(NULL, link_anchor, query, target_domain, h_opts);
 }

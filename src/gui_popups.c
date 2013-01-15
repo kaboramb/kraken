@@ -265,7 +265,7 @@ gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_s
 	return TRUE;
 }
 
-gboolean gui_popup_http_search_engine_bing(main_gui_data *m_data) {
+gboolean gui_popup_http_search_engine_bing_domain(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
@@ -282,7 +282,7 @@ gboolean gui_popup_http_search_engine_bing(main_gui_data *m_data) {
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
 	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 130);
-	gtk_window_set_title(GTK_WINDOW(window), "HTTP Search Bing");
+	gtk_window_set_title(GTK_WINDOW(window), "HTTP Search Bing (Domain)");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
 	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
 
@@ -308,7 +308,85 @@ gboolean gui_popup_http_search_engine_bing(main_gui_data *m_data) {
 	}
 
 	gui_popup_data_init(p_data, m_data);
-	p_data->thread_function = (void *)&gui_popup_thread_http_search_engine_bing;
+	p_data->thread_function = (void *)&gui_popup_thread_http_search_engine_bing_domain;
+	p_data->popup_window = window;
+	p_data->text_entry0 = entry;
+	p_data->misc_widget = gtk_progress_bar_new();
+
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_thread_start), p_data);
+	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
+	gtk_widget_show(entry);
+
+	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
+	gtk_widget_show(p_data->misc_widget);
+
+	/* get the buttons */
+	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
+	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
+	gtk_widget_show(hbox);
+	gtk_widget_grab_default(sbutton);
+
+	p_data->start_button = sbutton;
+	p_data->cancel_button = cbutton;
+
+	gtk_widget_show(window);
+	if (m_data->k_opts->bing_api_key == NULL) {
+		gui_popup_error_dialog(window, "Bing API Key Not Set", "Error: Invalid API Key");
+		gtk_widget_destroy(window);
+	}
+	return TRUE;
+}
+
+gboolean gui_popup_http_search_engine_bing_ip(main_gui_data *m_data, char *ipstr) {
+	GtkWidget *window;
+	GtkWidget *vbox, *hbox;
+	GtkWidget *entry;
+	GtkWidget *sbutton, *cbutton;
+	GtkWidget *label;
+	popup_data *p_data;
+	p_data = malloc(sizeof(popup_data));
+	if (p_data == NULL) {
+		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
+		return TRUE;
+	}
+
+	/* get the main popup window */
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 130);
+	gtk_window_set_title(GTK_WINDOW(window), "HTTP Search Bing (IP Address)");
+	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
+	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+
+	/* get the main vertical box for the window */
+	vbox = gtk_vbox_new(FALSE, 3);
+	gtk_container_add(GTK_CONTAINER(window), vbox);
+	gtk_widget_show(vbox);
+
+	/* get a horizontal box to place in the vertical box */
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 5);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	gtk_widget_show(hbox);
+
+	label = gtk_label_new("Target IP Address: ");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, TRUE, 0);
+	gtk_widget_show(label);
+
+	entry = gtk_entry_new();
+	gtk_entry_set_max_length(GTK_ENTRY(entry), INET_ADDRSTRLEN);
+	if (ipstr != NULL) {
+		gtk_entry_set_text(GTK_ENTRY(entry), ipstr);
+	}
+
+	gui_popup_data_init(p_data, m_data);
+	p_data->thread_function = (void *)&gui_popup_thread_http_search_engine_bing_ip;
 	p_data->popup_window = window;
 	p_data->text_entry0 = entry;
 	p_data->misc_widget = gtk_progress_bar_new();

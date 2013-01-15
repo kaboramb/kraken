@@ -40,6 +40,7 @@
 #define GUI_POPUP_ERROR_INVALID_CIDR_NETWORK(window) gui_popup_error_dialog(window, "Invalid CIDR Network", "Error: Invalid Network")
 #define GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(window) gui_popup_error_dialog(window, "Invalid Domain Name", "Error: Invalid Domain")
 #define GUI_POPUP_ERROR_INVALID_HOST_NAME(window) gui_popup_error_dialog(window, "Invalid Host Name", "Error: Invalid Host")
+#define GUI_POPUP_ERROR_INVALID_IP_ADDRESS(window) gui_popup_error_dialog(window, "Invalid IP Address", "Error: Invalid IP")
 #define GUI_POPUP_ERROR_INVALID_NO_HOSTS_FOUND_IN_LINKS(window) gui_popup_error_dialog(window, "No Links Were Found", "Error: No Links")
 #define GUI_POPUP_ERROR_PLUGIN_RUNNING(window) gui_popup_error_dialog_plugin(window, KSTATUS_PLUGIN_OK, "A plugin is already running")
 #define GUI_POPUP_QUESTION_SURE(window) gui_popup_question_yes_no_dialog(window, "Are You Sure?", "Confirm Action")
@@ -73,7 +74,8 @@ gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, cons
 gint gui_popup_question_yes_no_cancel_dialog(gpointer window, const char *message, const char *title);
 gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data);
 gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_str);
-gboolean gui_popup_http_search_engine_bing(main_gui_data *m_data);
+gboolean gui_popup_http_search_engine_bing_domain(main_gui_data *m_data);
+gboolean gui_popup_http_search_engine_bing_ip(main_gui_data *m_data, char *ipstr);
 gboolean gui_popup_dns_enum_domain(main_gui_data *m_data);
 gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str);
 gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link *link_anchor);

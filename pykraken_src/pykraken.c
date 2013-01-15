@@ -303,7 +303,7 @@ static PyObject *pykraken_scrape_for_links(PyObject *self, PyObject *args) {
 			case 4: PyErr_SetString(PyExc_Exception, "the content type was not provided in the web servers response");
 			default: PyErr_SetString(PyExc_Exception, "an unknown error occured");
 		}
-		http_free_link(link_anchor);
+		http_link_list_free(link_anchor);
 		return NULL;
 	}
 	if (link_anchor == NULL) {
@@ -315,7 +315,7 @@ static PyObject *pykraken_scrape_for_links(PyObject *self, PyObject *args) {
 	pyLinkList = PyTuple_New(link_counter);
 	if (pyLinkList == NULL) {
 		PyErr_SetString(PyExc_MemoryError, "could not create a tuple to store the results");
-		http_free_link(link_anchor);
+		http_link_list_free(link_anchor);
 		return NULL;
 	}
 	for (link_current = link_anchor; link_current; link_current = link_current->next) {
@@ -329,13 +329,13 @@ static PyObject *pykraken_scrape_for_links(PyObject *self, PyObject *args) {
 		if (pyTmpStr == NULL) {
 			PyErr_SetString(PyExc_SystemError, "could not convert a C string to a Python string");
 			Py_DECREF(pyLinkList);
-			http_free_link(link_anchor);
+			http_link_list_free(link_anchor);
 			return NULL;
 		}
 		PyTuple_SetItem(pyLinkList, link_position, pyTmpStr);
 		link_position++;
 	}
-	http_free_link(link_anchor);
+	http_link_list_free(link_anchor);
 	return pyLinkList;
 }
 

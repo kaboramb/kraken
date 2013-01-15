@@ -294,8 +294,12 @@ void gui_menu_edit_http_scan_host_for_links(main_gui_data *m_data, guint action,
 	return;
 }
 
-void gui_menu_edit_http_search_bing(main_gui_data *m_data, guint action, GtkWidget *widget) {
-	gui_popup_http_search_engine_bing(m_data);
+void gui_menu_edit_http_search_bing_domain(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_http_search_engine_bing_domain(m_data);
+}
+
+void gui_menu_edit_http_search_bing_ip(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_http_search_engine_bing_ip(m_data, NULL);
 }
 
 void gui_menu_edit_preferences(main_gui_data *m_data, guint action, GtkWidget *widget) {
@@ -356,7 +360,8 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/Edit/Add Hosts/DNS Reverse Bruteforce",	NULL,		gui_menu_edit_dns_enum_network, 0,	NULL	},
 	{ "/Edit/Add Hosts/HTTP Scan Host For Links",	NULL,	gui_menu_edit_http_scan_host_for_links,	0,	NULL	},
 	{ "/Edit/Add Hosts/HTTP Scan All For Links",	NULL,	gui_menu_edit_http_scan_all_for_links,	0,	NULL	},
-	{ "/Edit/Add Hosts/HTTP Search Bing",		NULL,		gui_menu_edit_http_search_bing,		0,	NULL	},
+	{ "/Edit/Add Hosts/HTTP Search Bing (Domain)",	NULL,	gui_menu_edit_http_search_bing_domain,	0,	NULL	},
+	{ "/Edit/Add Hosts/HTTP Search Bing (IP Address)",	NULL,	gui_menu_edit_http_search_bing_ip,	0,	NULL	},
 	{ "/Edit/",									NULL,		NULL,							0,	"<Separator>"	},
 	{ "/Edit/Preferences",						NULL,		gui_menu_edit_preferences,		0,	NULL	},
 	{ "/View",									NULL,		NULL,							0,	"<Branch>"	},

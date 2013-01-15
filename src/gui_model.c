@@ -234,7 +234,29 @@ void view_popup_menu_onDoHttpScanLinks(GtkWidget *menuitem, main_gui_data *m_dat
 		single_host_set_status(c_host, KRAKEN_HOST_STATUS_UP);
 	}
 	gui_popup_select_hosts_from_http_links(m_data, link_anchor);
-	http_free_link(link_anchor);
+	http_link_list_free(link_anchor);
+	return;
+}
+
+void view_popup_menu_onDoHttpScanBingIP(GtkWidget *menuitem, main_gui_data *m_data) {
+	GtkTreeView *treeview = GTK_TREE_VIEW(m_data->tree_view);
+	GtkTreeSelection *selection;
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	gchar *gipstr = NULL;
+	char ipstr[INET_ADDRSTRLEN + 1];
+
+	selection = gtk_tree_view_get_selection(treeview);
+	if (!gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		return;
+	}
+	if (!gui_model_get_host_info_from_tree_iter(model, &iter, m_data, NULL, &gipstr, NULL)) {
+		return;
+	}
+
+	strncpy(ipstr, gipstr, sizeof(ipstr));
+	g_free(gipstr);
+	gui_popup_http_search_engine_bing_ip(m_data, ipstr);
 	return;
 }
 
@@ -347,6 +369,10 @@ void view_popup_menu(GtkWidget *treeview, GdkEventButton *event, gpointer m_data
 
 	menuitem = gtk_menu_item_new_with_label("HTTP Scan For Links");
 	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoHttpScanLinks, m_data);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
+
+	menuitem = gtk_menu_item_new_with_label("HTTP Scan Bing IP");
+	g_signal_connect(menuitem, "activate", (GCallback)view_popup_menu_onDoHttpScanBingIP, m_data);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), menuitem);
 
 	/* build the plugins submenu */
