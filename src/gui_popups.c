@@ -179,11 +179,47 @@ GtkWidget *gui_popup_get_button(int type, popup_data *p_data, const char* text) 
 	return button;
 }
 
-GtkWidget *gui_popup_get_window(main_gui_data *m_data, popup_data *p_data, const gchar *title) {
+GtkWidget *gui_popup_get_start_cancel_button_box(popup_data *p_data, GtkWidget *vbox) {
+	GtkWidget *sbutton, *cbutton;
+	GtkWidget *hbox;
+
+	hbox = gtk_hbox_new(FALSE, 0);
+	assert(hbox != NULL);
+	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
+	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
+
+	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
+	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
+	gtk_widget_show(hbox);
+
+	if (vbox != NULL) {
+		gtk_container_add(GTK_CONTAINER(vbox), hbox);
+		gtk_widget_grab_default(sbutton);
+	}
+
+	p_data->start_button = sbutton;
+	p_data->cancel_button = cbutton;
+	return hbox;
+}
+
+GtkWidget *gui_popup_get_window(main_gui_data *m_data, popup_data **p_data, const gchar *title, gint height) {
 	GtkWidget *window;
+
+	if (p_data != NULL) {
+		if (*p_data == NULL) {
+			*p_data = malloc(sizeof(popup_data));
+			if (*p_data == NULL) {
+				logging_log("kraken.gui.popup", LOGGING_WARNING, "could not allocate memory for p_data");
+				return NULL;
+			}
+		}
+	}
 
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	assert(window != NULL);
+
+	gtk_widget_set_size_request(GTK_WIDGET(window), 350, height);
 
 	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
 	gtk_window_set_transient_for(GTK_WINDOW(window), GTK_WINDOW(m_data->main_window));
@@ -194,7 +230,9 @@ GtkWidget *gui_popup_get_window(main_gui_data *m_data, popup_data *p_data, const
 	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
 
 	if (p_data != NULL) {
-		g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+		if (*p_data != NULL) {
+			g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), *p_data);
+		}
 	}
 	return window;
 }
@@ -206,20 +244,10 @@ gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *target
 	GtkWidget *sbutton;
 	GtkWidget *label;
 	GtkWidget *image;
-	popup_data *p_data;
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 95);
-	gtk_window_set_title(GTK_WINDOW(window), "HTTP Scan For Links");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 5);
-	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, &p_data, "HTTP Scan For Links", 95);
 
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 0);
@@ -271,22 +299,11 @@ gboolean gui_popup_http_search_engine_bing_domain(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
-	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	popup_data *p_data;
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 130);
-	gtk_window_set_title(GTK_WINDOW(window), "HTTP Search Bing (Domain)");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
-	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, &p_data, "HTTP Search Bing (Domain)", 130);
 
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -324,18 +341,7 @@ gboolean gui_popup_http_search_engine_bing_domain(main_gui_data *m_data) {
 	gtk_widget_show(p_data->misc_widget);
 
 	/* get the buttons */
-	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
-	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
-	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
-	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
-	gtk_widget_show(hbox);
-	gtk_widget_grab_default(sbutton);
-
-	p_data->start_button = sbutton;
-	p_data->cancel_button = cbutton;
+	hbox = gui_popup_get_start_cancel_button_box(p_data, vbox);
 
 	gtk_widget_show(window);
 	if (m_data->k_opts->bing_api_key == NULL) {
@@ -349,22 +355,11 @@ gboolean gui_popup_http_search_engine_bing_ip(main_gui_data *m_data, char *ipstr
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
-	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	popup_data *p_data;
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 130);
-	gtk_window_set_title(GTK_WINDOW(window), "HTTP Search Bing (Single IP Address)");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
-	g_signal_connect(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, &p_data, "HTTP Search Bing (Single IP Address)", 130);
 
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -402,18 +397,7 @@ gboolean gui_popup_http_search_engine_bing_ip(main_gui_data *m_data, char *ipstr
 	gtk_widget_show(p_data->misc_widget);
 
 	/* get the buttons */
-	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
-	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
-	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
-	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
-	gtk_widget_show(hbox);
-	gtk_widget_grab_default(sbutton);
-
-	p_data->start_button = sbutton;
-	p_data->cancel_button = cbutton;
+	hbox = gui_popup_get_start_cancel_button_box(p_data, vbox);
 
 	gtk_widget_show(window);
 	if (m_data->k_opts->bing_api_key == NULL) {
@@ -426,23 +410,11 @@ gboolean gui_popup_http_search_engine_bing_ip(main_gui_data *m_data, char *ipstr
 gboolean gui_popup_http_search_engine_bing_all_ips(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
-	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	popup_data *p_data;
-
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 90);
-	gtk_window_set_title(GTK_WINDOW(window), "HTTP Search Bing (All IP Addresses)");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 5);
-	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, &p_data, "HTTP Search Bing (All IP Addresses)", 90);
 
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -459,18 +431,7 @@ gboolean gui_popup_http_search_engine_bing_all_ips(main_gui_data *m_data) {
 	gtk_widget_show(p_data->misc_widget);
 
 	/* get the buttons */
-	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
-	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
-	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
-	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
-	gtk_widget_show(hbox);
-	gtk_widget_grab_default(sbutton);
-
-	p_data->start_button = sbutton;
-	p_data->cancel_button = cbutton;
+	hbox = gui_popup_get_start_cancel_button_box(p_data, vbox);
 
 	gtk_widget_show(window);
 	return TRUE;
@@ -480,23 +441,11 @@ gboolean gui_popup_dns_enum_domain(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry;
-	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	popup_data *p_data;
-
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 130);
-	gtk_window_set_title(GTK_WINDOW(window), "DNS Forward Bruteforce");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
-	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, &p_data, "DNS Forward Bruteforce", 130);
 
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -534,18 +483,7 @@ gboolean gui_popup_dns_enum_domain(main_gui_data *m_data) {
 	gtk_widget_show(p_data->misc_widget);
 
 	/* get the buttons */
-	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
-	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
-	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
-	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
-	gtk_widget_show(hbox);
-	gtk_widget_grab_default(sbutton);
-
-	p_data->start_button = sbutton;
-	p_data->cancel_button = cbutton;
+	hbox = gui_popup_get_start_cancel_button_box(p_data, vbox);
 
 	gtk_widget_show(window);
 
@@ -561,23 +499,11 @@ gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str) {
 	GtkWidget *vbox, *hbox;
 	GtkWidget *entry0;
 	GtkWidget *entry1;
-	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	popup_data *p_data;
-
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 180);
-	gtk_container_set_border_width(GTK_CONTAINER(window), 3);
-	gtk_window_set_title(GTK_WINDOW(window), "DNS Reverse Bruteforce");
-	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, &p_data, "DNS Reverse Bruteforce", 180);
 
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -635,18 +561,7 @@ gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str) {
 	gtk_widget_show(p_data->misc_widget);
 
 	/* get the buttons */
-	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
-	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
-	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
-	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
-	gtk_widget_show(hbox);
-	gtk_widget_grab_default(sbutton);
-
-	p_data->start_button = sbutton;
-	p_data->cancel_button = cbutton;
+	hbox = gui_popup_get_start_cancel_button_box(p_data, vbox);
 
 	gtk_widget_show(window);
 	return TRUE;
@@ -655,23 +570,11 @@ gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str) {
 gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data) {
 	GtkWidget *window;
 	GtkWidget *vbox, *hbox;
-	GtkWidget *sbutton, *cbutton;
 	GtkWidget *label;
-	popup_data *p_data;
-
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
-	gtk_widget_set_size_request(GTK_WIDGET(window), 350, 90);
-	gtk_window_set_title(GTK_WINDOW(window), "HTTP Scan All Hosts For Links");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 5);
-	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, &p_data, "HTTP Scan All Hosts For Links", 90);
 
 	/* get the main vertical box for the window */
 	vbox = gtk_vbox_new(FALSE, 3);
@@ -688,18 +591,7 @@ gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data) {
 	gtk_widget_show(p_data->misc_widget);
 
 	/* get the buttons */
-	sbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_START, p_data, NULL);
-	cbutton = gui_popup_get_button(GUI_POPUP_BUTTON_TYPE_CANCEL_ACTION, p_data, NULL);
-	hbox = gtk_hbox_new(FALSE, 0);
-	gtk_container_set_border_width(GTK_CONTAINER(hbox), 3);
-	gtk_container_add(GTK_CONTAINER(vbox), hbox);
-	gtk_box_pack_end(GTK_BOX(hbox), sbutton, FALSE, FALSE, 0);
-	gtk_box_pack_end(GTK_BOX(hbox), cbutton, FALSE, FALSE, 0);
-	gtk_widget_show(hbox);
-	gtk_widget_grab_default(sbutton);
-
-	p_data->start_button = sbutton;
-	p_data->cancel_button = cbutton;
+	hbox = gui_popup_get_start_cancel_button_box(p_data, vbox);
 
 	gtk_widget_show(window);
 	return TRUE;
@@ -843,19 +735,10 @@ gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link
 	GtkWidget *main_vbox, *hbox;
 	GtkWidget *view;
 	GtkWidget *button;
-	popup_data *p_data;
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	gtk_widget_set_size_request(window, 350, 400);
-	gtk_window_set_title(GTK_WINDOW(window), "Select Domains");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 0);
-	g_signal_connect_after(window, "destroy", G_CALLBACK(callback_destroy), p_data);
+	window = gui_popup_get_window(m_data, &p_data, "Select Domains", 400);
 
 	main_vbox = gtk_vbox_new(FALSE, 3);
 	gtk_container_add(GTK_CONTAINER(window), main_vbox);
@@ -941,16 +824,10 @@ gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data) {
 	GtkWidget *bing_entry, *dns_wordlist_entry;
 	GtkWidget *button;
 	GtkWidget *label;
-	popup_data *p_data;
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
 	/* get the main popup window */
-	window = window = gui_popup_get_window(m_data, p_data, "Preferences");
-	gtk_widget_set_size_request(window, 350, 295);
+	window = window = gui_popup_get_window(m_data, &p_data, "Preferences", 295);
 
 	main_vbox = gtk_vbox_new(FALSE, 3);
 	gtk_container_add(GTK_CONTAINER(window), main_vbox);
@@ -1067,14 +944,9 @@ gboolean gui_popup_help_about(main_gui_data *m_data) {
 	GtkStyle *style;
 	char version[32];
 	char revision[32];
-	popup_data *p_data;
-	p_data = malloc(sizeof(popup_data));
-	if (p_data == NULL) {
-		LOGGING_QUICK_WARNING("kraken.gui.popup", "could not allcoate memory for p_data")
-		return TRUE;
-	}
+	popup_data *p_data = NULL;
 
-	window = gui_popup_get_window(m_data, p_data, "About Kraken");
+	window = gui_popup_get_window(m_data, &p_data, "About Kraken", 220);
 	gtk_widget_set_size_request(window, 250, 220);
 
 	main_vbox = gtk_vbox_new(FALSE, 3);

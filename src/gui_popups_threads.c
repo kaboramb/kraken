@@ -280,6 +280,7 @@ void gui_popup_thread_http_scrape_hosts_for_links(popup_data *p_data) {
 	gtk_widget_destroy(p_data->popup_window);
 	gdk_threads_leave();
 	http_enum_opts_destroy(&h_opts);
+	http_link_list_free(link_anchor);
 	return;
 }
 
@@ -403,6 +404,7 @@ void gui_popup_thread_http_search_engine_bing_ip(popup_data *p_data) {
 	gtk_widget_destroy(p_data->popup_window);
 	gdk_threads_leave();
 	http_enum_opts_destroy(&h_opts);
+	http_link_list_free(link_anchor);
 	return;
 }
 
@@ -450,5 +452,6 @@ void gui_popup_thread_http_search_engine_bing_all_ips(popup_data *p_data) {
 	gtk_widget_destroy(p_data->popup_window);
 	gdk_threads_leave();
 	http_enum_opts_destroy(&h_opts);
+	http_link_list_free(link_anchor);
 	return;
 }
