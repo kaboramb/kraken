@@ -302,6 +302,10 @@ void gui_menu_edit_http_search_bing_ip(main_gui_data *m_data, guint action, GtkW
 	gui_popup_http_search_engine_bing_ip(m_data, NULL);
 }
 
+void gui_menu_edit_http_search_bing_all_ips(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	gui_popup_http_search_engine_bing_all_ips(m_data, NULL);
+}
+
 void gui_menu_edit_preferences(main_gui_data *m_data, guint action, GtkWidget *widget) {
 	gui_popup_manage_kraken_settings(m_data);
 }
@@ -340,40 +344,41 @@ void gui_menu_help_about(main_gui_data *m_data, guint action, GtkWidget *widget)
 }
 
 static GtkItemFactoryEntry main_menu_entries[] = {
-	{ "/File",									NULL,		NULL,							0, 	"<Branch>"	},
-	{ "/File/New Project",						NULL,		gui_menu_file_new_project,		0,	NULL		},
-	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/File/Export",							NULL,		NULL,							0,	"<Branch>"	},
-	{ "/File/Export/CSV",						NULL,		gui_menu_file_export_csv,		0,	NULL		},
-	{ "/File/Export/IPs List",					NULL,		gui_menu_file_export_ips_list,	0,	NULL		},
-	{ "/File/Export/Hostnames List",			NULL,		gui_menu_file_export_hostnames_list,	0,	NULL		},
-	{ "/File/Export/Network Ranges",			NULL,		gui_menu_file_export_network_ranges,	0,	NULL		},
-	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/File/Open",								"<CTRL>O",	gui_menu_file_open,				0,	NULL	},
-	{ "/File/Save",								"<CTRL>S",	gui_menu_file_save,				0,	NULL	},
-	{ "/File/Save As",							NULL,		gui_menu_file_save_as,			0,	NULL	},
-	{ "/File/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/File/Quit",								"<CTRL>Q",	gtk_main_quit,					0, 	"<StockItem>",	GTK_STOCK_QUIT },
-	{ "/Edit",									NULL,		NULL,							0,	"<Branch>" },
-	{ "/Edit/Add Hosts",						NULL,		NULL,							0,	"<Branch>" },
-	{ "/Edit/Add Hosts/DNS Forward Bruteforce",	NULL,		gui_menu_edit_dns_enum_domain, 	0,	NULL	},
-	{ "/Edit/Add Hosts/DNS Reverse Bruteforce",	NULL,		gui_menu_edit_dns_enum_network, 0,	NULL	},
-	{ "/Edit/Add Hosts/HTTP Scan URL For Links",	NULL,	gui_menu_edit_http_scrape_url_for_links,	0,	NULL	},
-	{ "/Edit/Add Hosts/HTTP Scan All For Links",	NULL,	gui_menu_edit_http_scan_all_for_links,	0,	NULL	},
-	{ "/Edit/Add Hosts/HTTP Search Bing (Domain)",	NULL,	gui_menu_edit_http_search_bing_domain,	0,	NULL	},
-	{ "/Edit/Add Hosts/HTTP Search Bing (IP Address)",	NULL,	gui_menu_edit_http_search_bing_ip,	0,	NULL	},
-	{ "/Edit/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/Edit/Preferences",						NULL,		gui_menu_edit_preferences,		0,	NULL	},
-	{ "/View",									NULL,		NULL,							0,	"<Branch>"	},
-	{ "/View/Console",							NULL,		gui_menu_view_console,			0,	"<CheckItem>"	},
-	{ "/View/",									NULL,		NULL,							0,	"<Separator>"	},
-	{ "/View/Expand All",						NULL,		gui_menu_view_expand_all,		0,	NULL	},
-	{ "/View/Collapse All",						NULL,		gui_menu_view_collapse_all,		0,	NULL	},
-	{ "/Help",									NULL,		NULL,							0,	"<Branch>"	},
+	{ "/File",										NULL,			NULL,									0, 	"<Branch>"		},
+	{ "/File/New Project",							NULL,			gui_menu_file_new_project,				0,	NULL			},
+	{ "/File/",										NULL,			NULL,									0,	"<Separator>"	},
+	{ "/File/Export",								NULL,			NULL,									0,	"<Branch>"		},
+	{ "/File/Export/CSV",							NULL,			gui_menu_file_export_csv,				0,	NULL			},
+	{ "/File/Export/IPs List",						NULL,			gui_menu_file_export_ips_list,			0,	NULL			},
+	{ "/File/Export/Hostnames List",				NULL,			gui_menu_file_export_hostnames_list,	0,	NULL			},
+	{ "/File/Export/Network Ranges",				NULL,			gui_menu_file_export_network_ranges,	0,	NULL			},
+	{ "/File/",										NULL,			NULL,									0,	"<Separator>"	},
+	{ "/File/Open",									"<CTRL>O",		gui_menu_file_open,						0,	NULL			},
+	{ "/File/Save",									"<CTRL>S",		gui_menu_file_save,						0,	NULL			},
+	{ "/File/Save As",								NULL,			gui_menu_file_save_as,					0,	NULL			},
+	{ "/File/",										NULL,			NULL,									0,	"<Separator>"	},
+	{ "/File/Quit",									"<CTRL>Q",		gtk_main_quit,							0, 	"<StockItem>",	GTK_STOCK_QUIT },
+	{ "/Edit",										NULL,			NULL,									0,	"<Branch>"		},
+	{ "/Edit/Add Hosts",							NULL,			NULL,									0,	"<Branch>"		},
+	{ "/Edit/Add Hosts/DNS Forward Bruteforce",		NULL,			gui_menu_edit_dns_enum_domain, 			0,	NULL			},
+	{ "/Edit/Add Hosts/DNS Reverse Bruteforce",		NULL,			gui_menu_edit_dns_enum_network, 		0,	NULL			},
+	{ "/Edit/Add Hosts/HTTP Scan URL For Links",	NULL,			gui_menu_edit_http_scrape_url_for_links,	0,	NULL		},
+	{ "/Edit/Add Hosts/HTTP Scan All For Links",	NULL,			gui_menu_edit_http_scan_all_for_links,	0,	NULL			},
+	{ "/Edit/Add Hosts/HTTP Search Bing (Domain)",	NULL,			gui_menu_edit_http_search_bing_domain,	0,	NULL			},
+	{ "/Edit/Add Hosts/HTTP Search Bing (Single IP Address)",	NULL,	gui_menu_edit_http_search_bing_ip,		0,	NULL		},
+	{ "/Edit/Add Hosts/HTTP Search Bing (All IP Addresses)",	NULL,	gui_menu_edit_http_search_bing_all_ips,	0,	NULL		},
+	{ "/Edit/",										NULL,			NULL,									0,	"<Separator>"	},
+	{ "/Edit/Preferences",							NULL,			gui_menu_edit_preferences,				0,	NULL			},
+	{ "/View",										NULL,			NULL,									0,	"<Branch>"		},
+	{ "/View/Console",								NULL,			gui_menu_view_console,					0,	"<CheckItem>"	},
+	{ "/View/",										NULL,			NULL,									0,	"<Separator>"	},
+	{ "/View/Expand All",							NULL,			gui_menu_view_expand_all,				0,	NULL			},
+	{ "/View/Collapse All",							NULL,			gui_menu_view_collapse_all,				0,	NULL			},
+	{ "/Help",										NULL,			NULL,									0,	"<Branch>"		},
 #ifdef KRAKEN_URI_WIKI
-	{ "/Help/Wiki",								NULL,		gui_menu_help_wiki,				0,	NULL	},
+	{ "/Help/Wiki",									NULL,			gui_menu_help_wiki,						0,	NULL			},
 #endif
-	{ "/Help/About",							NULL,		gui_menu_help_about,			0, 	NULL	},
+	{ "/Help/About",								NULL,			gui_menu_help_about,					0, 	NULL			},
 };
 
 static gint nmain_menu_entries = sizeof(main_menu_entries) / sizeof(main_menu_entries[0]);

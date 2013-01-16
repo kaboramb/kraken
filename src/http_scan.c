@@ -418,6 +418,7 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	struct addrinfo hints;
 	struct addrinfo *result, *rp;
 	struct sockaddr_in *sin;
+	struct in_addr ip;
 	char ipstr[INET_ADDRSTRLEN + 1];
 	char hostname[DNS_MAX_FQDN_LENGTH + 1];
 	char resource[2048];
@@ -473,6 +474,12 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 	hints.ai_addr = NULL;
 	hints.ai_next = NULL;
 
+	if (inet_pton(AF_INET, hostname, &ip) == 1) {
+		http_scrape_ip_for_links_ex(hostname, &ip, resource, link_anchor, &h_opts);
+		http_enum_opts_destroy(&h_opts);
+		return 0;
+	}
+
 	if (getaddrinfo(hostname, NULL, &hints, &result) != 0) {
 		logging_log("kraken.http_scan", LOGGING_WARNING, "could not resolve the hostname: %s", hostname);
 		return -3;
@@ -482,8 +489,9 @@ int http_scrape_url_for_links(char *target_url, http_link **link_anchor) {
 			continue;
 		}
 		sin = (struct sockaddr_in *)rp->ai_addr;
-		inet_ntop(AF_INET, &sin->sin_addr, ipstr, INET_ADDRSTRLEN);
-		logging_log("kraken.http_scan", LOGGING_INFO, "url scan requesting resource from IP: %s Hostname: %s", ipstr, hostname);
+		if (inet_ntop(AF_INET, &sin->sin_addr, ipstr, INET_ADDRSTRLEN) != NULL) {
+			logging_log("kraken.http_scan", LOGGING_INFO, "url scan requesting resource from IP: %s Hostname: %s", ipstr, hostname);
+		}
 		http_scrape_ip_for_links_ex(hostname, &sin->sin_addr, resource, link_anchor, &h_opts);
 	}
 
@@ -771,7 +779,7 @@ int http_add_hosts_from_bing_xml(host_manager *c_host_manager, http_link **link_
 	return num_entries;
 }
 
-int http_search_engine_bing_all_ex(host_manager *c_host_manager, http_link **link_anchor, const char *query, const char *target_domain, http_enum_opts *h_opts) {
+int http_search_engine_bing_raw_ex(host_manager *c_host_manager, http_link **link_anchor, const char *query, const char *target_domain, http_enum_opts *h_opts) {
 	size_t webpage_sz;
 	FILE *webpage_f = NULL;
 	char *webpage_b = NULL;
@@ -880,7 +888,7 @@ int http_search_engine_bing_site_ex(host_manager *c_host_manager, const char *ta
 	logging_log("kraken.http_scan", LOGGING_INFO, "enumerating domain: %s", target_domain);
 
 	snprintf(query, sizeof(query), "%%27site:%%20%s%%27", target_domain);
-	return http_search_engine_bing_all_ex(c_host_manager, NULL, query, target_domain, h_opts);
+	return http_search_engine_bing_raw_ex(c_host_manager, NULL, query, target_domain, h_opts);
 }
 
 int http_search_engine_bing_ip_ex(http_link **link_anchor, const char *target_ip, const char *target_domain, http_enum_opts *h_opts) {
@@ -892,5 +900,37 @@ int http_search_engine_bing_ip_ex(http_link **link_anchor, const char *target_ip
 	}
 
 	snprintf(query, sizeof(query), "%%27ip:%%20%s%%27", target_ip);
-	return http_search_engine_bing_all_ex(NULL, link_anchor, query, target_domain, h_opts);
+	return http_search_engine_bing_raw_ex(NULL, link_anchor, query, target_domain, h_opts);
+}
+
+int http_search_engine_bing_all_ips_ex(host_manager *c_host_manager, http_link **link_anchor, http_enum_opts *h_opts) {
+	unsigned int done = 0;
+	http_enum_opts dummy_h_opts;
+	host_iter host_i;
+	single_host_info *c_host;
+	char ipstr[INET_ADDRSTRLEN + 1];
+
+	if (strlen(h_opts->bing_api_key) > HTTP_BING_API_KEY_SZ) {
+		logging_log("kraken.http_scan", LOGGING_ERROR, "bing app id is too large");
+		return -1;
+	}
+
+	memcpy(&dummy_h_opts, h_opts, sizeof(http_enum_opts));
+	dummy_h_opts.progress_update = NULL;
+	dummy_h_opts.progress_update_data = NULL;
+
+	host_manager_iter_host_init(c_host_manager, &host_i);
+	while (host_manager_iter_host_next(c_host_manager, &host_i, &c_host)) {
+		memset(ipstr, '\0', sizeof(ipstr));
+		inet_ntop(AF_INET, &c_host->ipv4_addr, ipstr, INET_ADDRSTRLEN);
+		if (HTTP_SHOULD_STOP(h_opts)) {
+			break;
+		}
+		http_search_engine_bing_ip_ex(link_anchor, ipstr, NULL, &dummy_h_opts);
+		if (h_opts->progress_update != NULL) {
+			done++;
+			h_opts->progress_update(done, c_host_manager->known_hosts, h_opts->progress_update_data);
+		}
+	}
+	return 0;
 }

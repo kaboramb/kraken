@@ -46,5 +46,6 @@ void gui_popup_thread_http_scrape_url_for_links(popup_data *p_data);
 void gui_popup_thread_http_scrape_hosts_for_links(popup_data *p_data);
 void gui_popup_thread_http_search_engine_bing_domain(popup_data *p_data);
 void gui_popup_thread_http_search_engine_bing_ip(popup_data *p_data);
+void gui_popup_thread_http_search_engine_bing_all_ips(popup_data *p_data);
 
 #endif

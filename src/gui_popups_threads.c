@@ -405,3 +405,50 @@ void gui_popup_thread_http_search_engine_bing_ip(popup_data *p_data) {
 	http_enum_opts_destroy(&h_opts);
 	return;
 }
+
+void gui_popup_thread_http_search_engine_bing_all_ips(popup_data *p_data) {
+	http_enum_opts h_opts;
+	http_link *link_anchor = NULL;
+	int response;
+	gulong delete_handler;
+
+	gdk_threads_enter();
+	gtk_widget_set_sensitive(p_data->cancel_button, TRUE);
+	gtk_widget_set_sensitive(p_data->start_button, FALSE);
+	delete_handler = g_signal_connect(p_data->popup_window, "delete-event", G_CALLBACK(callback_thread_window_destroy), p_data);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Searching Bing");
+	gui_model_update_marquee(p_data->m_data, "Searching Bing");
+	gdk_threads_leave();
+
+	http_enum_opts_init(&h_opts);
+	h_opts.progress_update = (void *)&callback_thread_update_progress;
+	h_opts.progress_update_data = p_data;
+	if (p_data->m_data->k_opts->bing_api_key == NULL) {
+		gdk_threads_enter();
+		gui_popup_error_dialog(p_data->popup_window, "Bing API Key Not Set", "Error: Invalid API Key");
+		gui_model_update_marquee(p_data->m_data, NULL);
+		gdk_threads_leave();
+	} else {
+		http_enum_opts_set_bing_api_key(&h_opts, p_data->m_data->k_opts->bing_api_key);
+		h_opts.action_status = &p_data->action_status;
+		p_data->action_status = KRAKEN_ACTION_RUN;
+		response = http_search_engine_bing_all_ips_ex(p_data->m_data->c_host_manager, &link_anchor, &h_opts);
+		gdk_threads_enter();
+		if (response < 0) {
+			if (response == -3) {
+				gui_popup_error_dialog(p_data->popup_window, "Invalid Bing API Key", "Error: Invalid API Key");
+			} else {
+				GUI_POPUP_ERROR_GENERIC_ERROR(p_data->popup_window);
+			}
+		}
+		gui_model_update_tree_and_marquee(p_data->m_data, NULL);
+		gdk_threads_leave();
+	}
+	gdk_threads_enter();
+	gui_popup_select_hosts_from_http_links(p_data->m_data, link_anchor);
+	g_signal_handler_disconnect(p_data->popup_window, delete_handler);
+	gtk_widget_destroy(p_data->popup_window);
+	gdk_threads_leave();
+	http_enum_opts_destroy(&h_opts);
+	return;
+}
