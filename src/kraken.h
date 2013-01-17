@@ -49,7 +49,10 @@
 extern char kraken_version_string[128];
 #define KRAKEN_VERSION_MAJOR 0
 #define KRAKEN_VERSION_MINOR 1
+
+#ifndef KRAKEN_REVISION_STRING
 #define KRAKEN_REVISION_STRING ""
+#endif
 
 #define MAX_LINE 512
 
