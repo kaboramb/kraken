@@ -331,7 +331,7 @@ void gui_menu_view_collapse_all(main_gui_data *m_data, guint action, GtkWidget *
 
 #ifdef KRAKEN_URI_WIKI
 void gui_menu_help_wiki(main_gui_data *m_data, guint action, GtkWidget *widget) {
-	GError *error;
+	GError *error = NULL;
 
 	gtk_show_uri(NULL, KRAKEN_URI_WIKI, GDK_CURRENT_TIME, &error);
 	return;
