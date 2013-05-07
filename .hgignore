@@ -10,5 +10,9 @@ data/Makefile.in
 depcomp
 install-sh
 missing
+
+autom4te.cache/*
+
 src/Makefile
 src/Makefile.in
+src/.deps/*

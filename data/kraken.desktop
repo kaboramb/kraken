@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Kraken
+GenericName=Kraken Footprinting
+Exec=kraken
+Terminal=false
+Type=Application
+Categories=Application;Network;Security;
+Comment=An external footprinting tool.
