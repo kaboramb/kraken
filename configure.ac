@@ -64,13 +64,6 @@ AC_CHECK_LIB([cares], [ares_set_servers], [
 	AC_MSG_NOTICE([ares_set_servers support has been disabled])
 ])
 
-AC_CHECK_LIB([gthread-2.0], [g_thread_init], [
-	AC_MSG_NOTICE([g_thread_init support has been enabled])
-	AC_DEFINE([HAVE_GTK_G_THREAD_INIT], [1])
-], [
-	AC_MSG_NOTICE([g_thread_init support has been disabled])
-])
-
 # Checks for optional libraries.
 AS_IF([test "x$with_log4c" != "xno"], [
 	AC_CHECK_LIB([log4c], [log4c_init], [], [
@@ -89,6 +82,22 @@ PKG_CHECK_MODULES(LIBXML, libxml-2.0 >= 2.5.0, [], [])
 PKG_CHECK_MODULES(GTK, gtk+-2.0 >= 2.20.0, [], [
 	AC_MSG_NOTICE([could not find the gtk library])
 	AC_MSG_NOTICE([please install libgtk+-2.0 >= 2.20.0])
+	exit 1
+])
+PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.24.0, [
+	PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.32.0, [
+		AC_MSG_NOTICE([g_thread_init support has been disabled, usage is deprecated])
+	], [
+		AC_CHECK_LIB([gthread-2.0], [g_thread_init], [
+			AC_MSG_NOTICE([g_thread_init support has been enabled])
+			AC_DEFINE([HAVE_GTK_G_THREAD_INIT], [1])
+		], [
+			AC_MSG_NOTICE([g_thread_init support has been disabled, not available])
+		])
+	])
+], [
+	AC_MSG_NOTICE([could not find the glib library])
+	AC_MSG_NOTICE([please install libglib2.0 >= 2.24.0])
 	exit 1
 ])
 
