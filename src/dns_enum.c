@@ -243,6 +243,8 @@ int dns_get_nameservers_for_domain(char *target_domain, domain_ns_list *nameserv
 
 int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_manager, domain_ns_list *nameservers, dns_enum_opts *d_opts) {
 	ares_channel channel;
+	struct ares_options channel_opts;
+	int channel_optsmask = 0;
 	int status;
 	unsigned int wordlist_lines = 0;
 	unsigned int query_counter = 0;
@@ -256,7 +258,11 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 		return 1;
 	}
 
-	status = ares_init(&channel);
+	channel_opts.timeout = DNS_DEFAULT_ARES_OPTS_TIMEOUTMS;
+	channel_optsmask |= ARES_OPT_TIMEOUTMS;
+	channel_opts.tries = DNS_DEFAULT_ARES_OPTS_TRIES;
+	channel_optsmask |= ARES_OPT_TRIES;
+	status = ares_init_options(&channel, &channel_opts, channel_optsmask);
 	if(status != ARES_SUCCESS) {
 		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not initialize ares options with error: %s", ares_strerror(status));
 		return 1;
@@ -327,6 +333,8 @@ int dns_bruteforce_names_for_domain(char *target_domain, host_manager *c_host_ma
 
 int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host_manager, domain_ns_list *nameservers, dns_enum_opts *d_opts) {
 	ares_channel channel;
+	struct ares_options channel_opts;
+	int channel_optsmask = 0;
 	single_host_info *h_info_chk = NULL;
 	int status;
 	unsigned int num_of_hosts = 0;
@@ -341,7 +349,11 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 		return 1;
 	}
 
-	status = ares_init(&channel);
+	channel_opts.timeout = DNS_DEFAULT_ARES_OPTS_TIMEOUTMS;
+	channel_optsmask |= ARES_OPT_TIMEOUTMS;
+	channel_opts.tries = DNS_DEFAULT_ARES_OPTS_TRIES;
+	channel_optsmask |= ARES_OPT_TRIES;
+	status = ares_init_options(&channel, &channel_opts, channel_optsmask);
 	if(status != ARES_SUCCESS) {
 		logging_log("kraken.dns_enum", LOGGING_ERROR, "could not initialize ares options with error: %s", ares_strerror(status));
 		return 1;

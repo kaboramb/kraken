@@ -35,6 +35,8 @@
 #define DNS_MAX_SIM_QUERIES 8
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in hosts.h */
 #define DNS_MAX_NS_HOSTS 4
+#define DNS_DEFAULT_ARES_OPTS_TRIES 2
+#define DNS_DEFAULT_ARES_OPTS_TIMEOUTMS 2500
 
 /* more in arpa/namesr.h */
 #define DNS_QRY_A 1

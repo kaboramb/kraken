@@ -1024,7 +1024,7 @@ kstatus_plugin plugins_run_plugin_method(plugin_object *plugin, char *plugin_met
 				message = PyString_AsString(py_message);
 				if (error_msg != NULL) {
 					if (strlen(message) < error_msg_sz) {
-						strncpy(error_msg, message, error_msg_sz);
+						strncpy(error_msg, message, (error_msg_sz - 1));
 					}
 				}
 				logging_log("kraken.plugins", LOGGING_WARNING, "the call to function %s.%s produced a Kraken exception with message: %s", plugin->name, plugin_method, message);

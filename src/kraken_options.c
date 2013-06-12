@@ -51,7 +51,7 @@ void kraken_opts_init(kraken_opts *k_opts) {
 int kraken_opts_init_from_config(kraken_opts *k_opts) {
 	char conf_file_path[256];
 
-	if (kraken_conf_get_data_directory_path(conf_file_path, 256) != 0) {
+	if (kraken_conf_get_data_directory_path(conf_file_path, sizeof(conf_file_path)) != 0) {
 		LOGGING_QUICK_ERROR("kraken.opts", "could not determine the path to the data directory")
 		return 100;
 	}
@@ -59,7 +59,7 @@ int kraken_opts_init_from_config(kraken_opts *k_opts) {
 		LOGGING_QUICK_ERROR("kraken.opts", "could not create the data directory")
 		return 101;
 	}
-	kraken_conf_get_config_file_path(conf_file_path, 256);
+	kraken_conf_get_config_file_path(conf_file_path, sizeof(conf_file_path));
 	logging_log("kraken.opts", LOGGING_INFO, "loading configuration file: %s", conf_file_path);
 	kraken_opts_init(k_opts);
 
@@ -141,7 +141,7 @@ int kraken_conf_get_data_directory_path(char *path, size_t pathsz) {
 	if (envpath == NULL) {
 		return 1;
 	}
-	if ((strlen(envpath) + strlen(KRAKEN_CONF_DIR) + 1) > (pathsz - 1)) {
+	if ((strlen(envpath) + strlen(KRAKEN_CONF_DIR) + 1) > (pathsz - 2)) {
 		return 2;
 	}
 	strcpy(path, envpath);
@@ -157,7 +157,7 @@ int kraken_conf_get_config_file_path(char *path, size_t pathsz) {
 	if (response) {
 		return response;
 	}
-	if ((strlen(path) + strlen(KRAKEN_CONF_FILE) + 1) > pathsz - 1) {
+	if ((strlen(path) + strlen(KRAKEN_CONF_FILE) + 1) > pathsz - 2) {
 		return 2;
 	}
 	strcat(path, KRAKEN_CONF_DIR_SEP);
