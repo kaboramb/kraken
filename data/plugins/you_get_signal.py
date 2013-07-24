@@ -45,7 +45,8 @@ def you_get_signal_scan(host):
 	if data['status'].lower() != 'success':
 		kraken.log(kraken.LOG_LVL_WARNING, data['message'])
 		raise kraken.error(" ".join(data['message'].split()[:6]))
-	if data['domainCount'] == 0:
+	if str(data.get('domainCount', '0')) == '0':
+		kraken.log(kraken.LOG_LVL_DEBUG, 'you_get_signal returned 0 domains for ' + ip)
 		return
 	domainArray = map(lambda x: x[0], data['domainArray'])
 	if not len(domainArray):
@@ -70,5 +71,6 @@ def initialize():
 def main(args):
 	ips = kraken.host_manager.get_hosts()
 	for ip in ips:
+		kraken.log(kraken.LOG_LVL_DEBUG, 'running you_get_signal on ip: ' + ip)
 		you_get_signal_scan({'ipv4_addr':ip})
 	return 0
