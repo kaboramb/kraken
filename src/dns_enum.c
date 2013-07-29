@@ -474,9 +474,7 @@ int dns_enum_network_ex(host_manager *c_host_manager, char *target_domain, netwo
 	char netstr[INET6_ADDRSTRLEN];
 	int i;
 
-	strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
 	memset(&nameservers, '\0', sizeof(nameservers));
-
 	dns_enum_opts_init(&new_opts);
 	if (d_opts == NULL) {
 		d_opts = &new_opts;
@@ -486,22 +484,30 @@ int dns_enum_network_ex(host_manager *c_host_manager, char *target_domain, netwo
 	inet_ntop(AF_INET, &target_net->subnetmask, netstr, sizeof(netstr));
 	logging_log("kraken.dns_enum", LOGGING_INFO, "enumerating network: %s %s", ipstr, netstr);
 
-	if (dns_get_nameservers_for_domain(target_domain, &nameservers) == 0) {
-		return -1;
+	if (target_domain != NULL) {
+		strncpy(c_host_manager->lw_domain, target_domain, DNS_MAX_FQDN_LENGTH);
+		if (dns_get_nameservers_for_domain(target_domain, &nameservers) == 0) {
+			return -1;
+		}
+		for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
+			inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
+			logging_log("kraken.dns_enum", LOGGING_INFO, "found name server %s %s", nameservers.servers[i], ipstr);
+			single_host_init(&c_host);
+			memcpy(&c_host.ipv4_addr, &nameservers.ipv4_addrs[i], sizeof(struct in_addr));
+			single_host_add_hostname(&c_host, nameservers.servers[i]);
+			host_manager_add_host(c_host_manager, &c_host);
+			single_host_destroy(&c_host);
+		}
+		if (DNS_SHOULD_STOP(d_opts)) {
+			return -100;
+		}
+		dns_bruteforce_names_in_range(target_net, c_host_manager, &nameservers, d_opts);
+	} else {
+		if (DNS_SHOULD_STOP(d_opts)) {
+			return -100;
+		}
+		dns_bruteforce_names_in_range(target_net, c_host_manager, NULL, d_opts);
 	}
-	for (i = 0; (nameservers.servers[i][0] != '\0' && i < DNS_MAX_NS_HOSTS); i++) {
-		inet_ntop(AF_INET, &nameservers.ipv4_addrs[i], ipstr, sizeof(ipstr));
-		logging_log("kraken.dns_enum", LOGGING_INFO, "found name server %s %s", nameservers.servers[i], ipstr);
-		single_host_init(&c_host);
-		memcpy(&c_host.ipv4_addr, &nameservers.ipv4_addrs[i], sizeof(struct in_addr));
-		single_host_add_hostname(&c_host, nameservers.servers[i]);
-		host_manager_add_host(c_host_manager, &c_host);
-		single_host_destroy(&c_host);
-	}
-	if (DNS_SHOULD_STOP(d_opts)) {
-		return -100;
-	}
-	dns_bruteforce_names_in_range(target_net, c_host_manager, &nameservers, d_opts);
 	dns_enum_opts_destroy(&new_opts);
 	LOGGING_QUICK_INFO("kraken.dns_enum", "dns enumerate network finished")
 	return 0;

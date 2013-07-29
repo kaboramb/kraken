@@ -159,7 +159,7 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 	memset(target_domain, '\0', sizeof(target_domain));
 	gdk_threads_enter();
 	text_entry = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
-	if ((strlen(text_entry) > DNS_MAX_FQDN_LENGTH) || (strlen(text_entry) == 0)) {
+	if (strlen(text_entry) > DNS_MAX_FQDN_LENGTH) {
 		GUI_POPUP_ERROR_INVALID_DOMAIN_NAME(p_data->popup_window);
 		gtk_widget_destroy(p_data->popup_window);
 		gdk_threads_leave();
@@ -187,7 +187,11 @@ void gui_popup_thread_dns_enum_network(popup_data *p_data) {
 	d_opts.action_status = &p_data->action_status;
 	p_data->action_status = KRAKEN_ACTION_RUN;
 
-	response = dns_enum_network_ex(p_data->m_data->c_host_manager, target_domain, &target_network, &d_opts);
+	if (strlen(target_domain)) {
+		response = dns_enum_network_ex(p_data->m_data->c_host_manager, target_domain, &target_network, &d_opts);
+	} else {
+		response = dns_enum_network_ex(p_data->m_data->c_host_manager, NULL, &target_network, &d_opts);
+	}
 
 	gdk_threads_enter();
 	if (response == 0) {
