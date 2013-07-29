@@ -194,7 +194,9 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if (plugins_init(argv[0], &k_opts, &c_host_manager) < 0) {
+	gui_main_data_init(&m_data, &k_opts, &c_host_manager);
+
+	if (plugins_init(argv[0], &k_opts, &c_host_manager, &m_data) < 0) {
 		kraken_opts_destroy(&k_opts);
 		host_manager_destroy(&c_host_manager);
 #ifndef WITHOUT_LOG4C
@@ -204,7 +206,6 @@ int main(int argc, char **argv) {
 	}
 	LOGGING_QUICK_WARNING("kraken", "releasing the kraken")
 
-	gui_main_data_init(&m_data, &k_opts, &c_host_manager);
 	gui_show_main_window(&m_data);
 	m_data.gui_is_active = 0;
 	kraken_thread_mutex_lock(&m_data.plugin_mutex);

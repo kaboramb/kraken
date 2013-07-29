@@ -1,4 +1,4 @@
-// gui_model.h
+// gui_data.h
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -27,25 +27,25 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#ifndef _KRAKEN_GUI_MODEL_H
-#define _KRAKEN_GUI_MODEL_H
+#ifndef _KRAKEN_GUI_DATA_H
+#define _KRAKEN_GUI_DATA_H
 
+#include <gtk/gtk.h>
 #include "kraken.h"
-#include "plugins.h"
-#include "gui_data.h"
 
-#define GUI_MODEL_MAX_MARQUEE_MSG_SIZE 32
+typedef struct main_gui_data {
+	int gui_is_active;
+	GtkWidget *main_window;
+	GtkWidget *tree_view;
+	GtkWidget *main_marquee;
 
-typedef struct gui_data_menu_plugin {
-	main_gui_data *m_data;
-	plugin_object *c_plugin;
-	int callback_id;
-	void *plugin_data;
-} gui_data_menu_plugin;
+	GtkWidget *plugin_box;
+	GtkWidget *plugin_entry;
+	kraken_thread_mutex plugin_mutex;
+	kraken_thread plugin_thread;
 
-void gui_model_update_marquee(main_gui_data *m_data, const char *status);
-int gui_model_update_tree_and_marquee(main_gui_data *m_data, const char *status);
-GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, main_gui_data *m_data);
-GtkWidget *gui_model_create_view_and_model(host_manager *c_host_manager, main_gui_data *m_data);
+	kraken_opts *k_opts;
+	host_manager *c_host_manager;
+} main_gui_data;
 
 #endif

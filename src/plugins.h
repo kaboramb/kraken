@@ -31,6 +31,7 @@
 #define _KRAKEN_PLUGINS_H
 
 #include <Python.h>
+#include "gui_data.h"
 
 #define PLUGIN_SZ_NAME 31
 #define PLUGIN_METHOD_INITIALIZE "initialize"
@@ -72,6 +73,7 @@ typedef struct plugin_object {
 typedef struct plugin_manager {
 	kraken_opts *k_opts;
 	host_manager *c_host_manager;
+	main_gui_data *m_data;
 	PyObject *pymod_kraken;
 	plugin_object *current_plugin;
 	kraken_thread_mutex callback_mutex;
@@ -79,7 +81,7 @@ typedef struct plugin_manager {
 	plugin_object plugins[];
 } plugin_manager;
 
-int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager);
+int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager, main_gui_data *m_data);
 void plugins_destroy(void);
 void plugins_iter_init(plugin_iter *iter);
 int plugins_iter_next(plugin_iter *iter, plugin_object **plugin);

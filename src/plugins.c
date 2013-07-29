@@ -295,6 +295,17 @@ static PyObject *pymod_kraken_api_callback_unregister(PyObject *self, PyObject *
 	return Py_None;
 }
 
+static PyObject *pymod_kraken_api_gui_sync(PyObject *self, PyObject *args) {
+	if (!PyArg_ParseTuple(args, "")) {
+		return NULL;
+	}
+	if (c_plugin_manager->m_data != NULL) {
+		gui_model_update_tree_and_marquee(c_plugin_manager->m_data, NULL);
+	}
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
 static PyObject *pymod_kraken_api_log(PyObject *self, PyObject *args) {
 	char *message;
 	int logLvl;
@@ -312,6 +323,7 @@ static PyObject *pymod_kraken_api_log(PyObject *self, PyObject *args) {
 static PyMethodDef pymod_kraken_methods[] = {
 	{"callback_register", pymod_kraken_api_callback_register, METH_VARARGS, ""},
 	{"callback_unregister", pymod_kraken_api_callback_unregister, METH_VARARGS, ""},
+	{"gui_sync", pymod_kraken_api_gui_sync, METH_VARARGS, ""},
 	{"log", pymod_kraken_api_log, METH_VARARGS, ""},
 	{NULL, NULL, 0, NULL}
 };
@@ -727,7 +739,7 @@ int plugins_python_sys_path_prepend(char *path) {
 	return status;
 }
 
-int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) {
+int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager, main_gui_data *m_data) {
 	DIR *dp;
 	struct dirent *ep;
 	unsigned int c_plugin = 0;
@@ -789,6 +801,7 @@ int plugins_init(char *name, kraken_opts *k_opts, host_manager *c_host_manager) 
 	}
 	c_plugin_manager->k_opts = k_opts;
 	c_plugin_manager->c_host_manager = c_host_manager;
+	c_plugin_manager->m_data = m_data;
 	c_plugin_manager->current_plugin = NULL;
 	c_plugin_manager->pymod_kraken = pymod_kraken;
 	kraken_thread_mutex_init(&c_plugin_manager->callback_mutex);
