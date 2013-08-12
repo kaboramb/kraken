@@ -54,6 +54,14 @@ extern char kraken_version_string[128];
 #define KRAKEN_REVISION_STRING ""
 #endif
 
+#ifndef KRAKEN_URI_WIKI
+#define KRAKEN_URI_WIKI "https://github.com/securestate/kraken/wiki"
+#endif
+
+#ifndef KRAKEN_URI_HOME_PAGE
+#define KRAKEN_URI_HOME_PAGE "https://github.com/securestate/kraken/"
+#endif
+
 #define MAX_LINE 512
 
 #define DNS_MAX_FQDN_LENGTH 255 /* also defined in dns_enum.h */

@@ -338,6 +338,15 @@ void gui_menu_help_wiki(main_gui_data *m_data, guint action, GtkWidget *widget) 
 }
 #endif
 
+#ifdef KRAKEN_URI_HOME_PAGE
+void gui_menu_help_home_page(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	GError *error = NULL;
+
+	gtk_show_uri(NULL, KRAKEN_URI_HOME_PAGE, GDK_CURRENT_TIME, &error);
+	return;
+}
+#endif
+
 void gui_menu_help_about(main_gui_data *m_data, guint action, GtkWidget *widget) {
 	gui_popup_help_about(m_data);
 	return;
@@ -377,6 +386,9 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/Help",										NULL,			NULL,									0,	"<Branch>"		},
 #ifdef KRAKEN_URI_WIKI
 	{ "/Help/Wiki",									NULL,			gui_menu_help_wiki,						0,	NULL			},
+#endif
+#ifdef KRAKEN_URI_HOME_PAGE
+	{ "/Help/Home Page",							NULL,			gui_menu_help_home_page,				0,	NULL			},
 #endif
 	{ "/Help/About",								NULL,			gui_menu_help_about,					0, 	NULL			},
 };
