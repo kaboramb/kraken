@@ -1,0 +1,11 @@
+# C extensions
+*.so
+*.o
+*.mod.c
+*.mod.o
+*.ko
+Module.symvers
+modules.order
+
+# Geany
+*.geany

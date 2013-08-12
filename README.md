@@ -1,14 +1,14 @@
 Release the
-     ,                  _               
-    /|   /             | |              
-     |__/   ,_    __,  | |   _   _  _   
-     | \   /  |  /  |  |/_) |/  / |/ |  
+     ,                  _
+    /|   /             | |
+     |__/   ,_    __,  | |   _   _  _
+     | \   /  |  /  |  |/_) |/  / |/ |
      |  \_/   |_/\_/|_/| \_/|__/  |  |_/
 
 == Summary ==
-Kraken is a tool used for rapidly footprinting the external presense of an 
-organization.  It features the ability to gather information from multiple 
-sources and provide it to the user in a way that can easily be processed or 
+Kraken is a tool used for rapidly footprinting the external presense of an
+organization.  It features the ability to gather information from multiple
+sources and provide it to the user in a way that can easily be processed or
 presented, particularly for the purposes of scoping pentetration tests.
 
 == License ==
@@ -51,8 +51,8 @@ Kraken Development Team:
 
 == About ==
 Author: Spencer McIntyre <smcintyre [at] securestate [dot] net>
-Author Home Page: http://www.securestate.com/
-Project Home Page: http://www.securestate.com/Research and Innovation/
+Author Home Page: [http://www.securestate.com/](http://www.securestate.com/)
+Project Home Page: [https://github.com/securestate/kraken](https://github.com/securestate/kraken)
 
 == Install ==
 For install information please see the INSTALL file.
