@@ -4,8 +4,20 @@
 *.mod.c
 *.mod.o
 *.ko
+Makefile*
+aclocal.m4
+autom4te.cache*
+compile
+config.*
+configure
+data/Makefile*
+depcomp
+install-sh
+missing
 Module.symvers
 modules.order
+src/.deps*
+src/kraken
 
 # Geany
 *.geany
