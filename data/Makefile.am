@@ -1,3 +1,6 @@
+iconsdir = /usr/share/icons/hicolor/scalable/apps
+icons_DATA = kraken-icon.svg
+
 pluginsdir = $(datarootdir)/@PACKAGE@/plugins
 plugins_DATA = plugins/*
 
