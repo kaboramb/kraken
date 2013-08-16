@@ -73,14 +73,15 @@ void gui_popup_error_dialog_plugin(gpointer window, kstatus_plugin status, const
 void gui_popup_info_dialog(gpointer window, const char *message, const char *title);
 gint gui_popup_question_yes_no_dialog(gpointer window, const char *message, const char *title);
 gint gui_popup_question_yes_no_cancel_dialog(gpointer window, const char *message, const char *title);
+gboolean gui_popup_dns_enum_domain(main_gui_data *m_data);
+gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str);
+gboolean gui_popup_help_about(main_gui_data *m_data);
 gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data);
 gboolean gui_popup_http_scrape_url_for_links(main_gui_data *m_data, char *host_str);
 gboolean gui_popup_http_search_engine_bing_domain(main_gui_data *m_data);
 gboolean gui_popup_http_search_engine_bing_ip(main_gui_data *m_data, char *ipstr);
-gboolean gui_popup_dns_enum_domain(main_gui_data *m_data);
-gboolean gui_popup_dns_enum_network(main_gui_data *m_data, char *cidr_str);
-gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link *link_anchor);
+gboolean gui_popup_import_file(main_gui_data *m_data, char *filename);
 gboolean gui_popup_manage_kraken_settings(main_gui_data *m_data);
-gboolean gui_popup_help_about(main_gui_data *m_data);
+gboolean gui_popup_select_hosts_from_http_links(main_gui_data *m_data, http_link *link_anchor);
 
 #endif

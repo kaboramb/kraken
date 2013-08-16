@@ -50,6 +50,23 @@ int util_dir_create_if_not_exists(const char *dir_path) {
 	return 0;
 }
 
+int util_buf_is_printable(char *string, size_t sz_str) {
+	char *pos = string;
+	size_t ctr = 0;
+	while (ctr < sz_str) {
+		if ((*pos < 32) || (*pos > 126)) {
+			return 0;
+		}
+		pos++;
+		ctr++;
+	}
+	return 1;
+}
+
+int util_str_is_printable(char *string) {
+	return util_buf_is_printable(string, strlen(string));
+}
+
 void util_str_replace(char *string, char *old, char *new) {
 	char *pos = string;
 

@@ -597,6 +597,52 @@ gboolean gui_popup_http_scrape_hosts_for_links(main_gui_data *m_data) {
 	return TRUE;
 }
 
+gboolean gui_popup_import_file(main_gui_data *m_data, char *filename) {
+	GtkWidget *window;
+	GtkWidget *vbox, *hbox;
+	GtkWidget *entry;
+	GtkWidget *label;
+	popup_data *p_data = NULL;
+
+	window = gui_popup_get_window(m_data, &p_data, "Import Data", 130);
+	vbox = gtk_vbox_new(FALSE, 3);
+	gtk_container_add(GTK_CONTAINER(window), vbox);
+	gtk_widget_show(vbox);
+
+	/* get a horizontal box to place in the vertical box */
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(hbox), 5);
+	gtk_container_add(GTK_CONTAINER(vbox), hbox);
+	gtk_widget_show(hbox);
+
+	label = gtk_label_new("File To Import: ");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, TRUE, 0);
+	gtk_widget_show(label);
+
+	entry = gtk_entry_new();
+	gtk_entry_set_text(GTK_ENTRY(entry), filename);
+	gtk_entry_set_editable(GTK_ENTRY(entry), FALSE);
+	g_signal_connect(entry, "activate", G_CALLBACK(callback_thread_start), p_data);
+	gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 0);
+	gtk_widget_show(entry);
+
+	gui_popup_data_init(p_data, m_data);
+	p_data->thread_function = (void *)&gui_popup_thread_import_file;
+	p_data->popup_window = window;
+	p_data->text_entry0 = entry;
+	p_data->misc_widget = gtk_progress_bar_new();
+
+	gtk_container_add(GTK_CONTAINER(vbox), p_data->misc_widget);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Waiting");
+	gtk_widget_show(p_data->misc_widget);
+
+	/* get the buttons */
+	hbox = gui_popup_get_start_cancel_button_box(p_data, vbox);
+
+	gtk_widget_show(window);
+	return TRUE;
+}
+
 GtkTreeModel *gui_refresh_http_link_domain_selection_model(GtkTreeStore *store, main_gui_data *m_data, http_link *link_anchor) {
 	GtkTreeIter domainsearchiter, hostsearchiter;
 	GtkTreeModel *treemodel;

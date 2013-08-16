@@ -381,11 +381,7 @@ int dns_bruteforce_names_in_range(network_addr *target_net, host_manager *c_host
 	}
 #endif
 
-	memcpy(&c_ip, &target_net->network, sizeof(c_ip));
-	while (netaddr_ip_in_nwk(target_net, &c_ip) == 1) {
-		num_of_hosts += 1;
-		c_ip.s_addr = htonl(ntohl(c_ip.s_addr) + 1);
-	}
+	num_of_hosts += netaddr_ips_in_nwk(target_net);
 
 	inet_ntop(AF_INET, &target_net->network, ipstr, sizeof(ipstr));
 	inet_ntop(AF_INET, &target_net->subnetmask, netstr, sizeof(netstr));

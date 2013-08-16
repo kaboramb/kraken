@@ -214,6 +214,22 @@ void gui_menu_file_export_network_ranges(main_gui_data *m_data, guint action, Gt
 	return;
 }
 
+void gui_menu_file_import(main_gui_data *m_data, guint action, GtkWidget *widget) {
+	GtkWidget *dialog;
+
+	dialog = gtk_file_chooser_dialog_new("Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		char *filename;
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		gtk_widget_destroy(dialog);
+		gui_popup_import_file(m_data, filename);
+		g_free(filename);
+	} else {
+		gtk_widget_destroy(dialog);
+	}
+	return;
+}
+
 void gui_menu_file_open(main_gui_data *m_data, guint action, GtkWidget *widget) {
 	GtkWidget *dialog;
 	gint response;
@@ -361,6 +377,7 @@ static GtkItemFactoryEntry main_menu_entries[] = {
 	{ "/File/Export/IPs List",						NULL,			gui_menu_file_export_ips_list,			0,	NULL			},
 	{ "/File/Export/Hostnames List",				NULL,			gui_menu_file_export_hostnames_list,	0,	NULL			},
 	{ "/File/Export/Network Ranges",				NULL,			gui_menu_file_export_network_ranges,	0,	NULL			},
+	{ "/File/Import",								NULL,			gui_menu_file_import,					0,	NULL			},
 	{ "/File/",										NULL,			NULL,									0,	"<Separator>"	},
 	{ "/File/Open",									"<CTRL>O",		gui_menu_file_open,						0,	NULL			},
 	{ "/File/Save",									"<CTRL>S",		gui_menu_file_save,						0,	NULL			},

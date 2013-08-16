@@ -41,6 +41,7 @@
 #include "gui_model.h"
 #include "host_manager.h"
 #include "http_scan.h"
+#include "import.h"
 #include "whois_lookup.h"
 
 void callback_thread_start(GtkWidget *widget, popup_data *p_data) {
@@ -457,5 +458,29 @@ void gui_popup_thread_http_search_engine_bing_all_ips(popup_data *p_data) {
 	gdk_threads_leave();
 	http_enum_opts_destroy(&h_opts);
 	http_link_list_free(link_anchor);
+	return;
+}
+
+void gui_popup_thread_import_file(popup_data *p_data) {
+	const gchar *filename;
+	gulong delete_handler;
+
+	gdk_threads_enter();
+	gtk_widget_set_sensitive(p_data->cancel_button, TRUE);
+	gtk_widget_set_sensitive(p_data->start_button, FALSE);
+	delete_handler = g_signal_connect(p_data->popup_window, "delete-event", G_CALLBACK(callback_thread_window_destroy), p_data);
+	gtk_progress_bar_set_text(GTK_PROGRESS_BAR(p_data->misc_widget), "Importing Data");
+	gui_model_update_marquee(p_data->m_data, "Importing Data");
+	gdk_threads_leave();
+
+	filename = gtk_entry_get_text(GTK_ENTRY(p_data->text_entry0));
+	p_data->action_status = KRAKEN_ACTION_RUN;
+	import_file(p_data->m_data->c_host_manager, (char *)filename, (void *)&callback_thread_update_progress, p_data, &p_data->action_status);
+
+	gdk_threads_enter();
+	gui_model_update_tree_and_marquee(p_data->m_data, NULL);
+	g_signal_handler_disconnect(p_data->popup_window, delete_handler);
+	gtk_widget_destroy(p_data->popup_window);
+	gdk_threads_leave();
 	return;
 }

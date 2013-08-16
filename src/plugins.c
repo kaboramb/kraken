@@ -360,7 +360,10 @@ static PyObject *pymod_kraken_host_manager_get_host_details(PyObject *self, PyOb
 	if (!PyArg_ParseTuple(args, "s", &ipstr)) {
 		return NULL;
 	}
-	inet_pton(AF_INET, ipstr, &ip);
+	if (inet_pton(AF_INET, ipstr, &ip) != 1) {
+		PLUGINS_PYTHON_ERROR_INVALID_IP();
+		return NULL;
+	}
 	if (!host_manager_get_host_by_addr(c_plugin_manager->c_host_manager, &ip, &c_host)) {
 		PLUGINS_PYTHON_ERROR_INVALID_IP();
 		return NULL;

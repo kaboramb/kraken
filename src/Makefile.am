@@ -9,6 +9,6 @@ kraken_SOURCES = dns_enum.c export.c gui_main.c gui_menu_functions.c \
 	http_scan.h host_manager.h kraken.h kraken_options.h logging.h \
 	network_addr.h whois_lookup.h kraken_thread.c kraken_thread.h \
 	gui_popups_threads.c gui_popups_threads.h utilities.c utilities.h \
-	xml_utilities.c xml_utilities.h plugins.c plugins.h
+	xml_utilities.c xml_utilities.h plugins.c plugins.h import.c import.h
 kraken_CFLAGS = $(GTK_CFLAGS) $(LIBXML_CFLAGS) $(PYTHON_INCLUDE) -DDATAROOTDIR='"$(datarootdir)"'
 kraken_LDADD = $(GTK_LIBS) $(LIBXML_LIBS)

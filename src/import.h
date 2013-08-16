@@ -1,4 +1,4 @@
-// gui_popups_threads.h
+// import.h
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -27,26 +27,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#ifndef _KRAKEN_GUI_POPUPS_THREADS_H
-#define _KRAKEN_GUI_POPUPS_THREADS_H
+#ifndef _KRAKEN_IMPORT_H
+#define _KRAKEN_IMPORT_H
 
 #include "kraken.h"
-#include "dns_enum.h"
-#include "gui_popups.h"
-#include "http_scan.h"
-#include "network_addr.h"
 
-void callback_thread_start(GtkWidget *widget, popup_data *p_data);
-void callback_thread_cancel_action(GtkWidget *widget, popup_data *p_data);
-void callback_thread_update_progress(unsigned int current, unsigned int high, popup_data *p_data);
-
-void gui_popup_thread_dns_enum_domain(popup_data *p_data);
-void gui_popup_thread_dns_enum_network(popup_data *gpt_data);
-void gui_popup_thread_http_scrape_url_for_links(popup_data *p_data);
-void gui_popup_thread_http_scrape_hosts_for_links(popup_data *p_data);
-void gui_popup_thread_http_search_engine_bing_domain(popup_data *p_data);
-void gui_popup_thread_http_search_engine_bing_ip(popup_data *p_data);
-void gui_popup_thread_http_search_engine_bing_all_ips(popup_data *p_data);
-void gui_popup_thread_import_file(popup_data *p_data);
+int import_file(host_manager *c_host_manager, char *filename, void (*progress_update)(unsigned int current, unsigned int last, void *userdata), void *progress_update_data, int *action_status);
 
 #endif

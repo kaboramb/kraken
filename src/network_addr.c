@@ -193,6 +193,52 @@ int netaddr_nwk_to_cidr_str(struct network_addr *network, char *netstr, size_t s
 	return 1;
 }
 
+unsigned int netaddr_ips_in_nwk(struct network_addr *network) {
+	unsigned int number = 1;
+	int bits;
+
+	switch (network->subnetmask.s_addr) {
+		case 0x00000000: { bits = 32; break; }
+		case 0x00000080: { bits = 31; break; }
+		case 0x000000c0: { bits = 30; break; }
+		case 0x000000e0: { bits = 29; break; }
+		case 0x000000f0: { bits = 28; break; }
+		case 0x000000f8: { bits = 27; break; }
+		case 0x000000fc: { bits = 26; break; }
+		case 0x000000fe: { bits = 25; break; }
+		case 0x000000ff: { bits = 24; break; }
+		case 0x000080ff: { bits = 23; break; }
+		case 0x0000c0ff: { bits = 22; break; }
+		case 0x0000e0ff: { bits = 21; break; }
+		case 0x0000f0ff: { bits = 20; break; }
+		case 0x0000f8ff: { bits = 19; break; }
+		case 0x0000fcff: { bits = 18; break; }
+		case 0x0000feff: { bits = 17; break; }
+		case 0x0000ffff: { bits = 16; break; }
+		case 0x0080ffff: { bits = 15; break; }
+		case 0x00c0ffff: { bits = 14; break; }
+		case 0x00e0ffff: { bits = 13; break; }
+		case 0x00f0ffff: { bits = 12; break; }
+		case 0x00f8ffff: { bits = 11; break; }
+		case 0x00fcffff: { bits = 10; break; }
+		case 0x00feffff: { bits = 9; break; }
+		case 0x00ffffff: { bits = 8; break; }
+		case 0x80ffffff: { bits = 7; break; }
+		case 0xc0ffffff: { bits = 6; break; }
+		case 0xe0ffffff: { bits = 5; break; }
+		case 0xf0ffffff: { bits = 4; break; }
+		case 0xf8ffffff: { bits = 3; break; }
+		case 0xfcffffff: { bits = 2; break; }
+		case 0xfeffffff: { bits = 1; break; }
+		case 0xffffffff: { bits = 0; break; }
+	}
+	while (bits != 0) {
+		number *= 2;
+		bits--;
+	}
+	return number;
+}
+
 int netaddr_ip_is_rfc1918(struct in_addr *ip) {
 	int i;
 	const char rfc1918_addrs[3][8] = {
