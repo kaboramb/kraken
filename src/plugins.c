@@ -300,7 +300,7 @@ static PyObject *pymod_kraken_api_gui_sync(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	if (c_plugin_manager->m_data != NULL) {
-		gui_model_update_tree_and_marquee(c_plugin_manager->m_data, NULL);
+		gui_model_update_tree_and_marquee_thread(c_plugin_manager->m_data, NULL);
 	}
 	Py_INCREF(Py_None);
 	return Py_None;
@@ -655,6 +655,27 @@ static PyObject *pymod_kraken_host_manager_get_networks(PyObject *self, PyObject
 	return py_cidr_list;
 }
 
+static PyObject *pymod_kraken_host_manager_quick_add_by_addr(PyObject *self, PyObject *args) {
+	char *ipstr;
+	struct in_addr ip;
+	int ret_val;
+
+	if (!PyArg_ParseTuple(args, "s", &ipstr)) {
+		return NULL;
+	}
+	if (!inet_pton(AF_INET, ipstr, &ip)) {
+		PLUGINS_PYTHON_ERROR_INVALID_IP();
+		return NULL;
+	}
+	ret_val = host_manager_quick_add_by_addr(c_plugin_manager->c_host_manager, &ip);
+	if (ret_val == -1) {
+		PyErr_SetString(PyExc_ValueError, "could not resolve the hostname");
+		return NULL;
+	}
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
 static PyObject *pymod_kraken_host_manager_quick_add_by_name(PyObject *self, PyObject *args) {
 	char *hostname;
 	int ret_val;
@@ -684,6 +705,7 @@ static PyMethodDef pymod_kraken_host_manager_methods[] = {
 	{"get_network_details", pymod_kraken_host_manager_get_network_details, METH_VARARGS, ""},
 	{"get_network_by_addr", pymod_kraken_host_manager_get_network_by_addr, METH_VARARGS, ""},
 	{"get_networks", pymod_kraken_host_manager_get_networks, METH_VARARGS, ""},
+	{"quick_add_by_addr", pymod_kraken_host_manager_quick_add_by_addr, METH_VARARGS, ""},
 	{"quick_add_by_name", pymod_kraken_host_manager_quick_add_by_name, METH_VARARGS, ""},
 	{NULL, NULL, 0, NULL}
 };

@@ -45,6 +45,7 @@ typedef struct gui_data_menu_plugin {
 
 void gui_model_update_marquee(main_gui_data *m_data, const char *status);
 int gui_model_update_tree_and_marquee(main_gui_data *m_data, const char *status);
+int gui_model_update_tree_and_marquee_thread(main_gui_data *m_data, const char *status);
 GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, main_gui_data *m_data);
 GtkWidget *gui_model_create_view_and_model(host_manager *c_host_manager, main_gui_data *m_data);
 

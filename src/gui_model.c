@@ -464,6 +464,15 @@ int gui_model_update_tree_and_marquee(main_gui_data *m_data, const char *status)
 	return 0;
 }
 
+int gui_model_update_tree_and_marquee_thread(main_gui_data *m_data, const char *status) {
+	int result;
+
+	gdk_threads_enter();
+	result = gui_model_update_tree_and_marquee(m_data, status);
+	gdk_threads_leave();
+	return result;
+}
+
 GtkTreeModel *gui_refresh_tree_model(GtkTreeStore *store, main_gui_data *m_data) {
 	GtkTreeIter ipiter;
 	GtkTreeIter nameiter;
