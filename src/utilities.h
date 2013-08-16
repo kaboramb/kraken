@@ -35,5 +35,8 @@ int util_dir_create_if_not_exists(const char *dir_path);
 void util_str_replace(char *string, char *old, char *new);
 void util_str_to_lower(char *string);
 void util_str_to_upper(char *string);
+void uitl_str_lstrip(char *string);
+void util_str_rstrip(char *string);
+void util_str_strip(char *string);
 
 #endif

@@ -67,6 +67,60 @@ int util_str_is_printable(char *string) {
 	return util_buf_is_printable(string, strlen(string));
 }
 
+void util_str_lstrip(char *string) {
+	size_t sz_old_str = strlen(string);
+	size_t sz_new_str = 0;
+	char *pos = string;
+
+	while (*pos != '\0') {
+		if (*pos == 9) {
+			*pos = 0;
+		} else if (*pos == 10) {
+			*pos = 0;
+		} else if (*pos == 11) {
+			*pos = 0;
+		} else if (*pos == 32) {
+			*pos = 0;
+		} else {
+			break;
+		}
+		pos++;
+	}
+	if (pos != string) {
+		sz_new_str = strlen(pos);
+		memmove(string, pos, sz_new_str);
+		memset(string + sz_new_str, '\0', (sz_old_str - sz_new_str));
+	}
+	return;
+}
+
+void util_str_rstrip(char *string) {
+	char *pos = string;
+
+	pos += strlen(string) - 1;
+	while (pos >= string) {
+		if (*pos == 9) {
+			*pos = 0;
+		} else if (*pos == 10) {
+			*pos = 0;
+		} else if (*pos == 11) {
+			*pos = 0;
+		} else if (*pos == 32) {
+			*pos = 0;
+		} else {
+			break;
+		}
+		pos--;
+	}
+	return;
+}
+
+void util_str_strip(char *string) {
+	util_str_rstrip(string);
+	util_str_lstrip(string);
+	return;
+}
+
 void util_str_replace(char *string, char *old, char *new) {
 	char *pos = string;
 

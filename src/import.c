@@ -67,11 +67,9 @@ int import_file(host_manager *c_host_manager, char *filename, void (*progress_up
 	}
 	/* count the lines and hosts in ranges */
 	while (fgets(current_line, sizeof(current_line), file_h)) {
+		util_str_strip(current_line);
 		if (strlen(current_line) < 3) {
 			continue;
-		}
-		if (current_line[strlen(current_line) - 1] == '\n') {
-			current_line[strlen(current_line) - 1] = '\0';
 		}
 		if (netaddr_cidr_str_to_nwk(&tmp_network, current_line) == 1) {
 			hosts_total += netaddr_ips_in_nwk(&tmp_network);
@@ -88,13 +86,11 @@ int import_file(host_manager *c_host_manager, char *filename, void (*progress_up
 				break;
 			}
 		}
+		util_str_strip(current_line);
 		if (strlen(current_line) < 3) {
 			continue;
 		}
 		progress_update(hosts_done, hosts_total, progress_update_data);
-		if (current_line[strlen(current_line) - 1] == '\n') {
-			current_line[strlen(current_line) - 1] = '\0';
-		}
 		if (netaddr_cidr_str_to_nwk(&tmp_network, current_line) == 1) {
 			memset(&up_data, '\0', sizeof(up_data));
 			up_data.real_total = hosts_total;
