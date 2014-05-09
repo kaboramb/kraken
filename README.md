@@ -63,5 +63,5 @@ Author Home Page: [http://www.securestate.com/](http://www.securestate.com/)
 Project Home Page: [https://github.com/securestate/kraken](https://github.com/securestate/kraken)
 
 # Install
-For install information please see the INSTALL file.
+For install information please see the [INSTALL](https://github.com/securestate/kraken/blob/master/INSTALL.md) file.
 
