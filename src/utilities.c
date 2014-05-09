@@ -55,7 +55,9 @@ int util_buf_is_printable(char *string, size_t sz_str) {
 	size_t ctr = 0;
 	while (ctr < sz_str) {
 		if ((*pos < 32) || (*pos > 126)) {
-			return 0;
+			if ((*pos != 9) && (*pos != 10) && (*pos != 13)) {
+				return 0;
+			}
 		}
 		pos++;
 		ctr++;

@@ -95,7 +95,9 @@ static void callback_host(void *c_host_manager, int status, int timeouts, struct
 		for (a=0; host->h_aliases[a] != NULL; a++) {
 			single_host_add_hostname(&c_host, host->h_aliases[a]);
 		}
-		host_manager_add_host(c_host_manager, &c_host);
+		if (c_host.n_names) {
+			host_manager_add_host(c_host_manager, &c_host);
+		}
 	}
 	single_host_destroy(&c_host);
 	return;

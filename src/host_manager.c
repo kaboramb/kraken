@@ -80,6 +80,10 @@ int single_host_add_hostname(single_host_info *c_host, const char *name) {
 	char (*block)[DNS_MAX_FQDN_LENGTH + 1];
 	unsigned int current_name_i;
 
+	if (!util_str_is_printable(name)) {
+		return -1;
+	}
+
 	if (c_host->names == NULL) {
 		/* adding the first name */
 		c_host->names = malloc(DNS_MAX_FQDN_LENGTH + 1);

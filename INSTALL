@@ -1,12 +1,12 @@
 == Overview ==
-Compilation on BackTrack does not seem immediately possible due to the broken 
-libgtk2.0-dev package.  See the projects home page to obtian the latest version 
-as a debian package to install on BackTrack.  The dependencies listed below for 
-Ubuntu 10.04 should be compatible with newer versions of Ubuntu as well.
+Compilation on BackTrack does not seem immediately possible due to the broken
+libgtk2.0-dev package.  See the projects home page to obtian the latest version
+as a debian package to install on BackTrack.  The dependencies listed below for
+Ubuntu 14.04 should be compatible with newer versions of Ubuntu as well.
 
 == Dependencies ==
 = Required Packages =
-	Ubuntu 10.04
+	Ubuntu 14.04
 	 * libc-ares2
 	 * libc-ares-dev
 	 * python-dev
@@ -32,7 +32,7 @@ Ubuntu 10.04 should be compatible with newer versions of Ubuntu as well.
 	</pre>
 
 = Recommended Packages =
-	Ubuntu 10.04
+	Ubuntu 14.04
 	 * "python-dnspython":http://www.dnspython.org/
 	 * "python-tldextract":http://pypi.python.org/pypi/tldextract/
 
