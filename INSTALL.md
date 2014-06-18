@@ -21,7 +21,7 @@ Ubuntu 14.04
 <pre>
 [user@localhost kraken]$ sudo apt-get install \
 libc-ares2 libc-ares-dev \
-python-dev python-dnspython\
+python-dev python-dnspython \
 liburiparser1 liburiparser-dev \
 liblog4c3 liblog4c-dev \
 libgtk2.0-0 libgtk2.0-dev \
